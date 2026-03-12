@@ -31,7 +31,7 @@ namespace EMS.API.Controllers
                 var members = await _classService.GetClassMembersAsync(classId);
                 return Ok(new
                 {
-                    Message = "Get class members successfully",
+                    Message = "Get class members successfully!",
                     TotalCount = members.Count(),
                     Data = members
                 });
@@ -39,6 +39,19 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Error = "Error: " + ex.Message });
+            }
+        }
+        [HttpPost("{classId}/assignStudent")]
+        public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentRequest request)
+        {
+            try
+            {
+                await _classService.AssignStudentAsync(classId, request);
+                return StatusCode(201, new { Message = "Student added successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }
