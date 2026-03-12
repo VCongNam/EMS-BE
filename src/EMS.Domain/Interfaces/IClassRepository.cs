@@ -10,6 +10,8 @@ namespace EMS.Domain.Interfaces
     public interface IClassRepository
     {
         Task AddAsync(Class classroom);
+
+        Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId);
     }
 
 }

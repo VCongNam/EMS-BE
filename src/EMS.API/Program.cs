@@ -14,9 +14,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // 2. Đăng ký Repository (Domain <-> Infra)
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
+builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IClassService, ClassService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

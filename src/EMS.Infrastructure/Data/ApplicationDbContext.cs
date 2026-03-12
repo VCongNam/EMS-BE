@@ -14,9 +14,17 @@ namespace EMS.Infrastructure.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
         public DbSet<Class> Classes { get; set; }
-
+        public DbSet<Account> Accounts { get; set; }
+        public DbSet<Student> Students { get; set; }
+        public DbSet<ClassEnrollment> ClassEnrollments { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Account>()
+                .HasOne(a => a.Student)
+                .WithOne(s => s.Account)
+                .HasForeignKey<Student>(s => s.StudentID)
+                .OnDelete(DeleteBehavior.Cascade);
+
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

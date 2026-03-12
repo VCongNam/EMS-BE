@@ -38,6 +38,24 @@ namespace EMS.Application.Features.Classes.Services
 
             return newClass.ClassId;
         }
+        public async Task<IEnumerable<ClassMemberResponse>> GetClassMembersAsync(Guid classId)
+        {
+            var enrollments = await _classRepository.GetClassMemberAsync(classId);
+
+            
+            var memberList = enrollments.Select(ce => new ClassMemberResponse
+            {
+                StudentID = ce.StudentID,
+                FullName = ce.Student.Account.FullName, 
+                Email = ce.Student.Account.Email,
+                ParentName = ce.Student.ParentName,
+                ParentPhone = ce.Student.ParentPhone,
+                EnrolledDate = ce.EnrolledDate,
+                Status = ce.Status
+            }).ToList();
+
+            return memberList;
+        }
 
     }
 }

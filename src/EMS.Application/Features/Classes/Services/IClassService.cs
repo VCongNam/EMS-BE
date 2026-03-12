@@ -10,6 +10,7 @@ namespace EMS.Application.Features.Classes.Services
     public interface IClassService
     {
         Task<Guid> CreateClassAsync(CreateClassRequest request);
+        Task<IEnumerable<ClassMemberResponse>> GetClassMembersAsync(Guid classId);
     }
 
 }

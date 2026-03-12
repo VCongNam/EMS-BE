@@ -22,6 +22,25 @@ namespace EMS.API.Controllers
             var classId = await _classService.CreateClassAsync(request);
             return Ok(new { ClassId = classId, Message = "Class created successfully on Supabase!" });
         }
+
+        [HttpGet("{classId}/members")]
+        public async Task<IActionResult> GetClassMember(Guid classId)
+        {
+            try
+            {
+                var members = await _classService.GetClassMembersAsync(classId);
+                return Ok(new
+                {
+                    Message = "Get class members successfully",
+                    TotalCount = members.Count(),
+                    Data = members
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = "Error: " + ex.Message });
+            }
+        }
     }
 
 }

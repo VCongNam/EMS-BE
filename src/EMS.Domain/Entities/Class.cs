@@ -26,6 +26,7 @@ namespace EMS.Domain.Entities
 
         // public virtual Teacher Teacher { get; set; }
         // public virtual ICollection<Student> Students { get; set; }
+        public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; }
     }
 
 }
