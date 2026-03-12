@@ -10,7 +10,6 @@ namespace EMS.Domain.Entities
     {
         public Guid ClassId { get; set; } 
         public Guid TeacherId { get; set; } 
-
         public string ClassName { get; set; } = string.Empty; 
         public string? Room { get; set; }     
 
