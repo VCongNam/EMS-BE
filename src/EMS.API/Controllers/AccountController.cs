@@ -9,7 +9,7 @@ namespace EMS.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]// yêu cầu phải có authorize
+    //[Authorize]// yêu cầu phải có authorize
     public class AccountController : ControllerBase
     {
         private readonly AccountService accountService;
