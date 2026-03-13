@@ -1,25 +1,49 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace EMS.Domain.Entities
+namespace EMS.Domain.Entities;
+
+public partial class Account
 {
-    public class Account
-    {
-        public Guid AccountID { get; set; }
-        public Guid RoleID { get; set; }
-        public string Email { get; set; }
-        public string PasswordHash { get; set; }
-        public string FullName { get; set; }
-        public string? PhoneNumber { get; set; }
-        public string? AvatarURL { get; set; }
-        public string? Status { get; set; }
-        public bool? IsDeleted { get; set; }
-        public DateTime? CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }
+    public Guid AccountId { get; set; }
 
-        public virtual Student Student { get; set; }
-    }
+    public Guid RoleId { get; set; }
+
+    public string Email { get; set; } = null!;
+
+    public string PasswordHash { get; set; } = null!;
+
+    public string FullName { get; set; } = null!;
+
+    public string? PhoneNumber { get; set; }
+
+    public string? AvatarUrl { get; set; }
+
+    public string? Status { get; set; }
+
+    public bool? IsDeleted { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
+
+    public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+    public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
+
+    public virtual Role Role { get; set; } = null!;
+
+    public virtual Student? Student { get; set; }
+
+    public virtual ICollection<SubmissionFeedback> SubmissionFeedbacks { get; set; } = new List<SubmissionFeedback>();
+
+    public virtual ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
+
+    public virtual Teacher? Teacher { get; set; }
+
+    public virtual TeachingAssistant? TeachingAssistant { get; set; }
 }

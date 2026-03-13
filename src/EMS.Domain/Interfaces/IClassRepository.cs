@@ -14,6 +14,10 @@ namespace EMS.Domain.Interfaces
         Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId);
         Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId);
         Task<ClassEnrollment> AddEnrollmentAsync(ClassEnrollment enrollment);
+        Task<IEnumerable<Class>> GetClassesByTeacherIdAsync(Guid teacherId);
+        Task<Class?> GetByIdAsync(Guid classId);
+        Task UpdateAsync(Class classroom);
+
     }
 
 }

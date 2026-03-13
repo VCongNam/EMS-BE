@@ -1,22 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace EMS.Domain.Entities
+namespace EMS.Domain.Entities;
+
+public partial class Student
 {
-    public class Student
-    {
-        public Guid StudentID { get; set; }
-        public string ParentName { get; set; }
-        public string ParentPhone { get; set; }
-        public string? ParentEmail { get; set; }
-        public string? Address { get; set; }
-        public DateTime DOB { get; set; }
+    public Guid StudentId { get; set; }
 
-        public virtual Account Account { get; set; }
+    public string ParentName { get; set; } = null!;
 
-        public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; }
-    }
+    public string ParentPhone { get; set; } = null!;
+
+    public string? ParentEmail { get; set; }
+
+    public string? Address { get; set; }
+
+    public DateOnly Dob { get; set; }
+
+    public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+
+    public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; } = new List<ClassEnrollment>();
+
+    public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+
+    public virtual ICollection<ProgressReport> ProgressReports { get; set; } = new List<ProgressReport>();
+
+    public virtual Account StudentNavigation { get; set; } = null!;
+
+    public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
 }
