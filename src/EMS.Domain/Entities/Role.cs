@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace EMS.Domain.Entities
+namespace EMS.Domain.Entities;
+
+public partial class Role
 {
-    public class Role
-    {
-        public Guid RoleId { get; set; }
-        public string RoleName { get; set; } = string.Empty;
-        public ICollection<Account> Accounts { get; set; } = new List<Account>();
-    }
+    public Guid RoleId { get; set; }
+
+    public string RoleName { get; set; } = null!;
+
+    public virtual ICollection<Account> Accounts { get; set; } = new List<Account>();
 }

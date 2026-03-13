@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Classes.DTOs
 {
-    public class CreateClassRequest
+    public class CreateClassDto
     {
         public Guid TeacherId { get; set; }
         public string ClassName { get; set; } = string.Empty;
         public string? Room { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateOnly StartDate { get; set; }
+        public DateOnly EndDate { get; set; }
         public decimal TuitionFee { get; set; }
     }
 
