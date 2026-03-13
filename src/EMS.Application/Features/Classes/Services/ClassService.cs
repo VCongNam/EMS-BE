@@ -18,7 +18,7 @@ namespace EMS.Application.Features.Classes.Services
             _classRepository = classRepository;
         }
 
-        public async Task<Guid> CreateClassAsync(CreateClassRequest request)
+        public async Task<Guid> CreateClassAsync(CreateClassDto request)
         {
             var newClass = new Class
             {
@@ -37,6 +37,80 @@ namespace EMS.Application.Features.Classes.Services
             await _classRepository.AddAsync(newClass);
 
             return newClass.ClassId;
+        }
+
+        public async Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync(Guid teacherId)
+        {
+            var classes = await _classRepository.GetClassesByTeacherIdAsync(teacherId);
+
+            var result = classes.Select(c => new ClassSummaryDto
+            {
+                ClassId = c.ClassId,
+                ClassName = c.ClassName,
+                Room = c.Room,
+                Status = c.Status,
+                StartDate = c.StartDate
+            });
+
+            return result;
+        }
+
+        public async Task<ClassDetailDto> GetClassDetailAsync(Guid classId)
+        {
+            var classroom = await _classRepository.GetByIdAsync(classId);
+
+            if (classroom == null)
+            {
+                throw new Exception($"Class with ID {classId} not found.");
+            }
+
+            return new ClassDetailDto
+            {
+                ClassId = classroom.ClassId,
+                TeacherId = classroom.TeacherId,
+                ClassName = classroom.ClassName,
+                Room = classroom.Room,
+                TuitionFee = classroom.TuitionFee,
+                StartDate = classroom.StartDate,
+                EndDate = classroom.EndDate,
+                Status = classroom.Status,
+                CreatedAt = (DateTime)classroom.CreatedAt
+            };
+        }
+
+       // Update Class
+        public async Task UpdateClassAsync(Guid classId, UpdateClassDto request)
+        {
+            var classroom = await _classRepository.GetByIdAsync(classId);
+            if (classroom == null)
+            {
+                throw new Exception($"Class with ID {classId} not found.");
+            }
+
+            classroom.ClassName = request.ClassName;
+            classroom.Room = request.Room;
+            classroom.StartDate = request.StartDate;
+            classroom.EndDate = request.EndDate;
+            classroom.TuitionFee = request.TuitionFee;
+
+            classroom.UpdatedAt = DateTime.UtcNow;
+
+            await _classRepository.UpdateAsync(classroom);
+        }
+
+        //  Archive Class 
+        public async Task ArchiveClassAsync(Guid classId)
+        {
+            var classroom = await _classRepository.GetByIdAsync(classId);
+            if (classroom == null)
+            {
+                throw new Exception($"Class with ID {classId} not found.");
+            }
+
+            classroom.Status = "Archived";
+            classroom.UpdatedAt = DateTime.UtcNow;
+
+            await _classRepository.UpdateAsync(classroom);
         }
 
     }

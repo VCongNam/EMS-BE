@@ -9,7 +9,12 @@ namespace EMS.Application.Features.Classes.Services
 {
     public interface IClassService
     {
-        Task<Guid> CreateClassAsync(CreateClassRequest request);
+        Task<Guid> CreateClassAsync(CreateClassDto request);
+        Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync(Guid teacherId);
+        Task<ClassDetailDto> GetClassDetailAsync(Guid classId);
+        Task UpdateClassAsync(Guid classId, UpdateClassDto request);
+        Task ArchiveClassAsync(Guid classId);
+
     }
 
 }
