@@ -27,6 +27,7 @@ builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IClassService, ClassService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<AccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddCors(options =>

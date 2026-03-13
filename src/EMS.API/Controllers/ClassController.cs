@@ -23,6 +23,37 @@ namespace EMS.API.Controllers
             return Ok(new { ClassId = classId, Message = "Class created successfully on Supabase!" });
         }
 
+        [HttpGet("{classId}/members")]
+        public async Task<IActionResult> GetClassMember(Guid classId)
+        {
+            try
+            {
+                var members = await _classService.GetClassMembersAsync(classId);
+                return Ok(new
+                {
+                    Message = "Get class members successfully!",
+                    TotalCount = members.Count(),
+                    Data = members
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = "Error: " + ex.Message });
+            }
+        }
+        [HttpPost("{classId}/assignStudent")]
+        public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentRequest request)
+        {
+            try
+            {
+                await _classService.AssignStudentAsync(classId, request);
+                return StatusCode(201, new { Message = "Student added successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
         [HttpGet("teacher/{teacherId}/dashboard")]
         public async Task<IActionResult> GetTeacherDashboard(Guid teacherId)
         {

@@ -25,6 +25,30 @@ namespace EMS.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task<ClassEnrollment> AddEnrollmentAsync(ClassEnrollment enrollment)
+        {
+            await _context.ClassEnrollments.AddAsync(enrollment);
+            await _context.SaveChangesAsync();
+            return enrollment;
+        }
+
+        public async Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId)
+        {
+            return await _context.ClassEnrollments
+               .Include(ce => ce.Student)
+               .ThenInclude(s => s.Account)
+               .Where(ce => ce.ClassID == classId && ce.Status == "Active")
+               .OrderByDescending(ce => ce.EnrolledDate)
+               .ToListAsync();
+        }
+
+        public async Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId)
+        {
+            return await _context.ClassEnrollments
+                .AnyAsync(ce => ce.ClassID == classId && ce.StudentID == studentId);
+        }
+    }
+
         public async Task<Class?> GetByIdAsync(Guid classId)
         {
             return await _context.Classes
