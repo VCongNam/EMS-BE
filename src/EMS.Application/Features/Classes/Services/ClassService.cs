@@ -22,23 +22,60 @@ namespace EMS.Application.Features.Classes.Services
         {
             var newClass = new Class
             {
-                ClassId = Guid.NewGuid(), 
+                ClassId = Guid.NewGuid(),
                 TeacherId = request.TeacherId,
                 ClassName = request.ClassName,
                 Room = request.Room,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
                 TuitionFee = request.TuitionFee,
-                Status = "Scheduled", 
+                Status = "Scheduled",
                 IsDeleted = false,
-                CreatedAt = DateTime.UtcNow 
+                CreatedAt = DateTime.UtcNow
             };
 
             await _classRepository.AddAsync(newClass);
 
             return newClass.ClassId;
         }
+        public async Task<IEnumerable<ClassMemberResponse>> GetClassMembersAsync(Guid classId)
+        {
+            var enrollments = await _classRepository.GetClassMemberAsync(classId);
 
+
+            var memberList = enrollments.Select(ce => new ClassMemberResponse
+            {
+                StudentID = ce.StudentID,
+                FullName = ce.Student.Account.FullName,
+                Email = ce.Student.Account.Email,
+                ParentName = ce.Student.ParentName,
+                ParentPhone = ce.Student.ParentPhone,
+                EnrolledDate = ce.EnrolledDate,
+                Status = ce.Status
+            }).ToList();
+
+            return memberList;
+        }
+
+        public async Task<bool> AssignStudentAsync(Guid classId, AssignStudentRequest request)
+        {
+            bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, request.StudentID);
+            if (isEnrolled)
+            {
+                throw new Exception("Student is assigned to this class");
+            }
+            var newEnrollment = new ClassEnrollment
+            {
+                EnrollmentID = Guid.NewGuid(),
+                ClassID = classId,
+                StudentID = request.StudentID,
+                EnrolledDate = DateTime.UtcNow,
+                Status = "Active",
+                CreatedAt = DateTime.UtcNow
+            };
+            await _classRepository.AddEnrollmentAsync(newEnrollment);
+            return true;
+        }
         public async Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync(Guid teacherId)
         {
             var classes = await _classRepository.GetClassesByTeacherIdAsync(teacherId);
