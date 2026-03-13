@@ -2,8 +2,8 @@
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
-using EMS.Application.Features.Classes.Services;
 using Microsoft.EntityFrameworkCore;
+using EMS.Application.Features.Assignments.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +17,9 @@ builder.Services.AddScoped<IClassRepository, ClassRepository>();
 
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IClassService, ClassService>();
+builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
+builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
