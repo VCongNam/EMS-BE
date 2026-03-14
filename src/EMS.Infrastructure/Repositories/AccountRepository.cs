@@ -21,8 +21,8 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Account> CreatStudentAccountAsync(Account account)
         {
-            await _context.Accounts.AddAsync(account);
-            await _context.SaveChangesAsync();
+            await context.Accounts.AddAsync(account);
+            await context.SaveChangesAsync();
             return account;
         }
         
