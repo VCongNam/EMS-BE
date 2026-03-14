@@ -15,6 +15,8 @@ using EMS.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 
