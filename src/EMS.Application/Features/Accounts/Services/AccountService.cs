@@ -142,7 +142,7 @@ namespace EMS.Application.Features.Accounts.Services
                 PhoneNumber = account.PhoneNumber,
                 RoleName = account.Role?.RoleName ?? "N/A",
                 Status = account.Status,
-                CreatedAt = account.CreatedAt
+                CreatedAt = (DateTime)account.CreatedAt
             };
         }
 

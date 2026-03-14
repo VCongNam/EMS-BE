@@ -17,17 +17,17 @@ namespace EMS.Infrastructure.Data.Configurations
 
             builder.HasKey(a => a.AccountId);
 
-            builder.Property(a => a.AccountId).HasColumnName("AccountID");
-            builder.Property(a => a.RoleId).HasColumnName("RoleID").IsRequired();
-            builder.Property(a => a.Email).HasColumnName("Email").IsRequired().HasMaxLength(255);
-            builder.Property(a => a.PasswordHash).HasColumnName("PasswordHash").IsRequired();
-            builder.Property(a => a.FullName).HasColumnName("FullName").IsRequired().HasMaxLength(255);
-            builder.Property(a => a.PhoneNumber).HasColumnName("PhoneNumber").HasMaxLength(20);
-            builder.Property(a => a.AvatarUrl).HasColumnName("AvatarURL");
-            builder.Property(a => a.Status).HasColumnName("Status").HasMaxLength(50);
-            builder.Property(a => a.IsDeleted).HasColumnName("IsDeleted").HasDefaultValue(false);
-            builder.Property(a => a.CreatedAt).HasColumnName("CreatedAt").HasDefaultValueSql("now()");
-            builder.Property(a => a.UpdatedAt).HasColumnName("UpdatedAt");
+            builder.Property(a => a.AccountId).HasColumnName("accountid");
+            builder.Property(a => a.RoleId).HasColumnName("roleid").IsRequired();
+            builder.Property(a => a.Email).HasColumnName("email").IsRequired().HasMaxLength(255);
+            builder.Property(a => a.PasswordHash).HasColumnName("passwordhash").IsRequired();
+            builder.Property(a => a.FullName).HasColumnName("fullname").IsRequired().HasMaxLength(255);
+            builder.Property(a => a.PhoneNumber).HasColumnName("phonenumber").HasMaxLength(20);
+            builder.Property(a => a.AvatarUrl).HasColumnName("avatarurl");
+            builder.Property(a => a.Status).HasColumnName("status").HasMaxLength(50);
+            builder.Property(a => a.IsDeleted).HasColumnName("isdeleted").HasDefaultValue(false);
+            builder.Property(a => a.CreatedAt).HasColumnName("createdat").HasDefaultValueSql("now()");
+            builder.Property(a => a.UpdatedAt).HasColumnName("updatedat");
 
             builder.HasIndex(a => a.Email).IsUnique();
         }

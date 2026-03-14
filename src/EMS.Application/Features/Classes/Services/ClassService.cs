@@ -69,7 +69,7 @@ namespace EMS.Application.Features.Classes.Services
                 EnrollmentId = Guid.NewGuid(),
                 ClassId = classId,
                 StudentId = request.StudentID,
-                EnrolledDate = DateTime.UtcNow,
+                EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow),
                 Status = "Active",
                 CreatedAt = DateTime.UtcNow
             };

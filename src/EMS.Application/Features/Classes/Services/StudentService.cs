@@ -44,7 +44,7 @@ namespace EMS.Application.Features.Classes.Services
                 }
             };
              
-            await _accountRepository.CreateStudentAccountAsync(accountEntity);
+            await _accountRepository.AddAsync(accountEntity);
             return newAccountId;
         }
     }
