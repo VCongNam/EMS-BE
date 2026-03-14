@@ -15,10 +15,10 @@ namespace EMS.Infrastructure.Data.Configurations
         {
             builder.ToTable("classenrollment");
 
-            builder.HasKey(ce => ce.EnrollmentID);
-            builder.Property(ce => ce.EnrollmentID).HasColumnName("enrollmentid");
-            builder.Property(ce => ce.ClassID).HasColumnName("classid").IsRequired();
-            builder.Property(ce => ce.StudentID).HasColumnName("studentid").IsRequired();
+            builder.HasKey(ce => ce.EnrollmentId);
+            builder.Property(ce => ce.EnrollmentId).HasColumnName("enrollmentid");
+            builder.Property(ce => ce.ClassId).HasColumnName("classid").IsRequired();
+            builder.Property(ce => ce.StudentId).HasColumnName("studentid").IsRequired();
             builder.Property(ce => ce.EnrolledDate).HasColumnName("enrolleddate").HasColumnType("date");
             builder.Property(ce => ce.DroppedDate).HasColumnName("droppeddate").HasColumnType("date");
             builder.Property(ce => ce.Status).HasColumnName("status").HasMaxLength(50);
@@ -27,12 +27,12 @@ namespace EMS.Infrastructure.Data.Configurations
 
             builder.HasOne(ce => ce.Class)
                    .WithMany(c => c.ClassEnrollments)
-                   .HasForeignKey(ce => ce.ClassID)
+                   .HasForeignKey(ce => ce.ClassId)
                    .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(ce => ce.Student)
                    .WithMany(s => s.ClassEnrollments)
-                   .HasForeignKey(ce => ce.StudentID)
+                   .HasForeignKey(ce => ce.StudentId)
                    .OnDelete(DeleteBehavior.Cascade);
         }
     }

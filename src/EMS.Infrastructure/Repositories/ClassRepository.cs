@@ -36,8 +36,8 @@ namespace EMS.Infrastructure.Repositories
         {
             return await _context.ClassEnrollments
                .Include(ce => ce.Student)
-               .ThenInclude(s => s.Account)
-               .Where(ce => ce.ClassID == classId && ce.Status == "Active")
+               .ThenInclude(s => s.StudentNavigation)
+               .Where(ce => ce.ClassId == classId && ce.Status == "Active")
                .OrderByDescending(ce => ce.EnrolledDate)
                .ToListAsync();
         }
@@ -45,9 +45,9 @@ namespace EMS.Infrastructure.Repositories
         public async Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId)
         {
             return await _context.ClassEnrollments
-                .AnyAsync(ce => ce.ClassID == classId && ce.StudentID == studentId);
+                .AnyAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
         }
-    }
+    
 
         public async Task<Class?> GetByIdAsync(Guid classId)
         {

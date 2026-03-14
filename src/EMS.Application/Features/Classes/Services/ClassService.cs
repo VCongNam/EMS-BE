@@ -45,9 +45,9 @@ namespace EMS.Application.Features.Classes.Services
 
             var memberList = enrollments.Select(ce => new ClassMemberResponse
             {
-                StudentID = ce.StudentID,
-                FullName = ce.Student.Account.FullName,
-                Email = ce.Student.Account.Email,
+                StudentID = ce.StudentId,
+                FullName = ce.Student.StudentNavigation.FullName,
+                Email = ce.Student.StudentNavigation.Email,
                 ParentName = ce.Student.ParentName,
                 ParentPhone = ce.Student.ParentPhone,
                 EnrolledDate = ce.EnrolledDate,
@@ -66,10 +66,10 @@ namespace EMS.Application.Features.Classes.Services
             }
             var newEnrollment = new ClassEnrollment
             {
-                EnrollmentID = Guid.NewGuid(),
-                ClassID = classId,
-                StudentID = request.StudentID,
-                EnrolledDate = DateTime.UtcNow,
+                EnrollmentId = Guid.NewGuid(),
+                ClassId = classId,
+                StudentId = request.StudentID,
+                EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow),
                 Status = "Active",
                 CreatedAt = DateTime.UtcNow
             };
