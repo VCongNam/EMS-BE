@@ -14,6 +14,6 @@ namespace EMS.Application.Features.Accounts.DTOs
         public string? PhoneNumber { get; set; }
         public string RoleName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
+        public DateTime? CreatedAt { get; set; }
     }
 }
