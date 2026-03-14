@@ -19,13 +19,23 @@ public partial class Account
 
     public string? AvatarUrl { get; set; }
 
-    public string? Status { get; set; }
+    public string? Status { get; set; } = "Unverified";// Unverified, Active, Banned
 
     public bool? IsDeleted { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+
+    // Dùng cho Xác thực Email lúc đăng ký
+    public string? VerificationToken { get; set; }
+    public DateTime? VerificationTokenExpiresAt { get; set; }
+
+    // Dùng cho Quên mật khẩu
+    public string? ResetPasswordToken { get; set; }
+    public DateTime? ResetPasswordTokenExpiresAt { get; set; }
+
 
     public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 

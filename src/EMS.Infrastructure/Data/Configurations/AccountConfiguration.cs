@@ -13,7 +13,7 @@ namespace EMS.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Account> builder)
         {
-            builder.ToTable("account");
+            builder.ToTable("Account");
 
             builder.HasKey(a => a.AccountId);
 

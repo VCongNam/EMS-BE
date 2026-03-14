@@ -10,10 +10,10 @@ namespace EMS.Domain.Interfaces
     public interface IAccountRepository
     {
         Task<Account?> GetByEmailAsync(string email);
-        Task<Account> AddAsync(Account account);
         Task<Account?> GetByIdAsync(Guid accountId);
-        Task UpdateAsync  (Account account);
-
+        Task<Account> AddAsync(Account account);
+        Task UpdateAsync(Account account);
         Task<Role?> GetRoleByNameAsync(string roleName);
+        Task CreateStudentAccountAsync(Account account, Student student);
     }
 }
