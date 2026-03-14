@@ -23,8 +23,8 @@ namespace EMS.Application.Features.Classes.Services
 
             var accountEntity = new Account
             {
-                AccountID = newAccountId,
-                RoleID = request.RoleID,
+                AccountId = newAccountId,
+                RoleId = request.RoleID,
                 Email = request.Email, // Have to hash
                 PasswordHash = request.Password, // have to hash
                 FullName = request.FullName,
@@ -35,16 +35,16 @@ namespace EMS.Application.Features.Classes.Services
 
                 Student = new Student
                 {
-                    StudentID = newAccountId,
+                    StudentId = newAccountId,
                     ParentName = request.ParentName,
                     ParentPhone = request.ParentPhone,
                     ParentEmail = request.ParentEmail,
                     Address = request.Address,
-                    DOB = request.DOB,
+                    Dob = request.DOB,
                 }
             };
              
-            await _accountRepository.CreatStudentAccountAsync(accountEntity);
+            await _accountRepository.CreateStudentAccountAsync(accountEntity);
             return newAccountId;
         }
     }

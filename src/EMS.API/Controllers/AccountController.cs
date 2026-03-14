@@ -9,7 +9,7 @@ namespace EMS.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize]// yêu cầu phải có authorize
+    [Authorize]// yêu cầu phải có authorize
     public class AccountController : ControllerBase
     {
         private readonly AccountService accountService;
@@ -31,6 +31,7 @@ namespace EMS.API.Controllers
             return Guid.Parse(userIdString);
         }
 
+        // [GET] /api/Account/profile
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
         {
@@ -43,6 +44,7 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
+        // [PUT] /api/Account/profile
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile(UpdateProfileRequest request)
         {
@@ -55,13 +57,14 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
-        [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+        // [POST] /api/Account/change-password (Dành cho user đang đăng nhập)
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
         {
             try
             {
                 var accountId = GetAccountIdFromToken();
-                await accountService.ResetPasswordAsync(accountId, request);
+                await accountService.ChangePassewordAsync(accountId, request);
                 return Ok(new { Message = "Đổi mật khẩu thành công!" });
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
