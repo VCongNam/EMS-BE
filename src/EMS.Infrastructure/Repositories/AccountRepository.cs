@@ -21,8 +21,8 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Account> CreatStudentAccountAsync(Account account)
         {
-            await _context.Accounts.AddAsync(account);
-            await _context.SaveChangesAsync();
+            await context.Accounts.AddAsync(account);
+            await context.SaveChangesAsync();
             return account;
         }
         
@@ -46,7 +46,7 @@ namespace EMS.Infrastructure.Repositories
 
         }
 
-        public async Task<Role> GetRoleByNameAsync(string roleName)
+        public async Task<Role?> GetRoleByNameAsync(string roleName)
         {
             return await context.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName);
         }
@@ -57,5 +57,9 @@ namespace EMS.Infrastructure.Repositories
             await context.SaveChangesAsync();
         }
 
+        public Task CreateStudentAccountAsync(Account account, Student student)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

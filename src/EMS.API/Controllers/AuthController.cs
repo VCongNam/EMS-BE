@@ -13,49 +13,61 @@ namespace EMS.API.Controllers
             this.accountService = accountService;
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginRequest request)
-        {
-            try
-            {
-                var response = await accountService.LoginAsync(request);
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
-            try
-            {
-                var response = await accountService.RegisterAsync(request);
-                return Ok(response);
+            try { 
+                return Ok(await accountService.RegisterAsync(request)); 
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
+            catch (Exception ex) { 
+                return BadRequest(new { Message = ex.Message }); 
             }
         }
 
-
-        [HttpPost("logout")]
-        public IActionResult Logout()
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail(VerifyEmailRequest request)
         {
-            return Ok(new { Message = "Đăng xuất thành công. Vui lòng xóa Token ở LocalStorage của Frontend." });
+            try
+            {
+                await accountService.VerifyEmailAsync(request);
+                return Ok(new { Message = "Xác thực thành công!" });
+            }
+            catch (Exception ex) { 
+                return BadRequest(new { Message = ex.Message }); 
+            }
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(LoginRequest request)
+        {
+            try { 
+                return Ok(await accountService.LoginAsync(request)); 
+            }
+            catch (Exception ex) { 
+                return BadRequest(new { Message = ex.Message }); 
+            }
         }
 
         [HttpPost("forgot-password")]
-        public IActionResult ForgotPassword([FromBody] ForgotPasswordRequest request)
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {
-            // TODO: Ghép logic gửi Email thật vào đây
-            return Ok(new
-            {
-                Message = $"Tính năng đang hoàn thiện. Một email khôi phục mật khẩu sẽ được gửi đến {request.Email} khi tích hợp SMTP."
-            });
+            try { 
+                return Ok(await accountService.ForgotPasswordAsync(request)); 
+            }
+            catch (Exception ex) { 
+                return BadRequest(new { Message = ex.Message }); 
+            }
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+        {
+            try { 
+                return Ok(await accountService.ResetPasswordAsync(request)); 
+            }
+            catch (Exception ex) { 
+                return BadRequest(new { Message = ex.Message }); 
+            }
         }
     }
 }
