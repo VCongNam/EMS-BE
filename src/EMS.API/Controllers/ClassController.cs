@@ -42,7 +42,7 @@ namespace EMS.API.Controllers
             }
         }
         [HttpPost("{classId}/assignStudent")]
-        public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentRequest request)
+        public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentDto request)
         {
             try
             {

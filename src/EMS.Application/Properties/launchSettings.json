@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "EMS.Application": {
+      "commandName": "Project"
+    }
+  }
+}

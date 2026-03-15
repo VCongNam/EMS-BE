@@ -17,7 +17,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateStudent([FromBody] CreateStudentRequest request)
+        public async Task<IActionResult> CreateStudent([FromBody] CreateStudentDto request)
         {
             try
             {

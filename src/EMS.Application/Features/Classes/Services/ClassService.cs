@@ -57,7 +57,7 @@ namespace EMS.Application.Features.Classes.Services
             return memberList;
         }
 
-        public async Task<bool> AssignStudentAsync(Guid classId, AssignStudentRequest request)
+        public async Task<bool> AssignStudentAsync(Guid classId, AssignStudentDto request)
         {
             bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, request.StudentID);
             if (isEnrolled)
