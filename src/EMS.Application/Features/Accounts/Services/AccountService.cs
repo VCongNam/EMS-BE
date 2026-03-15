@@ -82,7 +82,8 @@ namespace EMS.Application.Features.Accounts.Services
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
             if (account == null) throw new Exception("Tài khoản không tồn tại!");
-
+            if (account.Status  == "Unverified") throw new Exception("Tài khoản chưa được xác thực");
+            if (account.Status == "Banned") throw new Exception("Tài khoản đã bị khóa");
             bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash);
 
             if (!isPasswordValid) throw new Exception("Sai mật khẩu!");
@@ -93,6 +94,7 @@ namespace EMS.Application.Features.Accounts.Services
                 AccountId = account.AccountId,
                 Email = account.Email,
                 FullName = account.FullName,
+                RoleName = roleName,
                 Token = token
             };
         }
