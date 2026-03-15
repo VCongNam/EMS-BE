@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using EMS.Application.Features.Classes.DTOs;
+﻿using EMS.Application.Features.Classes.DTOs;
 using EMS.Application.Features.Classes.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace EMS.API.Controllers
 {
@@ -108,6 +109,18 @@ namespace EMS.API.Controllers
             {
                 return BadRequest(new { Message = ex.Message });
             }
+        }
+
+        [HttpGet("my-id")]
+        [Authorize]
+        public IActionResult GetMyId()
+        {
+            // Thông tin này được trích xuất tự động từ Token bạn gửi lên
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            return Ok(new { UserId = userId, Email = email, Role = role });
         }
 
     }
