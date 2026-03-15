@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Classes.DTOs
 {
-    public class CreateStudentRequest
+    public class CreateStudentDto
     {
         public string Email { get; set; }
         public string Password { get; set; }
@@ -17,8 +17,7 @@ namespace EMS.Application.Features.Classes.DTOs
         public string ParentPhone { get; set; }
         public string? ParentEmail { get; set; }
         public string? Address { get; set; }
-        public DateOnly DOB { get; set; }
+        public DateTime DOB { get; set; }
 
-        public Guid RoleID { get; set; }
     }
 }

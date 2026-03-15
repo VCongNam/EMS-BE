@@ -50,9 +50,5 @@ namespace EMS.Infrastructure.Repositories
             await context.SaveChangesAsync();
         }
 
-        public Task CreateStudentAccountAsync(Account account, Student student)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

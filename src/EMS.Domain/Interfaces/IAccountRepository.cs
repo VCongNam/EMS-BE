@@ -14,6 +14,5 @@ namespace EMS.Domain.Interfaces
         Task<Account> AddAsync(Account account);
         Task UpdateAsync(Account account);
         Task<Role?> GetRoleByNameAsync(string roleName);
-        Task CreateStudentAccountAsync(Account account, Student student);
     }
 }

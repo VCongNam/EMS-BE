@@ -17,21 +17,26 @@ namespace EMS.Application.Features.Classes.Services
         {
             _accountRepository = accountRepository;
         }
-        public async Task<Guid> CreateStudentAsync(CreateStudentRequest request)
+        public async Task<Guid> CreateStudentAsync(CreateStudentDto request)
         {
+            var existingAccount = await _accountRepository.GetByEmailAsync(request.Email);
+            if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
+
+            var studentRole = await _accountRepository.GetRoleByNameAsync("Student");
             Guid newAccountId = Guid.NewGuid();
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             var accountEntity = new Account
             {
                 AccountId = newAccountId,
-                RoleId = request.RoleID,
+                RoleId = studentRole.RoleId,
                 Email = request.Email, // Have to hash
-                PasswordHash = request.Password, // have to hash
+                PasswordHash = hashedPassword, // have to hash
                 FullName = request.FullName,
                 PhoneNumber = request.PhoneNumber,
                 Status = "Active",
                 IsDeleted = false,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
 
                 Student = new Student
                 {
@@ -40,7 +45,7 @@ namespace EMS.Application.Features.Classes.Services
                     ParentPhone = request.ParentPhone,
                     ParentEmail = request.ParentEmail,
                     Address = request.Address,
-                    Dob = request.DOB,
+                    Dob = DateOnly.FromDateTime(request.DOB),
                 }
             };
              
