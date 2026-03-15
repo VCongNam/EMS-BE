@@ -11,7 +11,7 @@ namespace EMS.Application.Features.Classes.Services
     {
         Task<Guid> CreateClassAsync(CreateClassDto request);
         Task<IEnumerable<ClassMemberResponse>> GetClassMembersAsync(Guid classId);
-        Task<bool> AssignStudentAsync(Guid classId, AssignStudentRequest request);
+        Task<bool> AssignStudentAsync(Guid classId, AssignStudentDto request);
         Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync();
         Task<ClassDetailDto> GetClassDetailAsync(Guid classId);
         Task UpdateClassAsync(Guid classId, UpdateClassDto request);
