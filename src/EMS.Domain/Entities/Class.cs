@@ -27,6 +27,10 @@ public partial class Class
 
     public DateTime? UpdatedAt { get; set; }
 
+    public short? MaxStudents { get; set; }
+
+    public Guid SubjectId { get; set; }
+
     public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
     public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; } = new List<ClassEnrollment>();
@@ -46,6 +50,8 @@ public partial class Class
     public virtual ICollection<ProgressReport> ProgressReports { get; set; } = new List<ProgressReport>();
 
     public virtual ICollection<Session> Sessions { get; set; } = new List<Session>();
+
+    public virtual Subject Subject { get; set; } = null!;
 
     public virtual Teacher Teacher { get; set; } = null!;
 }

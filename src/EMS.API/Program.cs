@@ -15,6 +15,8 @@ using EMS.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 
@@ -72,6 +74,8 @@ builder.Services.AddAuthentication(options =>
 //// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 //builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 
 builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();

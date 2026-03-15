@@ -13,6 +13,11 @@ namespace EMS.Application.Features.Classes.DTOs
         public string? Room { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateOnly? StartDate { get; set; }
+        public string SubjectName { get; set; } = string.Empty;
+        public short GradeLevel { get; set; }
+        public short? MaxStudents { get; set; }
+        public int CurrentStudents { get; set; }
+        public List<ScheduleDto> Schedules { get; set; } = new();
     }
 
 }

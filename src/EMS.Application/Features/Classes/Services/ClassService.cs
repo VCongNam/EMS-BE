@@ -1,4 +1,5 @@
-﻿using EMS.Application.Features.Classes.DTOs;
+﻿using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Classes.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using System;
@@ -12,19 +13,38 @@ namespace EMS.Application.Features.Classes.Services
     public class ClassService : IClassService
     {
         private readonly IClassRepository _classRepository;
+        private readonly ICurrentUserService _currentUser;
 
-        public ClassService(IClassRepository classRepository)
+        public ClassService(IClassRepository classRepository, ICurrentUserService currentUser)
         {
             _classRepository = classRepository;
+            _currentUser = currentUser;
         }
 
         public async Task<Guid> CreateClassAsync(CreateClassDto request)
         {
+            // 1. Xử lý Subject (Tìm hoặc Tạo mới)
+            var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, request.GradeLevel);
+            if (subject == null)
+            {
+                subject = new Subject
+                {
+                    SubjectId = Guid.NewGuid(),
+                    SubjectName = request.SubjectName,
+                    GradeLevel = request.GradeLevel,
+                    IsDeleted = false
+                };
+                await _classRepository.AddSubjectAsync(subject);
+            }
+
+            // 2. Tạo Class
             var newClass = new Class
             {
                 ClassId = Guid.NewGuid(),
-                TeacherId = request.TeacherId,
+                TeacherId = _currentUser.UserId,
                 ClassName = request.ClassName,
+                SubjectId = subject.SubjectId,
+                MaxStudents = request.MaxStudents,
                 Room = request.Room,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
@@ -35,6 +55,20 @@ namespace EMS.Application.Features.Classes.Services
             };
 
             await _classRepository.AddAsync(newClass);
+
+            // 3. Thêm Lịch học (Schedules)
+            if (request.Schedules != null && request.Schedules.Any())
+            {
+                var schedules = request.Schedules.Select(s => new ClassSchedule
+                {
+                    ScheduleId = Guid.NewGuid(),
+                    ClassId = newClass.ClassId,
+                    DayOfWeek = s.DayOfWeek,
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime
+                });
+                await _classRepository.AddSchedulesAsync(schedules);
+            }
 
             return newClass.ClassId;
         }
@@ -76,8 +110,9 @@ namespace EMS.Application.Features.Classes.Services
             await _classRepository.AddEnrollmentAsync(newEnrollment);
             return true;
         }
-        public async Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync(Guid teacherId)
+        public async Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync()
         {
+            var teacherId = _currentUser.UserId;
             var classes = await _classRepository.GetClassesByTeacherIdAsync(teacherId);
 
             var result = classes.Select(c => new ClassSummaryDto
@@ -85,8 +120,18 @@ namespace EMS.Application.Features.Classes.Services
                 ClassId = c.ClassId,
                 ClassName = c.ClassName,
                 Room = c.Room,
-                Status = c.Status,
-                StartDate = c.StartDate
+                Status = c.Status ?? string.Empty,
+                StartDate = c.StartDate,
+                SubjectName = c.Subject?.SubjectName ?? "N/A",
+                GradeLevel = c.Subject?.GradeLevel ?? 0,
+                MaxStudents = c.MaxStudents,
+                CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
+                Schedules = c.ClassSchedules.Select(s => new ScheduleDto
+                {
+                    DayOfWeek = s.DayOfWeek,
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime
+                }).ToList()
             });
 
             return result;
@@ -115,7 +160,7 @@ namespace EMS.Application.Features.Classes.Services
             };
         }
 
-       // Update Class
+        // Update Class
         public async Task UpdateClassAsync(Guid classId, UpdateClassDto request)
         {
             var classroom = await _classRepository.GetByIdAsync(classId);
@@ -124,15 +169,46 @@ namespace EMS.Application.Features.Classes.Services
                 throw new Exception($"Class with ID {classId} not found.");
             }
 
+            // 1. Xử lý Subject (Tìm hoặc Tạo mới)
+            var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, request.GradeLevel);
+            if (subject == null)
+            {
+                subject = new Subject
+                {
+                    SubjectId = Guid.NewGuid(),
+                    SubjectName = request.SubjectName,
+                    GradeLevel = request.GradeLevel,
+                    IsDeleted = false
+                };
+                await _classRepository.AddSubjectAsync(subject);
+            }
+
+            // 2. Cập nhật thông tin Class
             classroom.ClassName = request.ClassName;
+            classroom.SubjectId = subject.SubjectId;
+            classroom.MaxStudents = request.MaxStudents;
             classroom.Room = request.Room;
             classroom.StartDate = request.StartDate;
             classroom.EndDate = request.EndDate;
             classroom.TuitionFee = request.TuitionFee;
-
             classroom.UpdatedAt = DateTime.UtcNow;
 
             await _classRepository.UpdateAsync(classroom);
+
+            // 3. Cập nhật Lịch học (Xóa cũ, Thêm mới)
+            await _classRepository.DeleteSchedulesAsync(classId);
+            if (request.Schedules != null && request.Schedules.Any())
+            {
+                var schedules = request.Schedules.Select(s => new ClassSchedule
+                {
+                    ScheduleId = Guid.NewGuid(),
+                    ClassId = classId,
+                    DayOfWeek = s.DayOfWeek,
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime
+                });
+                await _classRepository.AddSchedulesAsync(schedules);
+            }
         }
 
         //  Archive Class 

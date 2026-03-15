@@ -60,9 +60,37 @@ namespace EMS.Infrastructure.Repositories
         {
             return await _context.Classes
                 .AsNoTracking()
+                .Include(c => c.Subject)
+                .Include(c => c.ClassSchedules)
+                .Include(c => c.ClassEnrollments)
                 .Where(c => c.TeacherId == teacherId && (c.IsDeleted == null || c.IsDeleted == false))
                 .OrderByDescending(c => c.CreatedAt)
                 .ToListAsync();
+        }
+
+        public async Task<Subject?> GetSubjectByNameAndGradeAsync(string subjectName, short gradeLevel)
+        {
+            return await _context.Subjects
+                .FirstOrDefaultAsync(s => s.SubjectName == subjectName && s.GradeLevel == gradeLevel && (s.IsDeleted == null || s.IsDeleted == false));
+        }
+
+        public async Task AddSubjectAsync(Subject subject)
+        {
+            await _context.Subjects.AddAsync(subject);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSchedulesAsync(Guid classId)
+        {
+            var schedules = await _context.ClassSchedules.Where(s => s.ClassId == classId).ToListAsync();
+            _context.ClassSchedules.RemoveRange(schedules);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task AddSchedulesAsync(IEnumerable<ClassSchedule> schedules)
+        {
+            await _context.ClassSchedules.AddRangeAsync(schedules);
+            await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Class classroom)

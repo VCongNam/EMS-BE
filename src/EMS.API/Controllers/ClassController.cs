@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using EMS.Application.Features.Classes.DTOs;
+﻿using EMS.Application.Features.Classes.DTOs;
 using EMS.Application.Features.Classes.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace EMS.API.Controllers
 {
@@ -17,6 +18,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassDto request)
         {
             var classId = await _classService.CreateClassAsync(request);
@@ -54,12 +56,11 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
-        [HttpGet("teacher/{teacherId}/dashboard")]
-        public async Task<IActionResult> GetTeacherDashboard(Guid teacherId)
+        [HttpGet("teacher/dashboard")]
+        [Authorize]
+        public async Task<IActionResult> GetTeacherDashboard()
         {
-            // Lưu ý: Thực tế teacherId thường được lấy từ Token JWT (User.Claims), 
-            // nhưng tạm thời truyền qua URL để test cho dễ.
-            var dashboardData = await _classService.GetTeacherDashboardAsync(teacherId);
+            var dashboardData = await _classService.GetTeacherDashboardAsync();
             return Ok(dashboardData);
         }
 
@@ -108,6 +109,18 @@ namespace EMS.API.Controllers
             {
                 return BadRequest(new { Message = ex.Message });
             }
+        }
+
+        [HttpGet("my-id")]
+        [Authorize]
+        public IActionResult GetMyId()
+        {
+            // Thông tin này được trích xuất tự động từ Token bạn gửi lên
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            return Ok(new { UserId = userId, Email = email, Role = role });
         }
 
     }
