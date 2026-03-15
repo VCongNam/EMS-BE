@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Classes.DTOs
 {
-    public class AssignStudentRequest
+    public class AssignStudentDto
     {
         public Guid StudentID { get; set; }
     }

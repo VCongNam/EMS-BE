@@ -9,7 +9,7 @@ public partial class ClassSchedule
 
     public Guid ClassId { get; set; }
 
-    public short DayOfWeek { get; set; }
+    public List<short> DayOfWeek { get; set; } = null!;
 
     public TimeOnly StartTime { get; set; }
 

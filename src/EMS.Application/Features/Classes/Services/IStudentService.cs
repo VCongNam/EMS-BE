@@ -9,6 +9,6 @@ namespace EMS.Application.Features.Classes.Services
 {
     public interface IStudentService
     {
-        Task<Guid> CreateStudentAsync(CreateStudentRequest request);
+        Task<Guid> CreateStudentAsync(CreateStudentDto request);
     }
 }
