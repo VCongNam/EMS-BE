@@ -18,6 +18,12 @@ namespace EMS.Domain.Interfaces
         Task<Class?> GetByIdAsync(Guid classId);
         Task UpdateAsync(Class classroom);
 
+        Task<Subject?> GetSubjectByNameAndGradeAsync(string subjectName, short gradeLevel);
+        Task AddSubjectAsync(Subject subject);
+
+        Task DeleteSchedulesAsync(Guid classId);
+        Task AddSchedulesAsync(IEnumerable<ClassSchedule> schedules);
+
     }
 
 }
