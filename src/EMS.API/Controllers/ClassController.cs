@@ -18,6 +18,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassDto request)
         {
             var classId = await _classService.CreateClassAsync(request);
@@ -55,12 +56,11 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
-        [HttpGet("teacher/{teacherId}/dashboard")]
-        public async Task<IActionResult> GetTeacherDashboard(Guid teacherId)
+        [HttpGet("teacher/dashboard")]
+        [Authorize]
+        public async Task<IActionResult> GetTeacherDashboard()
         {
-            // Lưu ý: Thực tế teacherId thường được lấy từ Token JWT (User.Claims), 
-            // nhưng tạm thời truyền qua URL để test cho dễ.
-            var dashboardData = await _classService.GetTeacherDashboardAsync(teacherId);
+            var dashboardData = await _classService.GetTeacherDashboardAsync();
             return Ok(dashboardData);
         }
 
