@@ -11,10 +11,12 @@ namespace EMS.API.Controllers
     public class ClassController : ControllerBase
     {
         private readonly IClassService _classService;
+        private readonly IClassTAService _classTAService;
 
-        public ClassController(IClassService classService)
+        public ClassController(IClassService classService, IClassTAService classTAService)
         {
             _classService = classService;
+            _classTAService = classTAService;
         }
 
         [HttpPost]
@@ -26,6 +28,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("{classId}/members")]
+        [Authorize]
         public async Task<IActionResult> GetClassMember(Guid classId)
         {
             try
@@ -44,6 +47,7 @@ namespace EMS.API.Controllers
             }
         }
         [HttpPost("{classId}/assignStudent")]
+        [Authorize]
         public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentDto request)
         {
             try
@@ -123,6 +127,29 @@ namespace EMS.API.Controllers
             return Ok(new { UserId = userId, Email = email, Role = role });
         }
 
+        [HttpGet("{classId}/tas")]
+        [Authorize]
+        public async Task<IActionResult> GetClassTAs(Guid classId)
+        {
+            var tas = await _classTAService.GetClassTAsAsync(classId);
+            return Ok(new { Data = tas });
+        }
+
+        [HttpPost("{classId}/tas/assign")]
+        [Authorize]
+        public async Task<IActionResult> AssignTA(Guid classId, [FromBody] AssignTADto request)
+        {
+            await _classTAService.AssignTAAsync(classId, request);
+            return StatusCode(201, new { Message = "Phân công trợ giảng thành công" });
+        }
+
+        [HttpPut("{classId}/tas/{taId}/permission")]
+        [Authorize]
+        public async Task<IActionResult> SetTAPermisson(Guid classId, Guid taId, [FromBody] UpdateTAPermissionDto request)
+        {
+            await _classTAService.UpdateTAPermissionAsync(classId, taId, request);
+            return Ok(new { Message = "Cập nhật quyền hạn Trợ giảng thành công!" });
+        }
     }
 
 }

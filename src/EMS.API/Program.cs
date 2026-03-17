@@ -14,6 +14,7 @@ using EMS.Infrastructure.Services;
 
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
+using EMS.Application.Features.Students.Services;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
