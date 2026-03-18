@@ -20,5 +20,7 @@ namespace EMS.Application.Features.Accounts.Services
         Task<UserProfileResponse> UpdateProfileAsync(Guid accountId, UpdateProfileRequest reguest);
         Task<bool> ChangePassewordAsync(Guid accountId, ChangePasswordRequest request);
 
+        Task<AuthResponse> RegisterTAAsync(TARegisterDto request);
+
     }
 }

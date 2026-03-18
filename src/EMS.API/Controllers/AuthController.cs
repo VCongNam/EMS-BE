@@ -69,5 +69,18 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Message = ex.Message }); 
             }
         }
+
+        [HttpPost("TAregister")]
+        public async Task<IActionResult> TARegister(TARegisterDto request)
+        {
+            try
+            {
+                return Ok(await accountService.RegisterTAAsync(request));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }
