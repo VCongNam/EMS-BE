@@ -12,5 +12,8 @@ namespace EMS.Application.Features.Classes.Services
         Task<IEnumerable<ClassTADto>> GetClassTAsAsync(Guid classId);
         Task<Guid> AssignTAAsync(Guid classId, AssignTADto request);
         Task UpdateTAPermissionAsync(Guid classId, Guid taId, UpdateTAPermissionDto request);
+        Task<Guid> CreateTaskAsync(CreateTaskDto request);
+        Task<IEnumerable<TaskDto>> GetTasksAsync(Guid classTaId);
+
     }
 }

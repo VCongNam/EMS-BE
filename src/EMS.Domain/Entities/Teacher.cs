@@ -23,5 +23,5 @@ public partial class Teacher
 
     public virtual Account TeacherNavigation { get; set; } = null!;
 
-    public virtual ICollection<TeachingAssistantTask> TeachingAssistantTasks { get; set; } = new List<TeachingAssistantTask>();
+    
 }

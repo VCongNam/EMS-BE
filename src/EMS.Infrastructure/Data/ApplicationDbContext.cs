@@ -728,26 +728,22 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
+            entity.Property(c => c.Type).HasColumnName("Type").HasMaxLength(255);
             entity.Property(e => e.DueDate).HasColumnType("timestamp without time zone");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Todo'::character varying");
-            entity.Property(e => e.Taid).HasColumnName("TAID");
-            entity.Property(e => e.TeacherId).HasColumnName("TeacherID");
+            entity.Property(e => e.ClassTaId).HasColumnName("ClassTAID");
             entity.Property(e => e.Title).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
 
-            entity.HasOne(d => d.Ta).WithMany(p => p.TeachingAssistantTasks)
-                .HasForeignKey(d => d.Taid)
+            entity.HasOne(d => d.ClassTa).WithMany(p => p.TeachingAssistantTasks)
+                .HasForeignKey(d => d.ClassTaId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("TeachingAssistantTask_TAID_fkey");
 
-            entity.HasOne(d => d.Teacher).WithMany(p => p.TeachingAssistantTasks)
-                .HasForeignKey(d => d.TeacherId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("TeachingAssistantTask_TeacherID_fkey");
         });
 
         modelBuilder.Entity<Transaction>(entity =>

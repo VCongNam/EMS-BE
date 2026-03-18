@@ -3,6 +3,7 @@ using EMS.Application.Features.Classes.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace EMS.API.Controllers
 {
@@ -128,28 +129,60 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("{classId}/tas")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> GetClassTAs(Guid classId)
         {
-            var tas = await _classTAService.GetClassTAsAsync(classId);
-            return Ok(new { Data = tas });
+            try
+            {
+                var tas = await _classTAService.GetClassTAsAsync(classId);
+                return Ok(new { Data = tas });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpPost("{classId}/tas/assign")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> AssignTA(Guid classId, [FromBody] AssignTADto request)
         {
-            await _classTAService.AssignTAAsync(classId, request);
-            return StatusCode(201, new { Message = "Phân công trợ giảng thành công" });
+            try
+            {
+                await _classTAService.AssignTAAsync(classId, request);
+                return StatusCode(201, new { Message = "Phân công trợ giảng thành công" });
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpPut("{classId}/tas/{taId}/permission")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> SetTAPermisson(Guid classId, Guid taId, [FromBody] UpdateTAPermissionDto request)
         {
             await _classTAService.UpdateTAPermissionAsync(classId, taId, request);
             return Ok(new { Message = "Cập nhật quyền hạn Trợ giảng thành công!" });
         }
+
+        [HttpPost("createTask")]
+        //[Authorize]
+        public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto request)
+        {
+            var task = await _classTAService.CreateTaskAsync(request);
+            return StatusCode(201, new { Message = "Giao việc thành công", TaskId = task });
+        }
+
+        [HttpGet("classta/{classTaId}")]
+        //[Authorize]
+        public async Task<IActionResult> GetAssignedTasks(Guid classTaId)
+        {
+            var tasks = await _classTAService.GetTasksAsync(classTaId);
+            return Ok(new { Data = tasks });
+        }
+
+
     }
 
 }

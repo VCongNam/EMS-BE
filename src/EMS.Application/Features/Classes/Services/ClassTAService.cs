@@ -15,10 +15,12 @@ namespace EMS.Application.Features.Classes.Services
     {
         private readonly IClassRepository _classRepository;
         private readonly ICurrentUserService _currentUser;
+        private readonly ITARepository _taRepository;
 
-        public ClassTAService(IClassRepository classRepository)
+        public ClassTAService(IClassRepository classRepository, ITARepository tARepository)
         {
             _classRepository = classRepository;
+            _taRepository = tARepository;
         }
         public async Task<Guid> AssignTAAsync(Guid classId, AssignTADto request)
         {
@@ -41,13 +43,16 @@ namespace EMS.Application.Features.Classes.Services
             await _classRepository.AddClassTAAsync(newClassTA);
             return newClassTA.ClassTaid;
         }
+
+        
+
         //View class TAs
         public async Task<IEnumerable<ClassTADto>> GetClassTAsAsync(Guid classId)
         {
             var tas = await _classRepository.GetTAsByClassIdAsync(classId);
             if(tas == null)
             {
-                throw new Exception("Bạn chưa có trợ giảng ở lớp nào");
+                throw new Exception("lớp này chưa được phân công trợ giảng!");
             }
             return tas.Select(cta => new ClassTADto
             {
@@ -71,6 +76,36 @@ namespace EMS.Application.Features.Classes.Services
             classTa.UpdatedAt = DateTime.Now;
 
             await _classRepository.UpdateClassTAAsync(classTa);
+        }
+
+        public async Task<Guid> CreateTaskAsync(CreateTaskDto request)
+        {
+            var newTask = new TeachingAssistantTask
+            {
+                TataskId = Guid.NewGuid(),
+                ClassTaId = request.ClassTAID,
+                Title = request.Title,
+                DueDate = request.DueDate,
+                Status = "Pending",
+                Type = request.Type,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _taRepository.CreateTaskAsync(newTask);
+            return newTask.TataskId;
+        }
+
+        public async Task<IEnumerable<TaskDto>> GetTasksAsync(Guid classTaId)
+        {
+            var tasks = await _taRepository.GetTasksByClassTAIdAsync(classTaId);
+            return tasks.Select(t => new TaskDto
+            {
+                TATaskID = t.TataskId,
+                Title = t.Title,
+                DueDate = t.DueDate,
+                Status = t.Status ?? "N/A",
+                Type = t.Type ?? "N/A"
+            }).ToList();
         }
     }
 }

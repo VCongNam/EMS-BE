@@ -113,7 +113,7 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<bool> IsTAAssignedAsync(Guid classId, Guid taId)
         {
-            return await _context.ClassTa.AnyAsync(cta => cta.ClassId == classId);
+            return await _context.ClassTa.AnyAsync(cta => cta.ClassId == classId && cta.Taid == taId);
         }
 
         public async Task<ClassTum> AddClassTAAsync(ClassTum classTa)
