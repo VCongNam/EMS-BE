@@ -7,13 +7,12 @@ public partial class TeachingAssistantTask
 {
     public Guid TataskId { get; set; }
 
-    public Guid Taid { get; set; }
-
-    public Guid TeacherId { get; set; }
+    public Guid ClassTaId { get; set; }
 
     public string Title { get; set; } = null!;
 
     public DateTime DueDate { get; set; }
+    public string? Type { get; set; }
 
     public string? Status { get; set; }
 
@@ -21,7 +20,5 @@ public partial class TeachingAssistantTask
 
     public DateTime? UpdatedAt { get; set; }
 
-    public virtual TeachingAssistant Ta { get; set; } = null!;
-
-    public virtual Teacher Teacher { get; set; } = null!;
+    public virtual ClassTum ClassTa { get; set; } = null!;
 }

@@ -18,6 +18,4 @@ public partial class TeachingAssistant
     public virtual ICollection<ClassTum> ClassTa { get; set; } = new List<ClassTum>();
 
     public virtual Account Ta { get; set; } = null!;
-
-    public virtual ICollection<TeachingAssistantTask> TeachingAssistantTasks { get; set; } = new List<TeachingAssistantTask>();
 }

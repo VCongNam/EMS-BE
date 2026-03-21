@@ -211,5 +211,36 @@ namespace EMS.Application.Features.Accounts.Services
             await accountRepository.UpdateAsync(account);
             return true;
         }
+
+        public async Task<AuthResponse> RegisterTAAsync(TARegisterDto request)
+        {
+            var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
+            if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            var role = await accountRepository.GetRoleByNameAsync("TA");
+            var newAccount = new Account
+            {
+                AccountId = Guid.NewGuid(),
+                FullName = request.FullName,
+                RoleId = role.RoleId,
+                Email = request.Email,
+                PasswordHash = hashedPassword,
+                PhoneNumber = request.PhoneNumber,
+                Status = "Active",
+                IsDeleted = false,
+                CreatedAt = DateTime.Now,
+                TeachingAssistant = new TeachingAssistant
+                {
+                    Bio = request.Bio,
+                }
+            };
+            var saveAccount = await accountRepository.AddAsync(newAccount);
+            return new AuthResponse
+            {
+                AccountId = saveAccount.AccountId,
+                Email = saveAccount.Email,
+                FullName = saveAccount.FullName,
+            };
+        }
     }
 }

@@ -24,31 +24,7 @@ namespace EMS.Infrastructure.Repositories
             await _context.Classes.AddAsync(classroom);
             await _context.SaveChangesAsync();
         }
-
-        public async Task<ClassEnrollment> AddEnrollmentAsync(ClassEnrollment enrollment)
-        {
-            await _context.ClassEnrollments.AddAsync(enrollment);
-            await _context.SaveChangesAsync();
-            return enrollment;
-        }
-
-        public async Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId)
-        {
-            return await _context.ClassEnrollments
-               .Include(ce => ce.Student)
-               .ThenInclude(s => s.StudentNavigation)
-               .Where(ce => ce.ClassId == classId && ce.Status == "Active")
-               .OrderByDescending(ce => ce.EnrolledDate)
-               .ToListAsync();
-        }
-
-        public async Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId)
-        {
-            return await _context.ClassEnrollments
-                .AnyAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
-        }
     
-
         public async Task<Class?> GetByIdAsync(Guid classId)
         {
             return await _context.Classes
@@ -98,5 +74,67 @@ namespace EMS.Infrastructure.Repositories
             _context.Classes.Update(classroom);
             await _context.SaveChangesAsync();
         }
+
+        //Student Management
+        public async Task<ClassEnrollment> AddEnrollmentAsync(ClassEnrollment enrollment)
+        {
+            await _context.ClassEnrollments.AddAsync(enrollment);
+            await _context.SaveChangesAsync();
+            return enrollment;
+        }
+
+        public async Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId)
+        {
+            return await _context.ClassEnrollments
+               .Include(ce => ce.Student)
+               .ThenInclude(s => s.StudentNavigation)
+               .Where(ce => ce.ClassId == classId && ce.Status == "Active")
+               .OrderByDescending(ce => ce.EnrolledDate)
+               .ToListAsync();
+        }
+
+        public async Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId)
+        {
+            return await _context.ClassEnrollments
+                .AnyAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
+        }
+
+        //Teaching Assistant Management
+
+        public async Task<IEnumerable<ClassTum>> GetTAsByClassIdAsync(Guid classId)
+        {
+            return await _context.ClassTa
+                .Include(cta => cta.Ta)
+                    .ThenInclude(ta => ta.Ta) 
+                .Where(cta => cta.ClassId == classId)
+                .ToListAsync();
+
+        }
+
+        public async Task<bool> IsTAAssignedAsync(Guid classId, Guid taId)
+        {
+            return await _context.ClassTa.AnyAsync(cta => cta.ClassId == classId && cta.Taid == taId);
+        }
+
+        public async Task<ClassTum> AddClassTAAsync(ClassTum classTa)
+        {
+            await _context.ClassTa.AddAsync(classTa);
+            await _context.SaveChangesAsync();
+            return classTa;
+        }
+
+        public async Task<ClassTum> GetClassTAAsync(Guid classId, Guid taId)
+        {
+            return await _context.ClassTa.FirstOrDefaultAsync(cta => cta.ClassId == classId && cta.Taid == taId);
+        }
+
+        public async Task UpdateClassTAAsync(ClassTum classTa)
+        {
+            _context.ClassTa.Update(classTa);
+            await _context.SaveChangesAsync();
+        }
+
+        
+
     }
 }

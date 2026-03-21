@@ -96,7 +96,7 @@ namespace EMS.Application.Features.Classes.Services
             bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, request.StudentID);
             if (isEnrolled)
             {
-                throw new Exception("Student is assigned to this class");
+                throw new Exception("Học sinh đã được thêm vào lớp này rồi!");
             }
             var newEnrollment = new ClassEnrollment
             {

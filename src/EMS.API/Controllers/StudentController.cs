@@ -1,5 +1,5 @@
-﻿using EMS.Application.Features.Classes.DTOs;
-using EMS.Application.Features.Classes.Services;
+﻿using EMS.Application.Features.Students.DTOs;
+using EMS.Application.Features.Students.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +16,7 @@ namespace EMS.API.Controllers
             _studentService = studentService;
         }
 
-        [HttpPost]
+        [HttpPost("CreateStudentAccount")]
         public async Task<IActionResult> CreateStudent([FromBody] CreateStudentDto request)
         {
             try

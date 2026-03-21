@@ -24,6 +24,12 @@ namespace EMS.Domain.Interfaces
         Task DeleteSchedulesAsync(Guid classId);
         Task AddSchedulesAsync(IEnumerable<ClassSchedule> schedules);
 
+        Task<IEnumerable<ClassTum>> GetTAsByClassIdAsync(Guid classId);
+        Task<bool> IsTAAssignedAsync(Guid classId, Guid taId);
+        Task<ClassTum> AddClassTAAsync(ClassTum classTa);
+        Task<ClassTum> GetClassTAAsync(Guid classId, Guid taId);
+        Task UpdateClassTAAsync(ClassTum classTa);
+
     }
 
 }

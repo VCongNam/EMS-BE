@@ -22,4 +22,6 @@ public partial class ClassTum
     public virtual Class Class { get; set; } = null!;
 
     public virtual TeachingAssistant Ta { get; set; } = null!;
+
+    public virtual ICollection<TeachingAssistantTask> TeachingAssistantTasks { get; set; } = new List<TeachingAssistantTask>();
 }

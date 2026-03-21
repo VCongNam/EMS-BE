@@ -14,6 +14,7 @@ using EMS.Infrastructure.Services;
 
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
+using EMS.Application.Features.Students.Services;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -82,6 +83,8 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+builder.Services.AddScoped<ITARepository, TARepository>();
+builder.Services.AddScoped<IClassTAService, ClassTAService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
