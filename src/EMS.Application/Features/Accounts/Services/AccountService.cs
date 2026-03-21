@@ -18,12 +18,14 @@ namespace EMS.Application.Features.Accounts.Services
         private readonly IAccountRepository accountRepository;
         private readonly IJwtTokenGenerator jwtTokenGenerator;
         private readonly IEmailService emailService;
+        private readonly IOtpService otpService;
 
-        public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IEmailService emailService)
+        public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IEmailService emailService, IOtpService otpService)
         {
             this.accountRepository = accountRepository;
             this.jwtTokenGenerator = jwtTokenGenerator;
             this.emailService = emailService;
+            this.otpService = otpService;
         }
 
         
@@ -33,26 +35,49 @@ namespace EMS.Application.Features.Accounts.Services
             var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
             if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
 
-            // 2. Tự động lấy RoleID của "Teacher" từ Database
-            var teacherRole = await accountRepository.GetRoleByNameAsync("Teacher");
-            if (teacherRole == null) throw new Exception("Lỗi hệ thống: Không tìm thấy Role 'Teacher' trong CSDL!");
 
-            string otp = new Random().Next(100000, 999999).ToString();
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            var allowedRoles = new List<string> { "Teacher", "TA" };
+
+            string requestedRole = request.RoleName;
+
+            if (!allowedRoles.Contains(requestedRole))
+            {
+                throw new Exception("Quyền đăng ký không hợp lệ. Chỉ được chọn Giáo viên hoặc Trợ giảng.");
+            }
+
+            var roleEntity = await accountRepository.GetRoleByNameAsync(requestedRole);
+            if (roleEntity == null)
+            {
+                throw new Exception($"Lỗi hệ thống: Role '{requestedRole}' chưa được cấu hình trong DB.");
+            }
+
+            string plainOtp = otpService.GenerateOtp();
+            await emailService.SendEmailAsync(
+                request.Email,
+                "EMS - Xác thực tài khoản",
+                $"Chào {request.FullName}, mã OTP đăng ký của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
+            );
+
+
+            string hashedOtp = otpService.HashOtp(plainOtp);
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+  
             var newAccount = new Account
             {
                 AccountId = Guid.NewGuid(),
                 Email = request.Email,
                 PasswordHash = hashedPassword,
                 FullName = request.FullName,
-                RoleId = teacherRole.RoleId, // Tự động gán quyền Teacher
+                RoleId = roleEntity.RoleId, // Sử dụng ID tìm được từ DB
                 Status = "Unverified",
-                VerificationToken = otp,
+                VerificationToken = hashedOtp,
                 VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
                 CreatedAt = DateTime.UtcNow
             };
+
             var saveAccount = await accountRepository.AddAsync(newAccount);
-            await emailService.SendEmailAsync(request.Email, "EMS-OTP", $"Mã OTP của bạn là: {otp}");
+
             return new AuthResponse
             {
                 AccountId = saveAccount.AccountId,
@@ -66,8 +91,12 @@ namespace EMS.Application.Features.Accounts.Services
             if (account == null) throw new Exception("Tài khoản không tồn tại!");
             if (account.Status == "Active") throw new Exception("Tài khoản đã được xác thực!");
 
-            if (account.VerificationToken != request.OtpCode) throw new Exception("Mã OTP không chính xác!");
-            if (account.VerificationTokenExpiresAt < DateTime.UtcNow) throw new Exception("Mã OTP đã hết hạn!");
+            // Sử dụng Service để Verify mã đã Hash
+            if (!otpService.VerifyOtp(request.OtpCode, account.VerificationToken))
+                throw new Exception("Mã OTP không chính xác!");
+
+            if (account.VerificationTokenExpiresAt < DateTime.UtcNow)
+                throw new Exception("Mã OTP đã hết hạn!");
 
             account.Status = "Active";
             account.VerificationToken = null;
@@ -103,15 +132,18 @@ namespace EMS.Application.Features.Accounts.Services
         public async Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) return true; // Trả về true để bảo mật tránh lộ email tồn tại
+            if (account == null) return true;
 
-            string resetOtp = new Random().Next(100000, 999999).ToString();
-            account.ResetPasswordToken = resetOtp;
+            string plainOtp = otpService.GenerateOtp();
+
+            // Gửi mail mã gốc
+            await emailService.SendEmailAsync(request.Email, "EMS - Khôi phục mật khẩu", $"Mã OTP là: <b>{plainOtp}</b>");
+
+            // Hash trước khi lưu
+            account.ResetPasswordToken = otpService.HashOtp(plainOtp);
             account.ResetPasswordTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
 
             await accountRepository.UpdateAsync(account);
-            await emailService.SendEmailAsync(request.Email, "EMS - Khôi phục mật khẩu", $"Mã khôi phục mật khẩu của bạn là: <b>{resetOtp}</b>");
-
             return true;
         }
 
@@ -120,10 +152,15 @@ namespace EMS.Application.Features.Accounts.Services
             var account = await accountRepository.GetByEmailAsync(request.Email);
             if (account == null) throw new Exception("Yêu cầu không hợp lệ!");
 
-            if (account.ResetPasswordToken != request.OtpCode) throw new Exception("Mã OTP không chính xác!");
-            if (account.ResetPasswordTokenExpiresAt < DateTime.UtcNow) throw new Exception("Mã OTP đã hết hạn!");
+
+            if (!otpService.VerifyOtp(request.OtpCode, account.ResetPasswordToken))
+                throw new Exception("Mã OTP không chính xác!");
+
+            if (account.ResetPasswordTokenExpiresAt < DateTime.UtcNow)
+                throw new Exception("Mã OTP đã hết hạn!");
 
             account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
             account.ResetPasswordToken = null;
             account.ResetPasswordTokenExpiresAt = null;
 

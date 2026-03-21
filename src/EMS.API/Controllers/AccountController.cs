@@ -1,7 +1,10 @@
-﻿using EMS.Application.Features.Accounts.DTOs;
+﻿using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Accounts.DTOs;
 using EMS.Application.Features.Accounts.Services;
+using EMS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Security.Claims;
 
 
@@ -13,10 +16,12 @@ namespace EMS.API.Controllers
     public class AccountController : ControllerBase
     {
         private readonly AccountService accountService;
+        private readonly ICurrentUserService currentUserService;
 
-        public AccountController(AccountService accountService)
+        public AccountController(AccountService accountService, ICurrentUserService currentUserService)
         {
             this.accountService = accountService;
+            this.currentUserService = currentUserService;
         }
 
 
@@ -37,7 +42,11 @@ namespace EMS.API.Controllers
         {
             try
             {
-                var accountId = GetAccountIdFromToken();
+                var accountId = currentUserService.UserId;
+
+                if (accountId == Guid.Empty)
+                    return Unauthorized(new { Message = "Không tìm thấy User." });
+
                 var profile = await accountService.GetProfileAsync(accountId);
                 return Ok(profile);
             }
@@ -50,12 +59,13 @@ namespace EMS.API.Controllers
         {
             try
             {
-                var accountId = GetAccountIdFromToken();
+                var accountId = currentUserService.UserId;
                 var updatedProfile = await accountService.UpdateProfileAsync(accountId, request);
                 return Ok(updatedProfile);
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
+        
 
         // [POST] /api/Account/change-password (Dành cho user đang đăng nhập)
         [HttpPost("change-password")]
@@ -63,11 +73,21 @@ namespace EMS.API.Controllers
         {
             try
             {
-                var accountId = GetAccountIdFromToken();
+                // Đã thay đổi: Sử dụng currentUserService thay vì GetAccountIdFromToken
+                var accountId = currentUserService.UserId;
+
+                if (accountId == Guid.Empty)
+                    return Unauthorized(new { Message = "Không tìm thấy User trong Token." });
+
+                // Lưu ý: Tên hàm trong Service đang bị typo 'Passeword', hãy khớp với Service của bạn
                 await accountService.ChangePassewordAsync(accountId, request);
+
                 return Ok(new { Message = "Đổi mật khẩu thành công!" });
             }
-            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
     }
 }
