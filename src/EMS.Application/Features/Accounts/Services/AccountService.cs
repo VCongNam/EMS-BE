@@ -65,19 +65,55 @@ namespace EMS.Application.Features.Accounts.Services
             string hashedOtp = otpService.HashOtp(plainOtp);
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-  
-            var newAccount = new Account
+
+            var newAccount = new Account();
+
+            if (requestedRole == "Teacher")
             {
-                AccountId = Guid.NewGuid(),
-                Email = request.Email,
-                PasswordHash = hashedPassword,
-                FullName = request.FullName,
-                RoleId = roleEntity.RoleId, // Sử dụng ID tìm được từ DB
-                Status = "Unverified",
-                VerificationToken = hashedOtp,
-                VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
-                CreatedAt = DateTime.UtcNow
-            };
+                newAccount = new Account
+                {
+                    AccountId = Guid.NewGuid(),
+                    Email = request.Email,
+                    PasswordHash = hashedPassword,
+                    FullName = request.FullName,
+                    RoleId = roleEntity.RoleId, // Sử dụng ID tìm được từ DB
+                    Status = "Unverified",
+                    VerificationToken = hashedOtp,
+                    VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
+                    CreatedAt = DateTime.UtcNow,
+
+                    Teacher = new Teacher
+                    {
+                        Bio = null, 
+                        BankAccount = null, 
+                        BankAccountName = null,
+                        BankName = null, 
+                        Specialization = null
+                    }
+                };
+            }else if (requestedRole == "TA")
+            {
+                newAccount = new Account
+                {
+                    AccountId = Guid.NewGuid(),
+                    Email = request.Email,
+                    PasswordHash = hashedPassword,
+                    FullName = request.FullName,
+                    RoleId = roleEntity.RoleId, // Sử dụng ID tìm được từ DB
+                    Status = "Unverified",
+                    VerificationToken = hashedOtp,
+                    VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
+                    CreatedAt = DateTime.UtcNow,
+                    TeachingAssistant = new TeachingAssistant
+                    {
+                        Bio = null,
+                        BankAccount = null,
+                        BankAccountName = null,
+                        BankName = null
+                    }
+                };
+            }
+            
 
             var saveAccount = await accountRepository.AddAsync(newAccount);
 
