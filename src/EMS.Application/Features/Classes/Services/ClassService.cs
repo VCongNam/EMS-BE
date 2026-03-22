@@ -1,4 +1,4 @@
-﻿using EMS.Application.Common.Interfaces;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Classes.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
@@ -115,24 +115,24 @@ namespace EMS.Application.Features.Classes.Services
             var teacherId = _currentUser.UserId;
             var classes = await _classRepository.GetClassesByTeacherIdAsync(teacherId);
 
-            var result = classes.Select(c => new ClassSummaryDto
-            {
-                ClassId = c.ClassId,
-                ClassName = c.ClassName,
-                Room = c.Room,
-                Status = c.Status ?? string.Empty,
-                StartDate = c.StartDate,
-                SubjectName = c.Subject?.SubjectName ?? "N/A",
-                GradeLevel = c.Subject?.GradeLevel ?? 0,
-                MaxStudents = c.MaxStudents,
-                CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
-                Schedules = c.ClassSchedules.Select(s => new ScheduleDto
+            var result = classes.Where(c => c.Status != "Archived").Select(c => new ClassSummaryDto
                 {
-                    DayOfWeek = s.DayOfWeek,
-                    StartTime = s.StartTime,
-                    EndTime = s.EndTime
-                }).ToList()
-            });
+                    ClassId = c.ClassId,
+                    ClassName = c.ClassName,
+                    Room = c.Room,
+                    Status = c.Status ?? string.Empty,
+                    StartDate = c.StartDate,
+                    SubjectName = c.Subject?.SubjectName ?? "N/A",
+                    GradeLevel = c.Subject?.GradeLevel ?? 0,
+                    MaxStudents = c.MaxStudents,
+                    CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
+                    Schedules = c.ClassSchedules.Select(s => new ScheduleDto
+                    {
+                        DayOfWeek = s.DayOfWeek,
+                        StartTime = s.StartTime,
+                        EndTime = s.EndTime
+                    }).ToList()
+                });
 
             return result;
         }
@@ -226,5 +226,46 @@ namespace EMS.Application.Features.Classes.Services
             await _classRepository.UpdateAsync(classroom);
         }
 
+        // Restore Class
+        public async Task RestoreClassAsync(Guid classId)
+        {
+            var classroom = await _classRepository.GetByIdAsync(classId);
+            if (classroom == null)
+            {
+                throw new Exception($"Class with ID {classId} not found.");
+            }
+
+            classroom.Status = "Active"; // Restoring to Active state
+            classroom.UpdatedAt = DateTime.UtcNow;
+
+            await _classRepository.UpdateAsync(classroom);
+        }
+
+        public async Task<IEnumerable<ClassSummaryDto>> GetArchivedClassesAsync()
+        {
+            var teacherId = _currentUser.UserId;
+            var classes = await _classRepository.GetClassesByTeacherIdAsync(teacherId);
+
+            var result = classes.Where(c => c.Status == "Archived").Select(c => new ClassSummaryDto
+            {
+                ClassId = c.ClassId,
+                ClassName = c.ClassName,
+                Room = c.Room,
+                Status = c.Status ?? string.Empty,
+                StartDate = c.StartDate,
+                SubjectName = c.Subject?.SubjectName ?? "N/A",
+                GradeLevel = c.Subject?.GradeLevel ?? 0,
+                MaxStudents = c.MaxStudents,
+                CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
+                Schedules = c.ClassSchedules.Select(s => new ScheduleDto
+                {
+                    DayOfWeek = s.DayOfWeek,
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime
+                }).ToList()
+            });
+
+            return result;
+        }
     }
 }

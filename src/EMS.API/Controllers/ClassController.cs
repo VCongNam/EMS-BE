@@ -1,4 +1,4 @@
-﻿using EMS.Application.Features.Classes.DTOs;
+using EMS.Application.Features.Classes.DTOs;
 using EMS.Application.Features.Classes.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -69,6 +69,14 @@ namespace EMS.API.Controllers
             return Ok(dashboardData);
         }
 
+        [HttpGet("teacher/archived-classes")]
+        [Authorize]
+        public async Task<IActionResult> GetArchivedClasses()
+        {
+            var archivedClasses = await _classService.GetArchivedClassesAsync();
+            return Ok(archivedClasses);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetClassDetail(Guid id)
         {
@@ -109,6 +117,22 @@ namespace EMS.API.Controllers
             {
                 await _classService.ArchiveClassAsync(id);
                 return Ok(new { Message = "Class archived successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // API 5: Khôi phục lớp học (Restore)
+        // PATCH: api/class/{id}/restore
+        [HttpPatch("{id}/restore")]
+        public async Task<IActionResult> RestoreClass(Guid id)
+        {
+            try
+            {
+                await _classService.RestoreClassAsync(id);
+                return Ok(new { Message = "Class restored successfully!" });
             }
             catch (Exception ex)
             {
