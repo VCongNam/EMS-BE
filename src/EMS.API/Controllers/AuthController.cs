@@ -7,8 +7,8 @@ namespace EMS.API.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AccountService accountService;
-        public AuthController(AccountService accountService)
+        private readonly IAccountService accountService;
+        public AuthController(IAccountService accountService)
         { 
             this.accountService = accountService;
         }

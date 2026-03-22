@@ -17,15 +17,15 @@ namespace EMS.Application.Features.Accounts.Services
     {
         private readonly IAccountRepository accountRepository;
         private readonly IJwtTokenGenerator jwtTokenGenerator;
-        private readonly IEmailService emailService;
         private readonly IOtpService otpService;
+        private readonly IEmailQueue emailQueue;
 
-        public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IEmailService emailService, IOtpService otpService)
+        public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailQueue emailQueue)
         {
             this.accountRepository = accountRepository;
             this.jwtTokenGenerator = jwtTokenGenerator;
-            this.emailService = emailService;
             this.otpService = otpService;
+            this.emailQueue = emailQueue;
         }
 
         
@@ -52,11 +52,14 @@ namespace EMS.Application.Features.Accounts.Services
             }
 
             string plainOtp = otpService.GenerateOtp();
-            await emailService.SendEmailAsync(
-                request.Email,
-                "EMS - Xác thực tài khoản",
-                $"Chào {request.FullName}, mã OTP đăng ký của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
-            );
+
+
+            await emailQueue.QueueEmailAsync(new EmailMessage
+            {
+                To = request.Email,
+                Subject = "EMS - Xác thực tài khoản",
+                Body = $"Chào {request.FullName}, mã OTP đăng ký của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
+            });
 
 
             string hashedOtp = otpService.HashOtp(plainOtp);
@@ -82,7 +85,8 @@ namespace EMS.Application.Features.Accounts.Services
             {
                 AccountId = saveAccount.AccountId,
                 Email = saveAccount.Email,
-                FullName = saveAccount.FullName
+                FullName = saveAccount.FullName, 
+                RoleName = saveAccount.Role.RoleName
             };
         }
         public async Task<bool> VerifyEmailAsync(VerifyEmailRequest request)
@@ -137,7 +141,12 @@ namespace EMS.Application.Features.Accounts.Services
             string plainOtp = otpService.GenerateOtp();
 
             // Gửi mail mã gốc
-            await emailService.SendEmailAsync(request.Email, "EMS - Khôi phục mật khẩu", $"Mã OTP là: <b>{plainOtp}</b>");
+            await emailQueue.QueueEmailAsync(new EmailMessage
+            {
+                To = request.Email,
+                Subject = "EMS - Khôi phục mật khẩu",
+                Body = $"Mã OTP là: <b>{plainOtp}</b>"
+            });
 
             // Hash trước khi lưu
             account.ResetPasswordToken = otpService.HashOtp(plainOtp);

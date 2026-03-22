@@ -15,10 +15,10 @@ namespace EMS.API.Controllers
     [Authorize]// yêu cầu phải có authorize
     public class AccountController : ControllerBase
     {
-        private readonly AccountService accountService;
+        private readonly IAccountService accountService;
         private readonly ICurrentUserService currentUserService;
 
-        public AccountController(AccountService accountService, ICurrentUserService currentUserService)
+        public AccountController(IAccountService accountService, ICurrentUserService currentUserService)
         {
             this.accountService = accountService;
             this.currentUserService = currentUserService;

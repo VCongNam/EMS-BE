@@ -1,4 +1,5 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using EMS.API.BackgroundServices;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
 using EMS.Domain.Interfaces;
@@ -11,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using EMS.Infrastructure.Services;
+
 
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
@@ -33,8 +35,10 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<AccountService, AccountService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
+builder.Services.AddHostedService<EmailBackgroundService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
