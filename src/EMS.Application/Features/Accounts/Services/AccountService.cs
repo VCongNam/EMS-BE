@@ -18,14 +18,14 @@ namespace EMS.Application.Features.Accounts.Services
         private readonly IAccountRepository accountRepository;
         private readonly IJwtTokenGenerator jwtTokenGenerator;
         private readonly IOtpService otpService;
-        private readonly IEmailQueue emailQueue;
+        private readonly IEmailService emailService;
 
-        public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailQueue emailQueue)
+        public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailService emailService)
         {
             this.accountRepository = accountRepository;
             this.jwtTokenGenerator = jwtTokenGenerator;
             this.otpService = otpService;
-            this.emailQueue = emailQueue;
+            this.emailService = emailService;
         }
 
         
@@ -54,7 +54,7 @@ namespace EMS.Application.Features.Accounts.Services
             string plainOtp = otpService.GenerateOtp();
 
 
-            await emailQueue.QueueEmailAsync(new EmailMessage
+            await emailService.SendEmailAsync(new EmailMessage
             {
                 To = request.Email,
                 Subject = "EMS - Xác thực tài khoản",
@@ -177,7 +177,7 @@ namespace EMS.Application.Features.Accounts.Services
             string plainOtp = otpService.GenerateOtp();
 
             // Gửi mail mã gốc
-            await emailQueue.QueueEmailAsync(new EmailMessage
+            await emailService.SendEmailAsync(new EmailMessage
             {
                 To = request.Email,
                 Subject = "EMS - Khôi phục mật khẩu",
