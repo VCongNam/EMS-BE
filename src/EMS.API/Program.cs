@@ -2,6 +2,7 @@
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
+using EMS.Application.Features.Posts.Services;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
@@ -88,7 +89,9 @@ builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITARepository, TARepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IClassTAService, ClassTAService>();
+builder.Services.AddScoped<IPostService, PostService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
