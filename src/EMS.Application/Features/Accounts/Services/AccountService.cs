@@ -1,15 +1,10 @@
-﻿using EMS.Application.Common.Interfaces;  
+﻿using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
-using FluentValidation.Validators;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
-
 
 namespace EMS.Application.Features.Accounts.Services
 {
@@ -18,6 +13,7 @@ namespace EMS.Application.Features.Accounts.Services
         private readonly IAccountRepository accountRepository;
         private readonly IJwtTokenGenerator jwtTokenGenerator;
         private readonly IOtpService otpService;
+        // ĐÃ SỬA TỪ IEmailQueue THÀNH IEmailService
         private readonly IEmailService emailService;
 
         public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailService emailService)
@@ -28,16 +24,13 @@ namespace EMS.Application.Features.Accounts.Services
             this.emailService = emailService;
         }
 
-        
-        //Đăng ký
+        // Đăng ký
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
             var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
             if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
 
-
             var allowedRoles = new List<string> { "Teacher", "TA" };
-
             string requestedRole = request.RoleName;
 
             if (!allowedRoles.Contains(requestedRole))
@@ -53,7 +46,7 @@ namespace EMS.Application.Features.Accounts.Services
 
             string plainOtp = otpService.GenerateOtp();
 
-
+            // ĐÃ SỬA: Gọi SendEmailAsync thay vì QueueEmailAsync
             await emailService.SendEmailAsync(new EmailMessage
             {
                 To = request.Email,
@@ -61,10 +54,8 @@ namespace EMS.Application.Features.Accounts.Services
                 Body = $"Chào {request.FullName}, mã OTP đăng ký của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
             });
 
-
             string hashedOtp = otpService.HashOtp(plainOtp);
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
 
             var newAccount = new Account();
 
@@ -76,22 +67,22 @@ namespace EMS.Application.Features.Accounts.Services
                     Email = request.Email,
                     PasswordHash = hashedPassword,
                     FullName = request.FullName,
-                    RoleId = roleEntity.RoleId, // Sử dụng ID tìm được từ DB
+                    RoleId = roleEntity.RoleId,
                     Status = "Unverified",
                     VerificationToken = hashedOtp,
                     VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
                     CreatedAt = DateTime.UtcNow,
-
                     Teacher = new Teacher
                     {
-                        Bio = null, 
-                        BankAccount = null, 
+                        Bio = null,
+                        BankAccount = null,
                         BankAccountName = null,
-                        BankName = null, 
+                        BankName = null,
                         Specialization = null
                     }
                 };
-            }else if (requestedRole == "TA")
+            }
+            else if (requestedRole == "TA")
             {
                 newAccount = new Account
                 {
@@ -99,7 +90,7 @@ namespace EMS.Application.Features.Accounts.Services
                     Email = request.Email,
                     PasswordHash = hashedPassword,
                     FullName = request.FullName,
-                    RoleId = roleEntity.RoleId, // Sử dụng ID tìm được từ DB
+                    RoleId = roleEntity.RoleId,
                     Status = "Unverified",
                     VerificationToken = hashedOtp,
                     VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
@@ -113,7 +104,6 @@ namespace EMS.Application.Features.Accounts.Services
                     }
                 };
             }
-            
 
             var saveAccount = await accountRepository.AddAsync(newAccount);
 
@@ -121,18 +111,19 @@ namespace EMS.Application.Features.Accounts.Services
             {
                 AccountId = saveAccount.AccountId,
                 Email = saveAccount.Email,
-                FullName = saveAccount.FullName, 
+                FullName = saveAccount.FullName,
                 RoleName = saveAccount.Role.RoleName
             };
         }
+
         public async Task<bool> VerifyEmailAsync(VerifyEmailRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
             if (account == null) throw new Exception("Tài khoản không tồn tại!");
             if (account.Status == "Active") throw new Exception("Tài khoản đã được xác thực!");
 
-            // Sử dụng Service để Verify mã đã Hash
-            if (!otpService.VerifyOtp(request.OtpCode, account.VerificationToken))
+            // Sửa lỗi cảnh báo vàng CS8604 bằng cách kiểm tra null (VerificationToken ?? "")
+            if (!otpService.VerifyOtp(request.OtpCode, account.VerificationToken ?? ""))
                 throw new Exception("Mã OTP không chính xác!");
 
             if (account.VerificationTokenExpiresAt < DateTime.UtcNow)
@@ -146,18 +137,20 @@ namespace EMS.Application.Features.Accounts.Services
             return true;
         }
 
-        //Đăng nhập
+        // Đăng nhập
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
             if (account == null) throw new Exception("Tài khoản không tồn tại!");
-            if (account.Status  == "Unverified") throw new Exception("Tài khoản chưa được xác thực");
+            if (account.Status == "Unverified") throw new Exception("Tài khoản chưa được xác thực");
             if (account.Status == "Banned") throw new Exception("Tài khoản đã bị khóa");
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash);
 
+            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash);
             if (!isPasswordValid) throw new Exception("Sai mật khẩu!");
+
             var roleName = account.Role?.RoleName ?? throw new Exception("Tài khoản bị lỗi dữ liệu phân quyền!");
             var token = jwtTokenGenerator.GenerateToken(account, roleName);
+
             return new AuthResponse
             {
                 AccountId = account.AccountId,
@@ -168,7 +161,7 @@ namespace EMS.Application.Features.Accounts.Services
             };
         }
 
-        //Quên mật khẩu 
+        // Quên mật khẩu 
         public async Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
@@ -176,7 +169,7 @@ namespace EMS.Application.Features.Accounts.Services
 
             string plainOtp = otpService.GenerateOtp();
 
-            // Gửi mail mã gốc
+            // ĐÃ SỬA: Gọi SendEmailAsync thay vì QueueEmailAsync
             await emailService.SendEmailAsync(new EmailMessage
             {
                 To = request.Email,
@@ -184,7 +177,6 @@ namespace EMS.Application.Features.Accounts.Services
                 Body = $"Mã OTP là: <b>{plainOtp}</b>"
             });
 
-            // Hash trước khi lưu
             account.ResetPasswordToken = otpService.HashOtp(plainOtp);
             account.ResetPasswordTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
 
@@ -197,7 +189,6 @@ namespace EMS.Application.Features.Accounts.Services
             var account = await accountRepository.GetByEmailAsync(request.Email);
             if (account == null) throw new Exception("Yêu cầu không hợp lệ!");
 
-
             if (!otpService.VerifyOtp(request.OtpCode, account.ResetPasswordToken))
                 throw new Exception("Mã OTP không chính xác!");
 
@@ -205,7 +196,6 @@ namespace EMS.Application.Features.Accounts.Services
                 throw new Exception("Mã OTP đã hết hạn!");
 
             account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-
             account.ResetPasswordToken = null;
             account.ResetPasswordTokenExpiresAt = null;
 
@@ -261,8 +251,10 @@ namespace EMS.Application.Features.Accounts.Services
         {
             var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
             if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
+
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
             var role = await accountRepository.GetRoleByNameAsync("TA");
+
             var newAccount = new Account
             {
                 AccountId = Guid.NewGuid(),
@@ -279,6 +271,7 @@ namespace EMS.Application.Features.Accounts.Services
                     Bio = request.Bio,
                 }
             };
+
             var saveAccount = await accountRepository.AddAsync(newAccount);
             return new AuthResponse
             {

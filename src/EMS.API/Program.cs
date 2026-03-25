@@ -1,8 +1,8 @@
-﻿using EMS.API.BackgroundServices;
+﻿
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
-using EMS.Application.Features.Posts.Services;
+using EMS.Application.Features.Posts.Services;  
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
@@ -28,18 +28,32 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 2. Đăng ký Repository (Domain <-> Infra)
+
+
+// 2. ĐĂNG KÝ EMAIL SERVICE (Dùng HttpClient cho Brevo API)
+// Dòng này cực kỳ quan trọng: Nó vừa đăng ký IEmailService, vừa nạp HttpClient vào EmailService
+builder.Services.AddHttpClient<IEmailService, EmailService>();
+
+
+// 3. ĐĂNG KÝ REPOSITORY (Infrastructure)
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+builder.Services.AddScoped<ITARepository, TARepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
-builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
-builder.Services.AddHostedService<EmailBackgroundService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
+builder.Services.AddScoped<IClassTAService, ClassTAService>();
+builder.Services.AddScoped<IPostService, PostService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -81,18 +95,8 @@ builder.Services.AddAuthentication(options =>
 //// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 //builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
+
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-
-builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
-builder.Services.AddScoped<IAssignmentService, AssignmentService>();
-builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
-builder.Services.AddScoped<ITARepository, TARepository>();
-builder.Services.AddScoped<IPostRepository, PostRepository>();
-builder.Services.AddScoped<IClassTAService, ClassTAService>();
-builder.Services.AddScoped<IPostService, PostService>();
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

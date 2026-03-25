@@ -25,17 +25,6 @@ namespace EMS.API.Controllers
         }
 
 
-        private Guid GetAccountIdFromToken()
-        {
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? User.FindFirst("sub")?.Value;
-
-            if (string.IsNullOrEmpty(userIdString))
-                throw new Exception("Không tìm thấy thông tin User trong Token.");
-
-            return Guid.Parse(userIdString);
-        }
-
         // [GET] /api/Account/profile
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()

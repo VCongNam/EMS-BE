@@ -2,33 +2,30 @@
 using EMS.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
+using System.Net.Http;
+using System.Net.Http.Json; // Cực kỳ quan trọng để dùng PostAsJsonAsync
 using System.Threading.Tasks;
-using EMS.Application.Common.Interfaces;
 
 namespace EMS.Infrastructure.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly IConfiguration config;
-        private readonly HttpClient httpClient;
+        private readonly IConfiguration _config;
+        private readonly HttpClient _httpClient;
 
         public EmailService(IConfiguration config, HttpClient httpClient)
         {
-            this.config = config;
-            this.httpClient = httpClient;
+            _config = config;
+            _httpClient = httpClient;
         }
 
         public async Task SendEmailAsync(EmailMessage message)
         {
-            var apiKey = config["Brevo:ApiKey"];
-            var senderEmail = config["Brevo:SenderEmail"];
-            var senderName = config["Brevo:SenderName"];
+            var apiKey = _config["Brevo:ApiKey"];
+            var senderEmail = _config["Brevo:SenderEmail"];
+            var senderName = _config["Brevo:SenderName"];
 
-            // 1. Chuẩn bị dữ liệu gửi lên Brevo (JSON)
+            // 1. Gói dữ liệu (Payload) theo chuẩn Brevo
             var payload = new
             {
                 sender = new { name = senderName, email = senderEmail },
@@ -37,31 +34,27 @@ namespace EMS.Infrastructure.Services
                 htmlContent = message.Body
             };
 
-            var jsonPayload = JsonSerializer.Serialize(payload);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-            // 2. Cấu hình Header chứa API Key để xác thực
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("api-key", apiKey);
-            httpClient.DefaultRequestHeaders.Add("accept", "application/json");
+            // 2. Gắn API Key vào Header
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add("api-key", apiKey);
 
             try
             {
-                // 3. Bắn HTTP POST thẳng tới máy chủ Brevo (Cổng 443 - không bị Render chặn)
-                var response = await httpClient.PostAsync("https://api.brevo.com/v3/smtp/email", content);
+                // 3. Gửi thẳng Payload dưới dạng JSON (Tự động xử lý JsonSerializer cho bạn)
+                var response = await _httpClient.PostAsJsonAsync("https://api.brevo.com/v3/smtp/email", payload);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorDetail = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Lỗi từ máy chủ Brevo: {errorDetail}");
+                    throw new Exception($"Lỗi Brevo: {errorDetail}");
                 }
 
-                Console.WriteLine($"[EMAIL SUCCESS] Đã gửi email thành công tới: {message.To}");
+                Console.WriteLine($"[EMAIL SUCCESS] Đã gửi thư tới: {message.To}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[EMAIL ERROR] {ex.Message}");
-                throw new Exception("Hệ thống gửi mail đang gặp sự cố. Vui lòng thử lại sau!");
+                Console.WriteLine($"[EMAIL EXCEPTION] {ex.Message}");
+                throw new Exception("Hệ thống gửi mail gặp sự cố.");
             }
         }
     }
