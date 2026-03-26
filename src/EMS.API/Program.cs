@@ -59,7 +59,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173", "https://ten-app-frontend-cua-ban.onrender.com") // Cho phép Frontend truy cập
+            policy.WithOrigins("http://localhost:5173", "https://ems-be-2-s2nk.onrender.com") // Cho phép Frontend truy cập
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials(); // (Tùy chọn) Nếu có dùng cookie/token
