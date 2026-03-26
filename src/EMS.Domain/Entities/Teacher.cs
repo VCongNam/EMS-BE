@@ -22,6 +22,4 @@ public partial class Teacher
     public virtual ICollection<ProgressReport> ProgressReports { get; set; } = new List<ProgressReport>();
 
     public virtual Account TeacherNavigation { get; set; } = null!;
-
-    
 }

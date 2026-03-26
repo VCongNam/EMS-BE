@@ -44,10 +44,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173") // Cho phép Frontend truy cập
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials(); // (Tùy chọn) Nếu có dùng cookie/token
+            policy.WithOrigins(
+                "http://localhost:5173",
+                "https://ems-fe-six.vercel.app"  // thêm domain Vercel
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
         });
 });
 
