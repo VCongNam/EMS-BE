@@ -63,7 +63,7 @@ namespace EMS.Application.Features.Classes.Services
                 {
                     ScheduleId = Guid.NewGuid(),
                     ClassId = newClass.ClassId,
-                    DayOfWeek = s.DayOfWeek,
+                    DayOfWeek = s.DayOfWeek, 
                     StartTime = s.StartTime,
                     EndTime = s.EndTime
                 });

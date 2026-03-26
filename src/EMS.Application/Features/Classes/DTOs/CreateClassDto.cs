@@ -21,7 +21,7 @@ namespace EMS.Application.Features.Classes.DTOs
 
     public class ScheduleDto
     {
-        public List<short> DayOfWeek { get; set; } = new();
+        public short DayOfWeek { get; set; }
         public TimeOnly StartTime { get; set; }
         public TimeOnly EndTime { get; set; }
     }
