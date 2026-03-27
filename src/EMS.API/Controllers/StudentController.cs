@@ -9,11 +9,11 @@ namespace EMS.API.Controllers
     [ApiController]
     public class StudentController : ControllerBase
     {
-        private readonly IStudentService _studentService;
+        private readonly IStudentService studentService;
 
         public StudentController(IStudentService studentService)
         {
-            _studentService = studentService;
+            studentService = studentService;
         }
 
         [HttpPost("CreateStudentAccount")]
@@ -21,7 +21,7 @@ namespace EMS.API.Controllers
         {
             try
             {
-                var newStudentId = await _studentService.CreateStudentAsync(request);
+                var newStudentId = await studentService.CreateStudentAsync(request);
                 return StatusCode(201, new { Message = "Create student account successfully!", StudentId = newStudentId });
             }
             catch (Exception ex)
