@@ -16,4 +16,11 @@ namespace EMS.Application.Features.Students.DTOs
         public string EnrollmentStatus { get; set; }
         public DateOnly EnrolledDate { get; set; }
     }
+
+    public class EnrolledClassFilter
+    {
+        public int Page { get; set; }
+        public int Size { get; set; }
+        public string? Status { get; set; }
+    }
 }

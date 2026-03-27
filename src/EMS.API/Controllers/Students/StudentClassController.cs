@@ -55,7 +55,7 @@ namespace EMS.API.Controllers.Students
             }
         }
 
-        [HttpGet("{classId}/posts")]
+        [HttpGet("{classId}/Posts")]
         public async Task<IActionResult> GetClassPosts(Guid classId, [FromQuery] PostFilter filter)
         {
             try

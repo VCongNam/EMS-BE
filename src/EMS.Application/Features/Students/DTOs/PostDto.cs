@@ -13,4 +13,12 @@ namespace EMS.Application.Features.Students.DTOs
         public string AuthorName { get; set; }
         public DateTime CreatedAt { get; set; }
     }
+
+    public class PostFilter
+    {
+        public int Page { get; set; }
+        public int Size { get; set; }
+        public DateTime? FromDate { get; set; }
+        public DateTime? ToDate { get; set; }
+    }
 }
