@@ -18,6 +18,7 @@ using EMS.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Students.Services;
+using EMS.Application.Features.Sessions.Services;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -38,6 +39,9 @@ builder.Services.AddHttpClient<IEmailService, EmailService>();
 // 3. ĐĂNG KÝ REPOSITORY (Infrastructure)
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITARepository, TARepository>();
@@ -48,6 +52,8 @@ builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();

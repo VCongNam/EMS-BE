@@ -7,7 +7,7 @@ public partial class TeachingAssistantTask
 {
     public Guid TataskId { get; set; }
 
-    public Guid ClassTaId { get; set; }
+    public Guid ClassTaid { get; set; }
 
     public string Title { get; set; } = null!;
 
