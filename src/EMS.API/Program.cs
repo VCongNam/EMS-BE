@@ -2,7 +2,8 @@
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
-using EMS.Application.Features.Posts.Services;  
+using EMS.Application.Features.Posts.Services;
+using EMS.Application.Features.Auth.Services;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
@@ -50,6 +51,7 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<ISessionService, SessionService>();

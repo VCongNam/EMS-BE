@@ -35,7 +35,12 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Account?> GetByIdAsync(Guid id)
         {
-            return await context.Accounts.Include(a => a.Role).FirstOrDefaultAsync(a => a.AccountId == id);
+            return await context.Accounts
+        .Include(a => a.Role)
+        .Include(a => a.Teacher)             // Lấy thêm thông tin Teacher
+        .Include(a => a.Student)             // Lấy thêm thông tin Student
+        .Include(a => a.TeachingAssistant)   // Lấy thêm thông tin TA
+        .FirstOrDefaultAsync(a => a.AccountId == id);
 
         }
 

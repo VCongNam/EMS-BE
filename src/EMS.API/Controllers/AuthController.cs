@@ -1,23 +1,23 @@
-﻿using EMS.Application.Features.Accounts.Services;
+﻿using EMS.Application.Features.Auth.Services;
 using Microsoft.AspNetCore.Mvc;
-using EMS.Application.Features.Accounts.DTOs;
+using EMS.Application.Features.Auth.DTOs;
 namespace EMS.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly IAccountService accountService;
-        public AuthController(IAccountService accountService)
+        private readonly IAuthService authService;
+        public AuthController(IAuthService authService)
         { 
-            this.accountService = accountService;
+            this.authService = authService;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequest request)
         {
             try { 
-                return Ok(await accountService.RegisterAsync(request)); 
+                return Ok(await authService.RegisterAsync(request)); 
             }
             catch (Exception ex) { 
                 return BadRequest(new { Message = ex.Message }); 
@@ -29,7 +29,7 @@ namespace EMS.API.Controllers
         {
             try
             {
-                await accountService.VerifyEmailAsync(request);
+                await authService.VerifyEmailAsync(request);
                 return Ok(new { Message = "Xác thực thành công!" });
             }
             catch (Exception ex) { 
@@ -41,7 +41,7 @@ namespace EMS.API.Controllers
         public async Task<IActionResult> Login(LoginRequest request)
         {
             try { 
-                return Ok(await accountService.LoginAsync(request)); 
+                return Ok(await authService.LoginAsync(request)); 
             }
             catch (Exception ex) { 
                 return BadRequest(new { Message = ex.Message }); 
@@ -52,7 +52,7 @@ namespace EMS.API.Controllers
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
         {
             try { 
-                return Ok(await accountService.ForgotPasswordAsync(request)); 
+                return Ok(await authService.ForgotPasswordAsync(request)); 
             }
             catch (Exception ex) { 
                 return BadRequest(new { Message = ex.Message }); 
@@ -63,23 +63,10 @@ namespace EMS.API.Controllers
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
         {
             try { 
-                return Ok(await accountService.ResetPasswordAsync(request)); 
+                return Ok(await authService.ResetPasswordAsync(request)); 
             }
             catch (Exception ex) { 
                 return BadRequest(new { Message = ex.Message }); 
-            }
-        }
-
-        [HttpPost("TAregister")]
-        public async Task<IActionResult> TARegister(TARegisterDto request)
-        {
-            try
-            {
-                return Ok(await accountService.RegisterTAAsync(request));
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
             }
         }
     }
