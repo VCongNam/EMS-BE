@@ -120,6 +120,34 @@ namespace EMS.Infrastructure.Repositories
             return (items, totalCount);
         }
 
+        public async Task<ClassEnrollment?> GetClassSummaryAsync(Guid classId, Guid studentId)
+        {
+            var result = await _context.ClassEnrollments
+                .Include(ce => ce.Class)
+                    .ThenInclude(c => c.Teacher.TeacherNavigation)
+                .Where(ce => ce.ClassId == classId && ce.StudentId == studentId)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+            return result;
+        }
+
+        public async Task<(List<Post> Items, int TotalCount)> GetClassPostAsync(Guid classId, int page, int size, DateTime? fromDate, DateTime? toDate)
+        {
+            var query = _context.Posts
+                .Where(p => p.ClassId == classId)
+                .AsNoTracking();
+            if (fromDate.HasValue)
+            {
+                query = query.Where(p => p.CreatedAt >= fromDate);
+            }
+            int totalCount = await query.CountAsync();
+            var items = await query.OrderByDescending(p =>  p.CreatedAt)
+                            .Skip((page-1) * size)
+                            .Take(size)
+                            .ToListAsync();
+            return (items, totalCount);
+        }
+
         //Teaching Assistant Management
 
         public async Task<IEnumerable<ClassTum>> GetTAsByClassIdAsync(Guid classId)

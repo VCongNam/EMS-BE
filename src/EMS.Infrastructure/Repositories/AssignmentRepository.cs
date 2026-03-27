@@ -45,5 +45,16 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<int> CountPendingAssignmentAsync(Guid classId, Guid studentId)
+        {
+            int count =await _context.Assignments
+                .Where(a => a.ClassId == classId 
+                    && a.DueDate >= DateTime.UtcNow)
+                .Where(a => a.Submissions.Any(
+                    s => s.AssignmentId == a.AssignmentId
+                    && s.StudentId == studentId))
+                .CountAsync();
+            return count;
+        }
     }
 }

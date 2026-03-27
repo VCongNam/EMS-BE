@@ -4,18 +4,18 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EMS.API.Controllers
+namespace EMS.API.Controllers.Students
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class StudentController : ControllerBase
+    public class StudentAccountController : ControllerBase
     {
-        private readonly IStudentService _studentService;
+        private readonly IStudentAccountService _studentAccountService;
 
-        public StudentController(IStudentService studentService)
+        public StudentAccountController(IStudentAccountService studentAccountService)
         {
-            _studentService = studentService;
+            _studentAccountService = studentAccountService;
         }
 
         [HttpPost("CreateStudentAccount")]
@@ -23,7 +23,7 @@ namespace EMS.API.Controllers
         {
             try
             {
-                var newStudentId = await _studentService.CreateStudentAsync(request);
+                var newStudentId = await _studentAccountService.CreateStudentAsync(request);
                 return StatusCode(201, new { Message = "Create student account successfully!", StudentId = newStudentId });
             }
             catch (Exception ex)
@@ -33,16 +33,5 @@ namespace EMS.API.Controllers
             }
         }
 
-        [HttpGet]
-        [Authorize(Roles = "Student")]
-        public async Task<IActionResult> GetMyClasses([FromQuery] EnrolledClassFilter filter)
-        {
-            var result = await _studentService.GetMyClassesAsync(filter);
-            return Ok(new
-            {
-                Message = "Lấy danh sách lớp học thành công",
-                Dât = result
-            });
-        }
     }
 }

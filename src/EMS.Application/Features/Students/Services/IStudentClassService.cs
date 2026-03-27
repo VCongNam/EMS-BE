@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Students.Services
 {
-    public interface IStudentService
+    public interface IStudentClassService
     {
-        Task<Guid> CreateStudentAsync(CreateStudentDto request);
         Task<PagedResult<EnrolledClassDto>> GetMyClassesAsync(EnrolledClassFilter filter);
+        Task<EnrolledClassDetailDto> GetClassDetailAsync(Guid classId);
+        Task<PagedResult<PostDto>> GetClassPostsAsync(Guid classId, PostFilter filter);
     }
 }

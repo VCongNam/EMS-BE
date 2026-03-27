@@ -13,6 +13,8 @@ namespace EMS.Domain.Interfaces
         Task UpdateAsync(Assignment assignment);
         Task<Assignment?> GetByIdAsync(Guid assignmentId);
         Task<IEnumerable<Assignment>> GetByClassIdAsync(Guid classId);
+        //Task<IEnumerable<Assignment>> GetByClassIdAndStudentIdAsync(Guid classId, Guid studentId);
+        Task<int> CountPendingAssignmentAsync(Guid classId, Guid studentId);
 
     }
 }

@@ -31,7 +31,9 @@ builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IClassService, ClassService>();
-builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IStudentAccountService, StudentAccountService>();
+builder.Services.AddScoped<IStudentClassService, StudentClassService>();
+builder.Services.AddScoped<IStudentAssignmentService, StudentAssignmentService>();
 builder.Services.AddScoped<AccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddCors(options =>
