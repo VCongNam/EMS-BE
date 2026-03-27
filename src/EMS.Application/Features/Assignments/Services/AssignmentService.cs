@@ -39,7 +39,6 @@ namespace EMS.Application.Features.Assignments.Services
             };
 
             await _assignmentRepository.AddAsync(assignment);
-            // await _unitOfWork.SaveChangesAsync(); // <-- BẮT BUỘC PHẢI GỌI HÀM NÀY ĐỂ LƯU XUỐNG DB
 
             return assignment.AssignmentId;
         }

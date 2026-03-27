@@ -23,6 +23,10 @@ public partial class Session
 
     public DateTime? UpdatedAt { get; set; }
 
+    public string? Topic { get; set; }
+
+    public string? Note { get; set; }
+
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
     public virtual Class Class { get; set; } = null!;

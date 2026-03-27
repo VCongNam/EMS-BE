@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using EMS.Domain.Entities;
-using EMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace EMS.Infrastructure.Data;
@@ -16,6 +15,8 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Account> Accounts { get; set; }
 
     public virtual DbSet<Assignment> Assignments { get; set; }
+
+    public virtual DbSet<AssignmentAttachment> AssignmentAttachments { get; set; }
 
     public virtual DbSet<Attendance> Attendances { get; set; }
 
@@ -155,6 +156,28 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.GradeCategoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("Assignment_GradeCategoryID_fkey");
+        });
+
+        modelBuilder.Entity<AssignmentAttachment>(entity =>
+        {
+            entity.HasKey(e => e.AttachmentId).HasName("assignmentattachment_pkey");
+
+            entity.ToTable("AssignmentAttachment");
+
+            entity.Property(e => e.AttachmentId)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("AttachmentID");
+            entity.Property(e => e.AssignmentId).HasColumnName("AssignmentID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FileType).HasMaxLength(50);
+            entity.Property(e => e.FileUrl).HasColumnName("FileURL");
+
+            entity.HasOne(d => d.Assignment).WithMany(p => p.AssignmentAttachments)
+                .HasForeignKey(d => d.AssignmentId)
+                .HasConstraintName("assignmentattachment_assignmentid_fkey");
         });
 
         modelBuilder.Entity<Attendance>(entity =>
@@ -546,6 +569,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Scheduled'::character varying");
             entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Topic).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
