@@ -30,7 +30,8 @@ namespace EMS.Application.Features.Accounts.Services
                 PhoneNumber = account.PhoneNumber,
                 RoleName = account.Role?.RoleName ?? "N/A",
                 Status = account.Status,
-                CreatedAt = (DateTime)account.CreatedAt!
+                CreatedAt = (DateTime)account.CreatedAt!,
+                AvatarUrl = account.AvatarUrl
             };
 
             // Gắn thông tin riêng tùy theo Role
@@ -69,20 +70,6 @@ namespace EMS.Application.Features.Accounts.Services
 
             return response;
         }
-
-        //public async Task<UserProfileResponse> UpdateProfileAsync(Guid accountId, UpdateProfileRequest request)
-        //{
-        //    var account = await accountRepository.GetByIdAsync(accountId);
-        //    if (account == null) throw new Exception("Tài khoản không tồn tại!");
-
-        //    account.FullName = request.FullName;
-        //    account.PhoneNumber = request.PhoneNumber;
-        //    account.UpdatedAt = DateTime.UtcNow;
-
-        //    await accountRepository.UpdateAsync(account);
-
-        //    return await GetProfileAsync(accountId);
-        //}
 
         public async Task<UserProfileResponse> UpdateTeacherProfileAsync(Guid accountId, UpdateTeacherProfileRequest request)
         {
@@ -168,6 +155,23 @@ namespace EMS.Application.Features.Accounts.Services
             return true;
         }
 
-        
+
+        public async Task<(string NewUrl, string? OldUrl)> UpdateAvatarUrlAsync(Guid accountId, string avatarUrl)
+        {
+            var account = await accountRepository.GetByIdAsync(accountId);
+            if (account == null) throw new Exception("Tài khoản không tồn tại!");
+
+            // 1. Giữ lại link cũ để tí nữa còn xóa trên Cloud
+            string? oldUrl = account.AvatarUrl;
+
+            // 2. Cập nhật link mới
+            account.AvatarUrl = avatarUrl;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await accountRepository.UpdateAsync(account);
+
+            return (avatarUrl, oldUrl);
+        }
+
     }
 }

@@ -17,11 +17,13 @@ namespace EMS.API.Controllers
     {
         private readonly IAccountService accountService;
         private readonly ICurrentUserService currentUserService;
+        private readonly IImageService imageService;
 
-        public AccountController(IAccountService accountService, ICurrentUserService currentUserService)
+        public AccountController(IAccountService accountService, ICurrentUserService currentUserService, IImageService imageService)
         {
             this.accountService = accountService;
             this.currentUserService = currentUserService;
+            this.imageService = imageService;
         }
 
 
@@ -41,19 +43,6 @@ namespace EMS.API.Controllers
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
-
-        //// [PUT] /api/Account/profile
-        //[HttpPut("profile")]
-        //public async Task<IActionResult> UpdateProfile(UpdateProfileRequest request)
-        //{
-        //    try
-        //    {
-        //        var accountId = currentUserService.UserId;
-        //        var updatedProfile = await accountService.UpdateProfileAsync(accountId, request);
-        //        return Ok(updatedProfile);
-        //    }
-        //    catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
-        //}
         
 
         // [POST] /api/Account/change-password (Dành cho user đang đăng nhập)
@@ -121,6 +110,36 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
+
+        // [POST] /api/Account/avatar
+        [HttpPost("avatar")]
+        public async Task<IActionResult> UpdateAvatar(IFormFile file)
+        {
+            try
+            {
+                var accountId = currentUserService.UserId;
+                if (file == null || file.Length == 0) return BadRequest("Vui lòng chọn ảnh.");
+
+                // BƯỚC 1: Đẩy ảnh mới lên Cloudinary
+                var newImageUrl = await imageService.UploadAvatarAsync(file);
+
+                // BƯỚC 2: Cập nhật DB và lấy Link cũ về
+                var (newUrl, oldUrl) = await accountService.UpdateAvatarUrlAsync(accountId, newImageUrl);
+
+                // BƯỚC 3: Xóa ảnh cũ trên Cloud (Chạy ngầm không bắt User chờ)
+                if (!string.IsNullOrEmpty(oldUrl) && oldUrl.Contains("cloudinary.com"))
+                {
+                    // Sử dụng Task.Run để xóa ảnh cũ mà không làm chậm API trả về
+                    _ = Task.Run(() => imageService.DeleteImageAsync(oldUrl));
+                }
+
+                return Ok(new { Message = "Cập nhật thành công", AvatarUrl = newUrl });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
 
     }
 }

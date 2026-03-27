@@ -4,6 +4,7 @@ using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.Auth.Services;
+using EMS.Infrastructure.Configuration;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
@@ -48,7 +49,11 @@ builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITARepository, TARepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 
+
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+
 // 3. Đăng ký Service (Application)
+builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

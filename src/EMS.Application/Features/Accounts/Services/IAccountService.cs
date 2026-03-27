@@ -17,5 +17,6 @@ namespace EMS.Application.Features.Accounts.Services
         Task<UserProfileResponse> UpdateTeacherProfileAsync(Guid accountId, UpdateTeacherProfileRequest request);
         Task<UserProfileResponse> UpdateTAProfileAsync(Guid accountId, UpdateTAProfileRequest request);
         Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, UpdateStudentProfileRequest request);
+        Task<(string NewUrl, string? OldUrl)> UpdateAvatarUrlAsync(Guid accountId, string avatarUrl);
     }
 }

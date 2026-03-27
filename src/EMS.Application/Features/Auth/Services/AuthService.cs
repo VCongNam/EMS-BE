@@ -73,6 +73,7 @@ namespace EMS.Application.Features.Auth.Services
                     VerificationToken = hashedOtp,
                     VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
                     CreatedAt = DateTime.UtcNow,
+                 
                     Teacher = new Teacher
                     {
                         Bio = null,
@@ -113,7 +114,8 @@ namespace EMS.Application.Features.Auth.Services
                 AccountId = saveAccount.AccountId,
                 Email = saveAccount.Email,
                 FullName = saveAccount.FullName,
-                RoleName = saveAccount.Role.RoleName
+                RoleName = saveAccount.Role.RoleName,
+                AvatarUrl = saveAccount.AvatarUrl
             };
         }
 
@@ -158,7 +160,8 @@ namespace EMS.Application.Features.Auth.Services
                 Email = account.Email,
                 FullName = account.FullName,
                 RoleName = roleName,
-                Token = token
+                Token = token, 
+                AvatarUrl = account.AvatarUrl
             };
         }
 
