@@ -38,6 +38,55 @@ namespace EMS.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task<IEnumerable<Session>> GetSessionsByTeacherAndDateRangeAsync(Guid teacherId, DateOnly startDate, DateOnly endDate)
+        {
+            return await _context.Sessions
+                .Include(s => s.Class)
+                .Where(s => s.Class.TeacherId == teacherId 
+                         && s.Date >= startDate 
+                         && s.Date <= endDate 
+                         && (s.IsDeleted == null || s.IsDeleted == false))
+                .OrderBy(s => s.Date)
+                .ThenBy(s => s.StartTime)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Session>> GetSessionsByTeacherAndDateAsync(Guid teacherId, DateOnly date, Guid? excludeSessionId = null)
+        {
+            var query = _context.Sessions
+                .Include(s => s.Class)
+                .Where(s => s.Class.TeacherId == teacherId 
+                         && s.Date == date 
+                         && (s.IsDeleted == null || s.IsDeleted == false));
+
+            if (excludeSessionId.HasValue)
+            {
+                query = query.Where(s => s.SessionId != excludeSessionId.Value);
+            }
+
+            return await query.ToListAsync();
+        }
+
+        public async Task AddSessionAsync(Session session)
+        {
+            await _context.Sessions.AddAsync(session);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateSessionAsync(Session session)
+        {
+            _context.Sessions.Update(session);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSessionAsync(Session session)
+        {
+            session.Status = "Canceled";
+            session.UpdatedAt = DateTime.UtcNow;
+            _context.Sessions.Update(session);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<IEnumerable<Attendance>> GetAttendancesBySessionIdAsync(Guid sessionId)
         {
             return await _context.Attendances

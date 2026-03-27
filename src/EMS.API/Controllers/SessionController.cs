@@ -35,6 +35,66 @@ namespace EMS.API.Controllers
             }
         }
 
+        // [GET] /api/session/teacher-schedule
+        [HttpGet("session/teacher-schedule")]
+        public async Task<IActionResult> GetTeacherSchedule([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        {
+            try
+            {
+                var schedule = await _sessionService.GetTeacherScheduleAsync(startDate, endDate);
+                return Ok(schedule);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // [POST] /api/session
+        [HttpPost("session")]
+        public async Task<IActionResult> CreateSession([FromBody] CreateSessionDto request)
+        {
+            try
+            {
+                var session = await _sessionService.CreateSessionAsync(request);
+                return Ok(session);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // [PUT] /api/session/{sessionId}
+        [HttpPut("session/{sessionId}")]
+        public async Task<IActionResult> UpdateSession(Guid sessionId, [FromBody] UpdateSessionDto request)
+        {
+            try
+            {
+                var session = await _sessionService.UpdateSessionAsync(sessionId, request);
+                return Ok(session);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // [DELETE] /api/session/{sessionId}
+        [HttpDelete("session/{sessionId}")]
+        public async Task<IActionResult> DeleteSession(Guid sessionId)
+        {
+            try
+            {
+                await _sessionService.DeleteSessionAsync(sessionId);
+                return Ok(new { Message = "Session deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
         // [GET] /api/session/{sessionId}/attendance
         [HttpGet("session/{sessionId}/attendance")]
         public async Task<IActionResult> GetAttendanceList(Guid sessionId)

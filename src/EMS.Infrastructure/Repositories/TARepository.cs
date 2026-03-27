@@ -27,7 +27,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<IEnumerable<TeachingAssistantTask>> GetTasksByClassTAIdAsync(Guid classTaId)
         {
             return await _context.TeachingAssistantTasks
-                .Where(t => t.ClassTaId == classTaId)
+                .Where(t => t.ClassTaid == classTaId)
                 .OrderBy(t => t.DueDate)
                 .ToListAsync();
         }

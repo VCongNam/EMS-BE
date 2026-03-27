@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using EMS.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -573,6 +573,8 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.StartTime).HasColumnType("time without time zone");
+            entity.Property(e => e.EndTime).HasColumnType("time without time zone");
 
             entity.HasOne(d => d.Class).WithMany(p => p.Sessions)
                 .HasForeignKey(d => d.ClassId)
@@ -749,7 +751,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.TataskId)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("TATaskID");
-            entity.Property(e => e.ClassTaId).HasColumnName("ClassTAID");
+            entity.Property(e => e.ClassTaid).HasColumnName("ClassTAID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
@@ -764,7 +766,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnType("timestamp without time zone");
 
             entity.HasOne(d => d.ClassTa).WithMany(p => p.TeachingAssistantTasks)
-                .HasForeignKey(d => d.ClassTaId)
+                .HasForeignKey(d => d.ClassTaid)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("TeachingAssistantTask_ClassTAID_fkey");
         });
