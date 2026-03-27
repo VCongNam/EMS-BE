@@ -10,5 +10,6 @@ namespace EMS.Application.Features.Students.Services
     public interface IStudentService
     {
         Task<Guid> CreateStudentAsync(CreateStudentDto request);
+        Task<PagedResult<EnrolledClassDto>> GetMyClassesAsync(EnrolledClassFilter filter);
     }
 }

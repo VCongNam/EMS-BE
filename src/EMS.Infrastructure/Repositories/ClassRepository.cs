@@ -1,4 +1,5 @@
-﻿using EMS.Domain.Entities;
+﻿using EMS.Application.Features.Students.DTOs;
+using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -97,6 +98,26 @@ namespace EMS.Infrastructure.Repositories
         {
             return await _context.ClassEnrollments
                 .AnyAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
+        }
+
+        public async Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size, string? status)
+        {
+            var query = _context.ClassEnrollments
+                .Include(ce => ce.Class)
+                .ThenInclude(c => c.Teacher.TeacherNavigation)
+                .Where(ce => ce.StudentId == studentId)
+                .AsNoTracking();
+            if (!string.IsNullOrEmpty(status))
+            {
+                query = query.Where(ce => ce.Status == status);
+            }
+            int totalCount = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(ce => ce.EnrolledDate)
+                .Skip((page - 1) * size)
+                .Take(size)
+                .ToListAsync();
+            return (items, totalCount);
         }
 
         //Teaching Assistant Management
