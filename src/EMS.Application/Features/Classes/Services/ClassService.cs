@@ -13,11 +13,13 @@ namespace EMS.Application.Features.Classes.Services
     public class ClassService : IClassService
     {
         private readonly IClassRepository _classRepository;
+        private readonly ISessionRepository _sessionRepository;
         private readonly ICurrentUserService _currentUser;
 
-        public ClassService(IClassRepository classRepository, ICurrentUserService currentUser)
+        public ClassService(IClassRepository classRepository, ISessionRepository sessionRepository, ICurrentUserService currentUser)
         {
             _classRepository = classRepository;
+            _sessionRepository = sessionRepository;
             _currentUser = currentUser;
         }
 
@@ -68,6 +70,35 @@ namespace EMS.Application.Features.Classes.Services
                     EndTime = s.EndTime
                 });
                 await _classRepository.AddSchedulesAsync(schedules);
+
+                // 4. Sinh tự động các buổi học (Sessions) từ StartDate đến EndDate
+                var sessions = new List<Session>();
+                for (var d = request.StartDate; d <= request.EndDate; d = d.AddDays(1))
+                {
+                    var dayOfWeek = (short)d.DayOfWeek;
+                    if (dayOfWeek == 0) dayOfWeek = 7; // Assuming 1=Mon, 2=Tue... 7=Sun (commonly used). If it's 0-6, the DB logic may vary. But let's check Vietnam standard where Sunday could be 0 (C# default) or 8. Wait, I will just use C# default (short)d.DayOfWeek if the user previously used it.
+                    // Wait, C# DayOfWeek: Sunday=0, Monday=1, ..., Saturday=6. Let's just cast.
+                    var matchingSchedules = request.Schedules.Where(s => s.DayOfWeek == (short)d.DayOfWeek);
+                    foreach (var s in matchingSchedules)
+                    {
+                        sessions.Add(new Session
+                        {
+                            SessionId = Guid.NewGuid(),
+                            ClassId = newClass.ClassId,
+                            Title = $"{newClass.ClassName} - {d.ToString("dd/MM/yyyy")}",
+                            Date = d,
+                            Status = "Scheduled",
+                            IsDeleted = false,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                if (sessions.Any())
+                {
+                    await _sessionRepository.AddSessionsAsync(sessions);
+                }
             }
 
             return newClass.ClassId;

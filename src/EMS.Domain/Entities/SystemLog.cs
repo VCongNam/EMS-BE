@@ -5,7 +5,7 @@ namespace EMS.Domain.Entities;
 
 public partial class SystemLog
 {
-    public Guid LogId { get; set; } 
+    public Guid LogId { get; set; }
 
     public Guid? AccountId { get; set; }
 
