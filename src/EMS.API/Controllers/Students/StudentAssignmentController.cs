@@ -18,7 +18,7 @@ namespace EMS.API.Controllers.Students
             _studentAssignmentService = studentAssignmentService;
         }
 
-        [HttpGet]
+        [HttpGet("Assignments")]
         public async Task<IActionResult> GetAssignments(Guid classId, [FromQuery] AssignmentFilter filter)
         {
             var result = await _studentAssignmentService.GetClassAssignmentsAsync(classId, filter);
