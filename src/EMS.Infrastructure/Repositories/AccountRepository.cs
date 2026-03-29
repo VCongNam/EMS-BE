@@ -55,5 +55,10 @@ namespace EMS.Infrastructure.Repositories
             await context.SaveChangesAsync();
         }
 
+        public async Task<Account?> GetByPhoneAsync(string phone)
+        {
+            return await context.Accounts.FirstOrDefaultAsync( a => a.PhoneNumber == phone);
+        }
+
     }
 }

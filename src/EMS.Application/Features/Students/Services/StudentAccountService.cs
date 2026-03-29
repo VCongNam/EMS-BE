@@ -18,8 +18,11 @@ namespace EMS.Application.Features.Students.Services
         }
         public async Task<Guid> CreateStudentAsync(CreateStudentDto request)
         {
-            var existingAccount = await _accountRepository.GetByEmailAsync(request.Email);
-            if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
+            //var existingAccount = await _accountRepository.GetByEmailAsync(request.Email);
+            //if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
+
+            var phoneCheck = await _accountRepository.GetByPhoneAsync(request.PhoneNumber);
+            if(phoneCheck != null) throw new Exception("Số điện thoại đã được sử dụng!");
 
             var studentRole = await _accountRepository.GetRoleByNameAsync("Student");
             Guid newAccountId = Guid.NewGuid();

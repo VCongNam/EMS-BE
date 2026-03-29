@@ -14,5 +14,6 @@ namespace EMS.Domain.Interfaces
         Task<Account> AddAsync(Account account);
         Task UpdateAsync(Account account);
         Task<Role?> GetRoleByNameAsync(string roleName);
+        Task<Account?> GetByPhoneAsync(string phone);
     }
 }
