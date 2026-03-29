@@ -31,7 +31,7 @@ namespace EMS.Application.Features.Assignments.Services
                 GradeCategoryId = request.GradeCategoryId,
                 Title = request.Title,
                 Description = request.Description,
-                AttachmentPath = request.AttachmentPath,
+                //AttachmentPath = request.AttachmentPath,
                 DueDate = request.DueDate,
                 Status = "Published",
                 IsDeleted = false,
@@ -39,7 +39,6 @@ namespace EMS.Application.Features.Assignments.Services
             };
 
             await _assignmentRepository.AddAsync(assignment);
-            // await _unitOfWork.SaveChangesAsync(); // <-- BẮT BUỘC PHẢI GỌI HÀM NÀY ĐỂ LƯU XUỐNG DB
 
             return assignment.AssignmentId;
         }
@@ -53,7 +52,7 @@ namespace EMS.Application.Features.Assignments.Services
             }
             assignment.Title = request.Title;
             assignment.Description = request.Description;
-            assignment.AttachmentPath = request.AttachmentPath;
+            //assignment.AttachmentPath = request.AttachmentPath;
             assignment.DueDate = request.DueDate;
             assignment.GradeCategoryId = request.GradeCategoryId;
             assignment.Status = request.Status;

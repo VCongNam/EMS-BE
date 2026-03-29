@@ -83,7 +83,7 @@ namespace EMS.Application.Features.Classes.Services
             var newTask = new TeachingAssistantTask
             {
                 TataskId = Guid.NewGuid(),
-                ClassTaId = request.ClassTAID,
+                ClassTaid = request.ClassTAID,
                 Title = request.Title,
                 DueDate = request.DueDate,
                 Status = "Pending",

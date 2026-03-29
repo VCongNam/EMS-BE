@@ -1,132 +1,20 @@
-﻿using EMS.Application.Common.Interfaces;  
+﻿using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
-using FluentValidation.Validators;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Principal;
-using System.Text;
 using System.Threading.Tasks;
-
 
 namespace EMS.Application.Features.Accounts.Services
 {
     public class AccountService : IAccountService
     {
         private readonly IAccountRepository accountRepository;
-        private readonly IJwtTokenGenerator jwtTokenGenerator;
-        private readonly IEmailService emailService;
 
-        public AccountService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IEmailService emailService)
+        public AccountService(IAccountRepository accountRepository)
         {
             this.accountRepository = accountRepository;
-            this.jwtTokenGenerator = jwtTokenGenerator;
-            this.emailService = emailService;
-        }
-
-        
-        //Đăng ký
-        public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
-        {
-            var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
-            if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
-
-            // 2. Tự động lấy RoleID của "Teacher" từ Database
-            var teacherRole = await accountRepository.GetRoleByNameAsync("Teacher");
-            if (teacherRole == null) throw new Exception("Lỗi hệ thống: Không tìm thấy Role 'Teacher' trong CSDL!");
-
-            string otp = new Random().Next(100000, 999999).ToString();
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-            var newAccount = new Account
-            {
-                AccountId = Guid.NewGuid(),
-                Email = request.Email,
-                PasswordHash = hashedPassword,
-                FullName = request.FullName,
-                RoleId = teacherRole.RoleId, // Tự động gán quyền Teacher
-                Status = "Unverified",
-                VerificationToken = otp,
-                VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
-                CreatedAt = DateTime.UtcNow
-            };
-            var saveAccount = await accountRepository.AddAsync(newAccount);
-            await emailService.SendEmailAsync(request.Email, "EMS-OTP", $"Mã OTP của bạn là: {otp}");
-            return new AuthResponse
-            {
-                AccountId = saveAccount.AccountId,
-                Email = saveAccount.Email,
-                FullName = saveAccount.FullName
-            };
-        }
-        public async Task<bool> VerifyEmailAsync(VerifyEmailRequest request)
-        {
-            var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) throw new Exception("Tài khoản không tồn tại!");
-            if (account.Status == "Active") throw new Exception("Tài khoản đã được xác thực!");
-
-            if (account.VerificationToken != request.OtpCode) throw new Exception("Mã OTP không chính xác!");
-            if (account.VerificationTokenExpiresAt < DateTime.UtcNow) throw new Exception("Mã OTP đã hết hạn!");
-
-            account.Status = "Active";
-            account.VerificationToken = null;
-            account.VerificationTokenExpiresAt = null;
-
-            await accountRepository.UpdateAsync(account);
-            return true;
-        }
-
-        //Đăng nhập
-        public async Task<AuthResponse> LoginAsync(LoginRequest request)
-        {
-            var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) throw new Exception("Tài khoản không tồn tại!");
-
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash);
-
-            if (!isPasswordValid) throw new Exception("Sai mật khẩu!");
-            var roleName = account.Role?.RoleName ?? throw new Exception("Tài khoản bị lỗi dữ liệu phân quyền!");
-            var token = jwtTokenGenerator.GenerateToken(account, roleName);
-            return new AuthResponse
-            {
-                AccountId = account.AccountId,
-                Email = account.Email,
-                FullName = account.FullName,
-                Token = token
-            };
-        }
-
-        //Quên mật khẩu 
-        public async Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request)
-        {
-            var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) return true; // Trả về true để bảo mật tránh lộ email tồn tại
-
-            string resetOtp = new Random().Next(100000, 999999).ToString();
-            account.ResetPasswordToken = resetOtp;
-            account.ResetPasswordTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
-
-            await accountRepository.UpdateAsync(account);
-            await emailService.SendEmailAsync(request.Email, "EMS - Khôi phục mật khẩu", $"Mã khôi phục mật khẩu của bạn là: <b>{resetOtp}</b>");
-
-            return true;
-        }
-
-        public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request)
-        {
-            var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) throw new Exception("Yêu cầu không hợp lệ!");
-
-            if (account.ResetPasswordToken != request.OtpCode) throw new Exception("Mã OTP không chính xác!");
-            if (account.ResetPasswordTokenExpiresAt < DateTime.UtcNow) throw new Exception("Mã OTP đã hết hạn!");
-
-            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            account.ResetPasswordToken = null;
-            account.ResetPasswordTokenExpiresAt = null;
-
-            await accountRepository.UpdateAsync(account);
-            return true;
         }
 
         public async Task<UserProfileResponse> GetProfileAsync(Guid accountId)
@@ -134,7 +22,7 @@ namespace EMS.Application.Features.Accounts.Services
             var account = await accountRepository.GetByIdAsync(accountId);
             if (account == null) throw new Exception("Tài khoản không tồn tại!");
 
-            return new UserProfileResponse
+            var response = new UserProfileResponse
             {
                 AccountId = account.AccountId,
                 Email = account.Email,
@@ -142,25 +30,119 @@ namespace EMS.Application.Features.Accounts.Services
                 PhoneNumber = account.PhoneNumber,
                 RoleName = account.Role?.RoleName ?? "N/A",
                 Status = account.Status,
-                CreatedAt = (DateTime)account.CreatedAt
+                CreatedAt = (DateTime)account.CreatedAt!,
+                AvatarUrl = account.AvatarUrl
             };
+
+            // Gắn thông tin riêng tùy theo Role
+            switch (response.RoleName)
+            {
+                case "Teacher":
+                    response.RoleSpecificData = new
+                    {
+                        Bio = account.Teacher?.Bio,
+                        Specialization = account.Teacher?.Specialization,
+                        BankName = account.Teacher?.BankName,
+                        BankAccount = account.Teacher?.BankAccount,
+                        BankAccountName = account.Teacher?.BankAccountName
+                    };
+                    break;
+                case "TA":
+                    response.RoleSpecificData = new
+                    {
+                        Bio = account.TeachingAssistant?.Bio,
+                        BankName = account.TeachingAssistant?.BankName,
+                        BankAccount = account.TeachingAssistant?.BankAccount,
+                        BankAccountName = account.TeachingAssistant?.BankAccountName
+                    };
+                    break;
+                case "Student":
+                    response.RoleSpecificData = new
+                    {
+                        ParentName = account.Student?.ParentName,
+                        ParentPhone = account.Student?.ParentPhone,
+                        ParentEmail = account.Student?.ParentEmail,
+                        Address = account.Student?.Address,
+                        Dob = account.Student?.Dob
+                    };
+                    break;
+            }
+
+            return response;
         }
 
-        public async Task<UserProfileResponse> UpdateProfileAsync(Guid accountId, UpdateProfileRequest request)
+        public async Task<UserProfileResponse> UpdateTeacherProfileAsync(Guid accountId, UpdateTeacherProfileRequest request)
         {
             var account = await accountRepository.GetByIdAsync(accountId);
-            if (account == null) throw new Exception("Tài khoản không tồn tại!");
+            if (account == null || account.Role.RoleName != "Teacher")
+                throw new Exception("Tài khoản không hợp lệ hoặc không phải Giáo viên!");
+
+            // 1. Cập nhật thông tin chung ở bảng Account
+            account.FullName = request.FullName;
+            account.PhoneNumber = request.PhoneNumber;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            // 2. Cập nhật thông tin riêng ở bảng Teacher
+            if (account.Teacher != null)
+            {
+                account.Teacher.Bio = request.Bio;
+                account.Teacher.Specialization = request.Specialization;
+                account.Teacher.BankName = request.BankName;
+                account.Teacher.BankAccount = request.BankAccount;
+                account.Teacher.BankAccountName = request.BankAccountName;
+            }
+
+            await accountRepository.UpdateAsync(account);
+            return await GetProfileAsync(accountId);
+        }
+
+        public async Task<UserProfileResponse> UpdateTAProfileAsync(Guid accountId, UpdateTAProfileRequest request)
+        {
+            var account = await accountRepository.GetByIdAsync(accountId);
+            if (account == null || account.Role.RoleName != "TA")
+                throw new Exception("Tài khoản không hợp lệ hoặc không phải Trợ giảng!");
 
             account.FullName = request.FullName;
             account.PhoneNumber = request.PhoneNumber;
             account.UpdatedAt = DateTime.UtcNow;
 
-            await accountRepository.UpdateAsync(account);
+            if (account.TeachingAssistant != null)
+            {
+                account.TeachingAssistant.Bio = request.Bio;
+                account.TeachingAssistant.BankName = request.BankName;
+                account.TeachingAssistant.BankAccount = request.BankAccount;
+                account.TeachingAssistant.BankAccountName = request.BankAccountName;
+            }
 
+            await accountRepository.UpdateAsync(account);
             return await GetProfileAsync(accountId);
         }
 
-        public async Task<bool> ChangePassewordAsync(Guid accountId, ChangePasswordRequest request)
+        // 3. UPDATE CHO HỌC SINH (STUDENT)
+        public async Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, UpdateStudentProfileRequest request)
+        {
+            var account = await accountRepository.GetByIdAsync(accountId);
+            if (account == null || account.Role.RoleName != "Student")
+                throw new Exception("Tài khoản không hợp lệ hoặc không phải Học sinh!");
+
+            account.FullName = request.FullName;
+            account.PhoneNumber = request.PhoneNumber;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            if (account.Student != null)
+            {
+                account.Student.ParentName = request.ParentName;
+                account.Student.ParentPhone = request.ParentPhone;
+                account.Student.ParentEmail = request.ParentEmail;
+                account.Student.Address = request.Address;
+                account.Student.Dob = request.Dob;
+            }
+
+            await accountRepository.UpdateAsync(account);
+            return await GetProfileAsync(accountId);
+        }
+
+        public async Task<bool> ChangePasswordAsync(Guid accountId, ChangePasswordRequest request)
         {
             var account = await accountRepository.GetByIdAsync(accountId);
             if (account == null) throw new Exception("Tài khoản không tồn tại!");
@@ -173,35 +155,23 @@ namespace EMS.Application.Features.Accounts.Services
             return true;
         }
 
-        public async Task<AuthResponse> RegisterTAAsync(TARegisterDto request)
+
+        public async Task<(string NewUrl, string? OldUrl)> UpdateAvatarUrlAsync(Guid accountId, string avatarUrl)
         {
-            var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
-            if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-            var role = await accountRepository.GetRoleByNameAsync("TA");
-            var newAccount = new Account
-            {
-                AccountId = Guid.NewGuid(),
-                FullName = request.FullName,
-                RoleId = role.RoleId,
-                Email = request.Email,
-                PasswordHash = hashedPassword,
-                PhoneNumber = request.PhoneNumber,
-                Status = "Active",
-                IsDeleted = false,
-                CreatedAt = DateTime.Now,
-                TeachingAssistant = new TeachingAssistant
-                {
-                    Bio = request.Bio,
-                }
-            };
-            var saveAccount = await accountRepository.AddAsync(newAccount);
-            return new AuthResponse
-            {
-                AccountId = saveAccount.AccountId,
-                Email = saveAccount.Email,
-                FullName = saveAccount.FullName,
-            };
+            var account = await accountRepository.GetByIdAsync(accountId);
+            if (account == null) throw new Exception("Tài khoản không tồn tại!");
+
+            // 1. Giữ lại link cũ để tí nữa còn xóa trên Cloud
+            string? oldUrl = account.AvatarUrl;
+
+            // 2. Cập nhật link mới
+            account.AvatarUrl = avatarUrl;
+            account.UpdatedAt = DateTime.UtcNow;
+
+            await accountRepository.UpdateAsync(account);
+
+            return (avatarUrl, oldUrl);
         }
+
     }
 }

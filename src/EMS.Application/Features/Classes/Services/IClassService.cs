@@ -1,4 +1,4 @@
-﻿using EMS.Application.Features.Classes.DTOs;
+using EMS.Application.Features.Classes.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,9 +13,11 @@ namespace EMS.Application.Features.Classes.Services
         Task<IEnumerable<ClassMemberResponse>> GetClassMembersAsync(Guid classId);
         Task<bool> AssignStudentAsync(Guid classId, AssignStudentDto request);
         Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync();
+        Task<IEnumerable<ClassSummaryDto>> GetArchivedClassesAsync();
         Task<ClassDetailDto> GetClassDetailAsync(Guid classId);
         Task UpdateClassAsync(Guid classId, UpdateClassDto request);
         Task ArchiveClassAsync(Guid classId);
+        Task RestoreClassAsync(Guid classId);
     }
 
 }

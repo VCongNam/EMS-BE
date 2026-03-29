@@ -4,12 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EMS.Application.Features.Accounts.DTOs
+namespace EMS.Application.Features.Auth.DTOs
 {
     public class RegisterRequest
     {
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
+        public string RoleName { get; set; } = string.Empty;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using EMS.Application.Features.Accounts.DTOs;
+using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,18 +10,13 @@ namespace EMS.Application.Features.Accounts.Services
 {
     public interface IAccountService
     {
-        Task<AuthResponse> LoginAsync(LoginRequest request);
-        Task<bool> VerifyEmailAsync(VerifyEmailRequest request);
-        Task<AuthResponse> RegisterAsync(RegisterRequest request);
-        Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request);
-        Task<bool> ResetPasswordAsync(ResetPasswordRequest request);
-
 
         Task<UserProfileResponse> GetProfileAsync(Guid accountId);
-        Task<UserProfileResponse> UpdateProfileAsync(Guid accountId, UpdateProfileRequest reguest);
-        Task<bool> ChangePassewordAsync(Guid accountId, ChangePasswordRequest request);
-
-        Task<AuthResponse> RegisterTAAsync(TARegisterDto request);
-
+        //Task<UserProfileResponse> UpdateProfileAsync(Guid accountId, UpdateProfileRequest reguest);
+        Task<bool> ChangePasswordAsync(Guid accountId, ChangePasswordRequest request);
+        Task<UserProfileResponse> UpdateTeacherProfileAsync(Guid accountId, UpdateTeacherProfileRequest request);
+        Task<UserProfileResponse> UpdateTAProfileAsync(Guid accountId, UpdateTAProfileRequest request);
+        Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, UpdateStudentProfileRequest request);
+        Task<(string NewUrl, string? OldUrl)> UpdateAvatarUrlAsync(Guid accountId, string avatarUrl);
     }
 }

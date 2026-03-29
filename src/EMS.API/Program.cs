@@ -1,6 +1,10 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
+using EMS.Application.Features.Posts.Services;
+using EMS.Application.Features.Auth.Services;
+using EMS.Infrastructure.Configuration;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
@@ -12,9 +16,11 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using EMS.Infrastructure.Services;
 
+
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Students.Services;
+using EMS.Application.Features.Sessions.Services;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -25,26 +31,56 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 2. Đăng ký Repository (Domain <-> Infra)
+
+
+// 2. ĐĂNG KÝ EMAIL SERVICE (Dùng HttpClient cho Brevo API)
+// Dòng này cực kỳ quan trọng: Nó vừa đăng ký IEmailService, vừa nạp HttpClient vào EmailService
+builder.Services.AddHttpClient<IEmailService, EmailService>();
+
+
+// 3. ĐĂNG KÝ REPOSITORY (Infrastructure)
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+builder.Services.AddScoped<ITARepository, TARepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+
+
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+
 // 3. Đăng ký Service (Application)
+builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IStudentAccountService, StudentAccountService>();
 builder.Services.AddScoped<IStudentClassService, StudentClassService>();
 builder.Services.AddScoped<IStudentAssignmentService, StudentAssignmentService>();
-builder.Services.AddScoped<AccountService, AccountService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
+builder.Services.AddScoped<IClassTAService, ClassTAService>();
+builder.Services.AddScoped<IPostService, PostService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173") // Cho phép Frontend truy cập
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials(); // (Tùy chọn) Nếu có dùng cookie/token
+            policy.WithOrigins(
+                "http://localhost:5173",
+                "https://ems-fe-six.vercel.app",
+                "https://ems-be-2-s2nk.onrender.com"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
         });
 });
 
@@ -77,16 +113,8 @@ builder.Services.AddAuthentication(options =>
 //// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 //builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
+
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-
-builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
-builder.Services.AddScoped<IAssignmentService, AssignmentService>();
-builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
-builder.Services.AddScoped<ITARepository, TARepository>();
-builder.Services.AddScoped<IClassTAService, ClassTAService>();
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

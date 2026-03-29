@@ -22,12 +22,13 @@ namespace EMS.Infrastructure.Repositories
         public async Task AddAsync(Assignment assignment)
         {
             await _context.Assignments.AddAsync(assignment);
+            await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Assignment assignment)
         {
             _context.Assignments.Update(assignment);
-            await Task.CompletedTask; // Chỉ update state, chờ Service gọi SaveChanges
+            await _context.SaveChangesAsync();
         }
 
         public async Task<Assignment?> GetByIdAsync(Guid assignmentId)
