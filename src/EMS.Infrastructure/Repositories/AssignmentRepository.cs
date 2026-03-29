@@ -1,11 +1,10 @@
-﻿using EMS.Domain.Entities;
+using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EMS.Infrastructure.Repositories
@@ -37,19 +36,30 @@ namespace EMS.Infrastructure.Repositories
                 .FirstOrDefaultAsync(a => a.AssignmentId == assignmentId && a.IsDeleted != true);
         }
 
+        public async Task<Assignment?> GetByIdWithDetailsAsync(Guid assignmentId)
+        {
+            return await _context.Assignments
+                .Include(a => a.Author)
+                .Include(a => a.GradeCategory)
+                .Include(a => a.AssignmentAttachments)
+                .FirstOrDefaultAsync(a => a.AssignmentId == assignmentId && a.IsDeleted != true);
+        }
+
         public async Task<IEnumerable<Assignment>> GetByClassIdAsync(Guid classId)
         {
             return await _context.Assignments
                 .AsNoTracking()
-.Where(a => a.ClassId == classId && a.IsDeleted != true)
+                .Include(a => a.Author)
+                .Include(a => a.AssignmentAttachments)
+                .Where(a => a.ClassId == classId && a.IsDeleted != true)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
         }
 
         public async Task<int> CountPendingAssignmentAsync(Guid classId, Guid studentId)
         {
-            int count =await _context.Assignments
-                .Where(a => a.ClassId == classId 
+            int count = await _context.Assignments
+                .Where(a => a.ClassId == classId
                     && a.DueDate >= DateTime.UtcNow)
                 .Where(a => a.Submissions.Any(
                     s => s.AssignmentId == a.AssignmentId
@@ -68,7 +78,7 @@ namespace EMS.Infrastructure.Repositories
             int totalCount = await query.CountAsync();
 
             var dbResult = await query
-                .OrderByDescending(x => x.CreatedAt) // Bài mới nhất lên đầu
+                .OrderByDescending(x => x.CreatedAt)
                 .Skip((page - 1) * size)
                 .Take(size)
                 .Select(a => new
@@ -83,6 +93,25 @@ namespace EMS.Infrastructure.Repositories
                 .Select(x => (x.Assignment, x.Submission))
                 .ToList();
             return (items, totalCount);
+        }
+
+        // Attachment management
+        public async Task AddAttachmentAsync(AssignmentAttachment attachment)
+        {
+            await _context.AssignmentAttachments.AddAsync(attachment);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<AssignmentAttachment?> GetAttachmentByIdAsync(Guid attachmentId)
+        {
+            return await _context.AssignmentAttachments
+                .FirstOrDefaultAsync(a => a.AttachmentId == attachmentId);
+        }
+
+        public async Task RemoveAttachmentAsync(AssignmentAttachment attachment)
+        {
+            _context.AssignmentAttachments.Remove(attachment);
+            await _context.SaveChangesAsync();
         }
     }
 }

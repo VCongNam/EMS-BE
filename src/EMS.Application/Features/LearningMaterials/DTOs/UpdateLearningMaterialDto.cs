@@ -2,15 +2,13 @@ using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 
-namespace EMS.Application.Features.Assignments.DTOs
+namespace EMS.Application.Features.LearningMaterials.DTOs
 {
-    public class UpdateAssignmentDto
+    public class UpdateLearningMaterialDto
     {
-        public Guid GradeCategoryId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public DateTime DueDate { get; set; }
-        public bool AllowLateSubmission { get; set; }
+        public IFormFile? File { get; set; }
         public List<IFormFile>? NewAttachments { get; set; }
         public List<Guid>? RemoveAttachmentIds { get; set; }
     }

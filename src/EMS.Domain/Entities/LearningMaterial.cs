@@ -15,13 +15,17 @@ public partial class LearningMaterial
 
     public string FileUrl { get; set; } = null!;
 
-    public string FileType { get; set; } = null!;
-
     public bool? IsDeleted { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
+    public Guid AuthorId { get; set; }
+
+    public virtual Account Author { get; set; } = null!;
+
     public virtual Class Class { get; set; } = null!;
+
+    public virtual ICollection<MaterialAttachment> MaterialAttachments { get; set; } = new List<MaterialAttachment>();
 }
