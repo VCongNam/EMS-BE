@@ -539,7 +539,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.PostId).HasColumnName("PostID");
 
             entity.Property(e => e.FileName).HasMaxLength(255).IsRequired();
-            entity.Property(e => e.FileType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.FileType).HasMaxLength(100).IsRequired();
             entity.Property(e => e.FileUrl).HasColumnName("FileURL").IsRequired();
 
             // Map với kiểu int8 trong PostgreSQL
