@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Students.Services
 {
-    public interface IStudentService
+    public interface IStudentAssignmentService
     {
-        Task<Guid> CreateStudentAsync(CreateStudentDto request);
+        Task<PagedResult<AssignmentItemDto>> GetClassAssignmentsAsync(Guid classId, AssignmentFilter filter);
     }
 }

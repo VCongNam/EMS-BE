@@ -1,19 +1,22 @@
 ﻿using EMS.Application.Features.Students.DTOs;
 using EMS.Application.Features.Students.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EMS.API.Controllers
+namespace EMS.API.Controllers.Students
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class StudentController : ControllerBase
+    [Authorize]
+    public class StudentAccountController : ControllerBase
     {
-        private readonly IStudentService studentService;
+        private readonly IStudentAccountService _studentAccountService;
 
-        public StudentController(IStudentService studentService)
+
+        public StudentAccountController(IStudentAccountService studentAccountService)
         {
-            studentService = studentService;
+            _studentAccountService = studentAccountService;
         }
 
         [HttpPost("CreateStudentAccount")]
@@ -21,7 +24,7 @@ namespace EMS.API.Controllers
         {
             try
             {
-                var newStudentId = await studentService.CreateStudentAsync(request);
+                var newStudentId = await _studentAccountService.CreateStudentAsync(request);
                 return StatusCode(201, new { Message = "Create student account successfully!", StudentId = newStudentId });
             }
             catch (Exception ex)
@@ -30,5 +33,6 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
     }
 }

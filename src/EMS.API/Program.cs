@@ -55,12 +55,13 @@ builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection(
 // 3. Đăng ký Service (Application)
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IClassService, ClassService>();
-builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IStudentAccountService, StudentAccountService>();
+builder.Services.AddScoped<IStudentClassService, StudentClassService>();
+builder.Services.AddScoped<IStudentAssignmentService, StudentAssignmentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<ISessionService, SessionService>();
-
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();

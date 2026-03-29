@@ -46,5 +46,43 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<int> CountPendingAssignmentAsync(Guid classId, Guid studentId)
+        {
+            int count =await _context.Assignments
+                .Where(a => a.ClassId == classId 
+                    && a.DueDate >= DateTime.UtcNow)
+                .Where(a => a.Submissions.Any(
+                    s => s.AssignmentId == a.AssignmentId
+                    && s.StudentId == studentId))
+                .CountAsync();
+            return count;
+        }
+
+        public async Task<(List<(Assignment Assignment, Submission? Submission)> Items, int TotalCount)> GetStudentAssignmentsAsync(
+            Guid classId, Guid studentId, int page, int size)
+        {
+            var query = _context.Assignments
+                .Where(a => a.ClassId == classId)
+                .AsNoTracking();
+
+            int totalCount = await query.CountAsync();
+
+            var dbResult = await query
+                .OrderByDescending(x => x.CreatedAt) // Bài mới nhất lên đầu
+                .Skip((page - 1) * size)
+                .Take(size)
+                .Select(a => new
+                {
+                    Assignment = a,
+                    Submission = _context.Submissions.FirstOrDefault(s =>
+                        s.AssignmentId == a.AssignmentId &&
+                        s.StudentId == studentId)
+                })
+                .ToListAsync();
+            var items = dbResult
+                .Select(x => (x.Assignment, x.Submission))
+                .ToList();
+            return (items, totalCount);
+        }
     }
 }

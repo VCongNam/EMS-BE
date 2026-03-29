@@ -9,11 +9,10 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Students.Services
 {
-    public class StudentService : IStudentService
+    public class StudentAccountService : IStudentAccountService
     {
-        public readonly IAccountRepository _accountRepository;
-
-        public StudentService(IAccountRepository accountRepository)
+        private readonly IAccountRepository _accountRepository;
+        public StudentAccountService(IAccountRepository accountRepository)
         {
             _accountRepository = accountRepository;
         }
@@ -48,7 +47,7 @@ namespace EMS.Application.Features.Students.Services
                     Dob = DateOnly.FromDateTime(request.DOB),
                 }
             };
-             
+
             await _accountRepository.AddAsync(accountEntity);
             return newAccountId;
         }

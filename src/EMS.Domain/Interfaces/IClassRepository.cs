@@ -29,7 +29,9 @@ namespace EMS.Domain.Interfaces
         Task<ClassTum> AddClassTAAsync(ClassTum classTa);
         Task<ClassTum> GetClassTAAsync(Guid classId, Guid taId);
         Task UpdateClassTAAsync(ClassTum classTa);
-
+        Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size, string? status);
+        Task<ClassEnrollment> GetClassSummaryAsync(Guid classId, Guid studentId);
+        Task<(List<Post> Items, int TotalCount)> GetClassPostAsync(Guid classId, int page, int size, DateTime? fromDate, DateTime? toDate);
     }
 
 }
