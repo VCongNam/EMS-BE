@@ -175,7 +175,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.FileName).HasMaxLength(255);
-            entity.Property(e => e.FileType).HasMaxLength(50);
+            entity.Property(e => e.FileType).HasMaxLength(100);
             entity.Property(e => e.FileUrl).HasColumnName("FileURL");
 
             entity.HasOne(d => d.Assignment).WithMany(p => p.AssignmentAttachments)

@@ -229,16 +229,36 @@ namespace EMS.Application.Features.Assignments.Services
             return "Published";
         }
 
+        //private void ValidateFile(string fileName, long fileSize, string contentType)
+        //{
+        //    if (fileSize > MaxFileSize)
+        //        throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
+
+
+        //    if (contentType.StartsWith("image/")) return;
+
+        //    if (!AllowedMimeTypes.Contains(contentType))
+        //        throw new Exception($"File type '{contentType}' is not allowed.");
+        //}
         private void ValidateFile(string fileName, long fileSize, string contentType)
         {
             if (fileSize > MaxFileSize)
                 throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
 
-          
-            if (contentType.StartsWith("image/")) return;
+            var ext = Path.GetExtension(fileName).ToLower();
 
-            if (!AllowedMimeTypes.Contains(contentType))
-                throw new Exception($"File type '{contentType}' is not allowed.");
+            var allowedExtensions = new[]
+            {
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp",
+        ".pdf",
+        ".doc", ".docx",
+        ".xls", ".xlsx",
+        ".ppt", ".pptx",
+        ".zip", ".rar"
+    };
+
+            if (!allowedExtensions.Contains(ext))
+                throw new Exception($"File '{ext}' is not allowed.");
         }
     }
 }
