@@ -10,10 +10,12 @@ namespace EMS.Domain.Interfaces
     public interface IProgressReportRepository
     {
         Task AddAsync(ProgressReport report);
-        Task<ProgressReport?> GetByIdAsync(Guid reportId);
-        Task<ProgressReport?> GetByIdWithDetailsAsync(Guid reportId);
-        Task<IEnumerable<ProgressReport>> GetReportsByTeacherIdAsync(Guid teacherId);
         Task UpdateAsync(ProgressReport report);
         Task DeleteAsync(ProgressReport report);
+        Task<ProgressReport?> GetByIdAsync(Guid reportId);
+
+        Task<IEnumerable<ProgressReport>> GetReportsByStudentAndClassAsync(Guid studentId, Guid classId);
+        Task<IEnumerable<ProgressReport>> GetReportsByClassIdAsync(Guid classId);
+        Task<IEnumerable<ProgressReport>> GetReportsByTeacherAsync(Guid teacherId);
     }
 }
