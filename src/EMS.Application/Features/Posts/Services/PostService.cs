@@ -13,121 +13,179 @@ namespace EMS.Application.Features.Posts.Services
     public class PostService : IPostService
     {
         private readonly IPostRepository postRepository;
+        private readonly ISupabaseStorageService storageService;
         private readonly ICurrentUserService currentUserService;
 
-        // TODO: Mở comment khi làm chức năng Upload File
-        // private readonly ISupabaseStorageService _storageService;
+        private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
+        private static readonly string[] AllowedMimeTypes =
+        {
+            "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/svg+xml", "image/bmp",
+            "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/zip", "application/x-rar-compressed"
+        };
 
         public PostService(
             IPostRepository postRepository,
-            ICurrentUserService currentUserService
-            /* TODO: Mở comment -> , ISupabaseStorageService storageService */)
+            ISupabaseStorageService storageService,
+            ICurrentUserService currentUserService)
         {
             this.postRepository = postRepository;
+            this.storageService = storageService;
             this.currentUserService = currentUserService;
-            // _storageService = storageService;
         }
 
         public async Task<Guid> CreatePostAsync(CreatePostDto request)
         {
-            string? attachmentUrl = null;
-
-            // TODO: Mở comment khi làm chức năng Upload File
-            /*
-            if (request.Attachment != null)
+            var postId = Guid.NewGuid();
+            var post = new Post
             {
-                attachmentUrl = await _storageService.UploadFileAsync(request.Attachment, "post-attachments");
-            }
-            */
-
-            var newPost = new Post
-            {
-                PostId = Guid.NewGuid(),
+                PostId = postId,
                 ClassId = request.ClassId,
                 AuthorId = currentUserService.UserId,
+                Title = request.Title,
                 Content = request.Content,
-                AttachmentUrl = attachmentUrl,
-                CreatedAt = DateTime.UtcNow,
-                IsDeleted = false
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
             };
 
-            await postRepository.AddAsync(newPost);
-            return newPost.PostId;
+            await postRepository.AddAsync(post);
+
+            if (request.Attachments != null && request.Attachments.Count > 0)
+            {
+                foreach (var file in request.Attachments)
+                {
+                    ValidateFile(file.FileName, file.Length, file.ContentType);
+                    var attachmentUrl = await storageService.UploadFileAsync(file, $"posts/{postId}");
+
+                    var attachment = new PostAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        PostId = postId,
+                        FileName = file.FileName,
+                        FileUrl = attachmentUrl,
+                        FileType = file.ContentType,
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await postRepository.AddAttachmentAsync(attachment);
+                }
+            }
+
+            return postId;
         }
 
-        public async Task<PostResponseDto> GetPostByIdAsync(Guid postId)
+        public async Task UpdatePostAsync(Guid id, UpdatePostDto request)
+        {
+            var post = await postRepository.GetByIdAsync(id);
+            if (post == null) throw new Exception($"Post with ID {id} not found.");
+
+            post.Title = request.Title;
+            post.Content = request.Content;
+            post.UpdatedAt = DateTime.UtcNow;
+
+            await postRepository.UpdateAsync(post);
+
+            if (request.RemoveAttachmentIds != null && request.RemoveAttachmentIds.Count > 0)
+            {
+                foreach (var attachmentId in request.RemoveAttachmentIds)
+                {
+                    var attachment = await postRepository.GetAttachmentByIdAsync(attachmentId);
+                    if (attachment != null)
+                    {
+                        await storageService.DeleteFileByUrlAsync(attachment.FileUrl);
+                        await postRepository.RemoveAttachmentAsync(attachment);
+                    }
+                }
+            }
+
+            if (request.NewAttachments != null && request.NewAttachments.Count > 0)
+            {
+                foreach (var file in request.NewAttachments)
+                {
+                    ValidateFile(file.FileName, file.Length, file.ContentType);
+                    var attachmentUrl = await storageService.UploadFileAsync(file, $"posts/{id}");
+
+                    var attachment = new PostAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        PostId = id,
+                        FileName = file.FileName,
+                        FileUrl = attachmentUrl,
+                        FileType = file.ContentType,
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await postRepository.AddAttachmentAsync(attachment);
+                }
+            }
+        }
+
+        public async Task DeletePostAsync(Guid id)
+        {
+            var post = await postRepository.GetByIdAsync(id);
+            if (post == null) throw new Exception("Post not found.");
+
+            post.IsDeleted = true;
+            post.UpdatedAt = DateTime.UtcNow;
+            await postRepository.UpdateAsync(post);
+        }
+
+        public async Task<PostResponseDto> GetPostDetailAsync(Guid postId)
         {
             var post = await postRepository.GetByIdWithDetailsAsync(postId);
-
-            if (post == null || post.IsDeleted == true)
-                throw new Exception("Post not found or has been deleted!");
+            if (post == null) throw new Exception("Post not found or has been deleted.");
 
             return new PostResponseDto
             {
                 PostId = post.PostId,
                 ClassId = post.ClassId,
-                AuthorName = post.Author?.FullName ?? "Unknown",
+                AuthorName = post.Author?.FullName ?? null!,
+                Title = post.Title ?? null!,
                 Content = post.Content,
-                AttachmentUrl = post.AttachmentUrl,
                 CreatedAt = post.CreatedAt,
                 UpdatedAt = post.UpdatedAt,
-                // Lọc bỏ những Comment đã bị xóa mềm (Soft Delete)
-                Comments = post.Comments.Where(c => c.IsDeleted != true).Select(c => new CommentResponseDto
+                Attachments = post.PostAttachments.Select(a => new PostAttachmentDto
+                {
+                    AttachmentId = a.AttachmentId,
+                    FileName = a.FileName,
+                    FileUrl = a.FileUrl,
+                    FileType = a.FileType,
+                    FileSize = a.FileSize,
+                    CreatedAt = a.CreatedAt
+                }).ToList(),
+                Comments = post.Comments.Select(c => new CommentResponseDto
                 {
                     CommentId = c.CommentId,
+                    AuthorId = c.AuthorId,
+                    AuthorName = c.Author?.FullName ?? null!,
                     Content = c.Content,
-                    AuthorName = c.Author?.FullName ?? "Unknown",
                     CreatedAt = c.CreatedAt
                 }).OrderBy(c => c.CreatedAt).ToList()
             };
         }
 
-        public async Task UpdatePostAsync(Guid postId, UpdatePostDto request)
+        public async Task<IEnumerable<PostSummaryDto>> GetPostsByClassIdAsync(Guid classId)
         {
-            var post = await postRepository.GetByIdAsync(postId);
+            var posts = await postRepository.GetByClassIdAsync(classId);
 
-            if (post == null || post.IsDeleted == true)
-                throw new Exception("Post not found!");
-
-            if (post.AuthorId != currentUserService.UserId)
-                throw new Exception("Access Denied: You are not the author of this post!");
-
-            // TODO: Mở comment khi làm chức năng Upload File
-            /*
-            if (request.Attachment != null)
+            return posts.Select(p => new PostSummaryDto
             {
-                post.AttachmentUrl = await _storageService.UploadFileAsync(request.Attachment, "post-attachments");
-            }
-            */
-
-            post.Content = request.Content;
-            post.UpdatedAt = DateTime.UtcNow;
-
-            await postRepository.UpdateAsync(post);
+                PostId = p.PostId,
+                Title = p.Title ?? null!,
+                Content = p.Content,
+                AuthorName = p.Author?.FullName ?? null!,
+                CreatedAt = p.CreatedAt,
+                AttachmentCount = p.PostAttachments.Count,
+                CommentCount = p.Comments.Count
+            });
         }
 
-        public async Task DeletePostAsync(Guid postId)
+        public async Task<Guid> CreateCommentAsync(Guid postId, CreateCommentDto request)
         {
             var post = await postRepository.GetByIdAsync(postId);
-
-            if (post == null || post.IsDeleted == true)
-                throw new Exception("Post not found!");
-
-            if (post.AuthorId != currentUserService.UserId)
-                throw new Exception("Access Denied: You are not the author of this post!");
-
-            post.IsDeleted = true; // Xóa mềm
-            post.UpdatedAt = DateTime.UtcNow;
-
-            await postRepository.UpdateAsync(post);
-        }
-
-        public async Task<Guid> AddCommentAsync(Guid postId, CreateCommentDto request)
-        {
-            var post = await postRepository.GetByIdAsync(postId);
-
-            if (post == null || post.IsDeleted == true)
-                throw new Exception("Cannot comment: Post not found!");
+            if (post == null) throw new Exception("Post not found.");
 
             var comment = new Comment
             {
@@ -135,13 +193,38 @@ namespace EMS.Application.Features.Posts.Services
                 PostId = postId,
                 AuthorId = currentUserService.UserId,
                 Content = request.Content,
-                CreatedAt = DateTime.UtcNow,
-                IsDeleted = false
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
             };
 
             await postRepository.AddCommentAsync(comment);
             return comment.CommentId;
         }
-        
+
+        public async Task DeleteCommentAsync(Guid commentId)
+        {
+            var comment = await postRepository.GetCommentByIdAsync(commentId);
+            if (comment == null) throw new Exception("Comment not found.");
+
+            if (comment.AuthorId != currentUserService.UserId)
+                throw new Exception("You do not have permission to delete this comment.");
+
+            comment.IsDeleted = true;
+            comment.UpdatedAt = DateTime.UtcNow;
+
+            await postRepository.UpdateCommentAsync(comment);
+        }
+
+        private void ValidateFile(string fileName, long fileSize, string contentType)
+        {
+            if (fileSize > MaxFileSize)
+                throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
+
+            if (contentType.StartsWith("image/")) return;
+
+            if (!AllowedMimeTypes.Contains(contentType))
+                throw new Exception($"File type '{contentType}' is not allowed.");
+        }
+
     }
 }
