@@ -41,6 +41,7 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<Notification> Notifications { get; set; }
 
     public virtual DbSet<Post> Posts { get; set; }
+    public virtual DbSet<PostAttachment> PostAttachments { get; set; }
 
     public virtual DbSet<ProgressReport> ProgressReports { get; set; }
 
@@ -502,7 +503,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.PostId)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("PostID");
-            entity.Property(e => e.AttachmentUrl).HasColumnName("AttachmentURL");
+            entity.Property(e => e.Title).HasMaxLength(255);
             entity.Property(e => e.AuthorId).HasColumnName("AuthorID");
             entity.Property(e => e.ClassId).HasColumnName("ClassID");
             entity.Property(e => e.CreatedAt)
@@ -522,6 +523,39 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.ClassId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("Post_ClassID_fkey");
+        });
+
+        modelBuilder.Entity<PostAttachment>(entity =>
+        {
+            // Thiết lập Khóa chính
+            entity.HasKey(e => e.AttachmentId).HasName("PostAttachment_pkey");
+
+            entity.ToTable("PostAttachment");
+
+            entity.Property(e => e.AttachmentId)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("AttachmentID");
+
+            entity.Property(e => e.PostId).HasColumnName("PostID");
+
+            entity.Property(e => e.FileName).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.FileType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.FileUrl).HasColumnName("FileURL").IsRequired();
+
+            // Map với kiểu int8 trong PostgreSQL
+            entity.Property(e => e.FileSize).HasColumnType("bigint");
+
+            // Map với kiểu timestamptz trong PostgreSQL
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp with time zone");
+
+            // Thiết lập Khóa ngoại và Xóa liên đới (Cascade Delete)
+            entity.HasOne(d => d.Post)
+                .WithMany(p => p.PostAttachments)
+                .HasForeignKey(d => d.PostId)
+                .OnDelete(DeleteBehavior.Cascade) // Xóa Post thì tự động xóa Attachment
+                .HasConstraintName("PostAttachment_PostID_fkey");
         });
 
         modelBuilder.Entity<ProgressReport>(entity =>

@@ -10,9 +10,12 @@ namespace EMS.Application.Features.Posts.Services
     public interface IPostService
     {
         Task<Guid> CreatePostAsync(CreatePostDto request);
-        Task<PostResponseDto> GetPostByIdAsync(Guid postId);
-        Task UpdatePostAsync(Guid postId, UpdatePostDto request);
-        Task DeletePostAsync(Guid postId);
-        Task<Guid> AddCommentAsync(Guid postId, CreateCommentDto request);
+        Task UpdatePostAsync(Guid id, UpdatePostDto request);
+        Task DeletePostAsync(Guid id);
+        Task<PostResponseDto> GetPostDetailAsync(Guid postId);
+        Task<IEnumerable<PostSummaryDto>> GetPostsByClassIdAsync(Guid classId);
+
+        Task<Guid> CreateCommentAsync(Guid postId, CreateCommentDto request);
+        Task DeleteCommentAsync(Guid commentId);
     }
 }

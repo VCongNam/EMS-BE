@@ -18,9 +18,62 @@ namespace EMS.Infrastructure.Repositories
         {
             this.context = context;
         }
+
         public async Task AddAsync(Post post)
         {
             await context.Posts.AddAsync(post);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task UpdateAsync(Post post)
+        {
+            context.Posts.Update(post);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<Post?> GetByIdAsync(Guid postId)
+        {
+            return await context.Posts
+                .FirstOrDefaultAsync(m => m.PostId == postId && m.IsDeleted != true);
+        }
+
+        public async Task<Post?> GetByIdWithDetailsAsync(Guid postId)
+        {
+            return await context.Posts
+                .Include(m => m.Author)
+                .Include(m => m.PostAttachments)
+                .Include(m => m.Comments.Where(c => c.IsDeleted != true))
+                    .ThenInclude(c => c.Author)
+                .FirstOrDefaultAsync(m => m.PostId == postId && m.IsDeleted != true);
+        }
+
+        public async Task<IEnumerable<Post>> GetByClassIdAsync(Guid classId)
+        {
+            return await context.Posts
+                .AsNoTracking()
+                .Include(m => m.Author)
+                .Include(m => m.PostAttachments)
+                .Include(m => m.Comments.Where(c => c.IsDeleted != true))
+                .Where(m => m.ClassId == classId && m.IsDeleted != true)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task AddAttachmentAsync(PostAttachment attachment)
+        {
+            await context.PostAttachments.AddAsync(attachment);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<PostAttachment?> GetAttachmentByIdAsync(Guid attachmentId)
+        {
+            return await context.PostAttachments
+                .FirstOrDefaultAsync(a => a.AttachmentId == attachmentId);
+        }
+
+        public async Task RemoveAttachmentAsync(PostAttachment attachment)
+        {
+            context.PostAttachments.Remove(attachment);
             await context.SaveChangesAsync();
         }
 
@@ -30,23 +83,15 @@ namespace EMS.Infrastructure.Repositories
             await context.SaveChangesAsync();
         }
 
-        public async Task<Post?> GetByIdAsync(Guid postId)
+        public async Task<Comment?> GetCommentByIdAsync(Guid commentId)
         {
-            return await context.Posts.FirstOrDefaultAsync(p => p.PostId == postId);
+            return await context.Comments
+                .FirstOrDefaultAsync(c => c.CommentId == commentId && c.IsDeleted != true);
         }
 
-        public async Task<Post?> GetByIdWithDetailsAsync(Guid postId)
+        public async Task UpdateCommentAsync(Comment comment)
         {
-            return await context.Posts
-                .Include(p => p.Author)
-                .Include(p => p.Comments)
-                    .ThenInclude(c => c.Author)
-                .FirstOrDefaultAsync(p => p.PostId == postId);
-        }
-
-        public async Task UpdateAsync(Post post)
-        {
-            context.Posts.Update(post);
+            context.Comments.Update(comment);
             await context.SaveChangesAsync();
         }
     }

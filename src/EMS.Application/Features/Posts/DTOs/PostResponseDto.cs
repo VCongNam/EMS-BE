@@ -11,10 +11,11 @@ namespace EMS.Application.Features.Posts.DTOs
         public Guid PostId { get; set; }
         public Guid ClassId { get; set; }
         public string AuthorName { get; set; } = null!;
+        public string Title { get; set; } = null!;
         public string Content { get; set; } = null!;
-        public string? AttachmentUrl { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public List<PostAttachmentDto> Attachments { get; set; } = new();
         public List<CommentResponseDto> Comments { get; set; } = new();
     }
 }
