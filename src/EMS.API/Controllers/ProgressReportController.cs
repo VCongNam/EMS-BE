@@ -17,93 +17,127 @@ namespace EMS.API.Controllers
             this.reportService = reportService;
         }
 
-        // Chức năng: Create Progress Report
+        // --- 1. Tạo mới (Draft) ---
         [HttpPost]
-        public async Task<IActionResult> CreateProgressReport([FromBody] CreateProgressReportDto request)
+        [Authorize(Roles = "Teacher,Admin")]
+        public async Task<IActionResult> CreateReport([FromBody] CreateProgressReportDto request)
         {
             try
             {
                 var reportId = await reportService.CreateReportAsync(request);
-                return StatusCode(201, new { Message = "Progress report created successfully!", ReportId = reportId });
+                return Ok(new { Message = "Tạo báo cáo thành công", ReportId = reportId });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
-        // Chức năng: View Teaching Dashboard (Lấy list report của giáo viên)
-        [HttpGet("my-reports")]
-        public async Task<IActionResult> GetMyTeachingReports()
+        // --- 2. Cập nhật bản nháp ---
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Teacher,Admin")]
+        public async Task<IActionResult> UpdateReport(Guid id, [FromBody] UpdateProgressReportDto request)
         {
             try
             {
-                var reports = await reportService.GetMyTeachingReportsAsync();
-                return Ok(new { Message = "Success", Data = reports });
+                await reportService.UpdateReportAsync(id, request);
+                return Ok(new { Message = "Cập nhật báo cáo thành công" });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
-        // Chức năng: View Detail
+        // --- 3. Xóa báo cáo ---
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Teacher,Admin")]
+        public async Task<IActionResult> DeleteReport(Guid id)
+        {
+            try
+            {
+                await reportService.DeleteReportAsync(id);
+                return Ok(new { Message = "Xóa báo cáo thành công" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // --- 4. Gửi báo cáo (Publish) ---
+        [HttpPatch("{id}/send")]
+        [Authorize(Roles = "Teacher,Admin")]
+        public async Task<IActionResult> SendReport(Guid id)
+        {
+            try
+            {
+                await reportService.SendReportAsync(id);
+                return Ok(new { Message = "Đã gửi báo cáo thành công tới Phụ huynh/Học sinh!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // --- 5. Lấy chi tiết ---
         [HttpGet("{id}")]
         public async Task<IActionResult> GetReportDetail(Guid id)
         {
             try
             {
-                var report = await reportService.GetReportByIdAsync(id);
-                return Ok(new { Message = "Success", Data = report });
+                var report = await reportService.GetReportDetailAsync(id);
+                return Ok(report);
             }
             catch (Exception ex)
             {
-                return NotFound(new { Error = ex.Message });
+                return NotFound(new { Message = ex.Message });
             }
         }
 
-        // Chức năng: Update Progress Report
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProgressReport(Guid id, [FromBody] UpdateProgressReportDto request)
+        // --- 6. Dành cho Học sinh/Phụ huynh (Chỉ thấy Published) ---
+        [HttpGet("student/{studentId}/class/{classId}")]
+        public async Task<IActionResult> GetReportsForStudent(Guid studentId, Guid classId)
         {
             try
             {
-                await reportService.UpdateReportAsync(id, request);
-                return Ok(new { Message = "Progress report updated successfully!" });
+                var reports = await reportService.GetReportsForStudentAsync(studentId, classId);
+                return Ok(reports);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
-        // Chức năng: Delete Progress Report
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProgressReport(Guid id)
+        // --- 7. Dành cho Giáo viên (Quản lý toàn bộ 1 Lớp) ---
+        [HttpGet("class/{classId}")]
+        public async Task<IActionResult> GetReportsByClass(Guid classId)
         {
             try
             {
-                await reportService.DeleteReportAsync(id);
-                return Ok(new { Message = "Progress report deleted successfully!" });
+                var reports = await reportService.GetReportsByClassAsync(classId);
+                return Ok(reports);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
-        // Chức năng: Send Progress Report (Non-UI)
-        [HttpPost("{id}/send")]
-        public async Task<IActionResult> SendProgressReport(Guid id)
+        // --- 8. Dành cho Giáo viên (Dashboard tổng quan) ---
+        [HttpGet("teacher/dashboard")]
+        public async Task<IActionResult> GetTeacherDashboardReports()
         {
             try
             {
-                await reportService.SendReportAsync(id);
-                return Ok(new { Message = "Progress report sent successfully!" });
+                var reports = await reportService.GetReportsByTeacherAsync();
+                return Ok(reports);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
     }

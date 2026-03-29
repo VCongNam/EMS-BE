@@ -4,6 +4,7 @@ using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.Auth.Services;
+using EMS.Application.Features.ProgressReports.Services;
 using EMS.Infrastructure.Configuration;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
@@ -50,6 +51,7 @@ builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITARepository, TARepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialRepository>();
+builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
 
 
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
@@ -81,6 +83,7 @@ builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<IClassTAService, ClassTAService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
+builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 
 builder.Services.AddCors(options =>
 {

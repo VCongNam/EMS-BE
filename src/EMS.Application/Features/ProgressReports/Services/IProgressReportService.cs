@@ -9,11 +9,18 @@ namespace EMS.Application.Features.ProgressReports.Services
 {
     public interface IProgressReportService
     {
+        // CRUD Cơ bản
         Task<Guid> CreateReportAsync(CreateProgressReportDto request);
-        Task<ProgressReportResponseDto> GetReportByIdAsync(Guid reportId);
-        Task<IEnumerable<ProgressReportResponseDto>> GetMyTeachingReportsAsync();
-        Task UpdateReportAsync(Guid reportId, UpdateProgressReportDto request);
-        Task DeleteReportAsync(Guid reportId);
-        Task SendReportAsync(Guid reportId);
+        Task UpdateReportAsync(Guid id, UpdateProgressReportDto request);
+        Task DeleteReportAsync(Guid id);
+        Task<ProgressReportResponseDto> GetReportDetailAsync(Guid id);
+
+        // Các Use Case lấy danh sách
+        Task<IEnumerable<ProgressReportResponseDto>> GetReportsForStudentAsync(Guid studentId, Guid classId);
+        Task<IEnumerable<ProgressReportResponseDto>> GetReportsByClassAsync(Guid classId);
+        Task<IEnumerable<ProgressReportResponseDto>> GetReportsByTeacherAsync();
+
+        // Use Case gửi báo cáo
+        Task SendReportAsync(Guid id);
     }
 }
