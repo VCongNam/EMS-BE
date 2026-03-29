@@ -136,5 +136,33 @@ namespace EMS.Infrastructure.Repositories
                 .Where(ce => ce.ClassId == session.ClassId && ce.Status == "Active")
                 .ToListAsync();
         }
+
+        public async Task<List<(Session Session, Attendance? Attendance)>> GetStudentSchedulesAsync( Guid studentId, DateTime fromDate, DateTime toDate, Guid? classId)
+        {
+            var query = _context.Sessions
+                .Include(s => s.Class)
+                .Where(s => s.Date >= DateOnly.FromDateTime(fromDate) && s.Date <= DateOnly.FromDateTime(toDate))
+                .AsNoTracking();
+
+            if (classId.HasValue)
+            {
+                query = query.Where(s => s.ClassId == classId.Value);
+            }
+
+            query = query.Where(s =>_context.ClassEnrollments.Any(ce =>
+                ce.ClassId == classId && ce.StudentId == studentId));
+
+            var dbResult = await query
+                .OrderBy(s => s.Date) 
+                .Select(s => new
+                {
+                    Session = s,
+                    Attendance = _context.Attendances.FirstOrDefault(a =>
+                        a.SessionId == s.SessionId &&
+                        a.StudentId == studentId)
+                })
+                .ToListAsync();
+            return dbResult.Select(x => (x.Session, x.Attendance)).ToList();
+        }
     }
 }

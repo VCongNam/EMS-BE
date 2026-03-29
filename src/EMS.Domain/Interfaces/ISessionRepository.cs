@@ -24,5 +24,10 @@ namespace EMS.Domain.Interfaces
         Task UpdateRangeAsync(IEnumerable<Attendance> attendances);
         
         Task<IEnumerable<ClassEnrollment>> GetStudentsForSessionAsync(Guid sessionId);
+        Task<List<(Session Session, Attendance? Attendance)>> GetStudentSchedulesAsync(
+            Guid studentId,
+            DateTime fromDate,
+            DateTime toDate,
+            Guid? classId);
     }
 }
