@@ -12,10 +12,11 @@ namespace EMS.API.Controllers.Students
     public class StudentClassController : ControllerBase
     {
         private readonly IStudentClassService _studentClassService;
-
-        public StudentClassController(IStudentClassService studentClassService)
+        private readonly IStudentMaterialService _studentMaterialService;
+        public StudentClassController(IStudentClassService studentClassService, IStudentMaterialService studentMaterialService)
         {
             _studentClassService = studentClassService;
+            _studentMaterialService = studentMaterialService;
         }
 
         [HttpGet("MyClasses")]
@@ -64,6 +65,24 @@ namespace EMS.API.Controllers.Students
                 return Ok(new
                 {
                     Message = "Lấy bảng tin thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("{classId}/materials")]
+        public async Task<IActionResult> GetMaterials(Guid classId)
+        {
+            try
+            {
+                var result = await _studentMaterialService.GetClassMaterialsAsync(classId);
+                return Ok(new
+                {
+                    Message = "Lấy danh sách tài liệu thành công",
                     Data = result
                 });
             }
