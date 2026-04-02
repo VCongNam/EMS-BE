@@ -4,7 +4,6 @@ using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,7 +15,7 @@ namespace EMS.Application.Features.LearningMaterials.Services
         private readonly ISupabaseStorageService _storageService;
         private readonly ICurrentUserService _currentUserService;
 
-        // Giới hạn file: 10MB (theo cấu hình Supabase bucket)
+        // Giới hạn file: 10MB
         private const long MaxFileSize = 10 * 1024 * 1024;
         private static readonly string[] AllowedMimeTypes =
         {
@@ -44,15 +43,7 @@ namespace EMS.Application.Features.LearningMaterials.Services
 
         public async Task<Guid> CreateLearningMaterialAsync(CreateLearningMaterialDto request)
         {
-            if (request.File == null || request.File.Length == 0)
-                throw new Exception("Main file is required for learning material.");
-
-            ValidateFile(request.File.FileName, request.File.Length, request.File.ContentType);
-
             var materialId = Guid.NewGuid();
-
-            // Upload file chính
-            var fileUrl = await _storageService.UploadFileAsync(request.File, $"materials/{materialId}");
 
             var material = new LearningMaterial
             {
@@ -61,14 +52,14 @@ namespace EMS.Application.Features.LearningMaterials.Services
                 AuthorId = _currentUserService.UserId,
                 Title = request.Title,
                 Description = request.Description,
-                FileUrl = fileUrl,
+                // Đã loại bỏ FileUrl ở đây
                 IsDeleted = false,
                 CreatedAt = DateTime.UtcNow
             };
 
             await _materialRepository.AddAsync(material);
 
-            // Upload attachments phụ nếu có
+            // Chỉ xử lý danh sách Attachments nếu có
             if (request.Attachments != null && request.Attachments.Count > 0)
             {
                 foreach (var file in request.Attachments)
@@ -104,22 +95,11 @@ namespace EMS.Application.Features.LearningMaterials.Services
             material.Description = request.Description;
             material.UpdatedAt = DateTime.UtcNow;
 
-            // Nếu có file mới thay thế file chính
-            if (request.File != null && request.File.Length > 0)
-            {
-                ValidateFile(request.File.FileName, request.File.Length, request.File.ContentType);
-
-                // Xóa file cũ trên Supabase
-                await _storageService.DeleteFileByUrlAsync(material.FileUrl);
-
-                // Upload file mới
-                var newFileUrl = await _storageService.UploadFileAsync(request.File, $"materials/{id}");
-                material.FileUrl = newFileUrl;
-            }
+            // Không còn logic cập nhật FileUrl chính ở đây
 
             await _materialRepository.UpdateAsync(material);
 
-            // Xóa attachments cũ nếu có yêu cầu
+            // 1. Xóa các attachments cũ theo yêu cầu
             if (request.RemoveAttachmentIds != null && request.RemoveAttachmentIds.Count > 0)
             {
                 foreach (var attachmentId in request.RemoveAttachmentIds)
@@ -133,7 +113,7 @@ namespace EMS.Application.Features.LearningMaterials.Services
                 }
             }
 
-            // Upload attachments mới nếu có
+            // 2. Thêm các attachments mới nếu có
             if (request.NewAttachments != null && request.NewAttachments.Count > 0)
             {
                 foreach (var file in request.NewAttachments)
@@ -181,7 +161,7 @@ namespace EMS.Application.Features.LearningMaterials.Services
                 AuthorName = material.Author?.FullName ?? "Unknown",
                 Title = material.Title,
                 Description = material.Description,
-                FileUrl = material.FileUrl,
+                // FileUrl đã bị loại bỏ khỏi ResponseDto
                 CreatedAt = material.CreatedAt,
                 UpdatedAt = material.UpdatedAt,
                 Attachments = material.MaterialAttachments.Select(a => new MaterialAttachmentDto
@@ -215,7 +195,6 @@ namespace EMS.Application.Features.LearningMaterials.Services
             if (fileSize > MaxFileSize)
                 throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
 
-            // Cho phép tất cả image/*
             if (contentType.StartsWith("image/")) return;
 
             if (!AllowedMimeTypes.Contains(contentType))

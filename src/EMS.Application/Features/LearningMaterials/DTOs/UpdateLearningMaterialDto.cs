@@ -8,7 +8,6 @@ namespace EMS.Application.Features.LearningMaterials.DTOs
     {
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public IFormFile? File { get; set; }
         public List<IFormFile>? NewAttachments { get; set; }
         public List<Guid>? RemoveAttachmentIds { get; set; }
     }

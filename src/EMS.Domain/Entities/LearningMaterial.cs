@@ -13,8 +13,6 @@ public partial class LearningMaterial
 
     public string? Description { get; set; }
 
-    public string FileUrl { get; set; } = null!;
-
     public bool? IsDeleted { get; set; }
 
     public DateTime? CreatedAt { get; set; }
