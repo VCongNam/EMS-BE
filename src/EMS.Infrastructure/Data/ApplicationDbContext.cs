@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using EMS.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -36,9 +36,12 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<LearningMaterial> LearningMaterials { get; set; }
 
+    public virtual DbSet<MaterialAttachment> MaterialAttachments { get; set; }
+
     public virtual DbSet<Notification> Notifications { get; set; }
 
     public virtual DbSet<Post> Posts { get; set; }
+    public virtual DbSet<PostAttachment> PostAttachments { get; set; }
 
     public virtual DbSet<ProgressReport> ProgressReports { get; set; }
 
@@ -126,6 +129,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.AssignmentId)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("AssignmentID");
+            entity.Property(e => e.AllowLateSubmission).HasDefaultValue(true);
             entity.Property(e => e.AuthorId).HasColumnName("AuthorID");
             entity.Property(e => e.ClassId).HasColumnName("ClassID");
             entity.Property(e => e.CreatedAt)
@@ -172,12 +176,12 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.FileName).HasMaxLength(255);
-            entity.Property(e => e.FileType).HasMaxLength(50);
+            entity.Property(e => e.FileType).HasMaxLength(100);
             entity.Property(e => e.FileUrl).HasColumnName("FileURL");
 
             entity.HasOne(d => d.Assignment).WithMany(p => p.AssignmentAttachments)
                 .HasForeignKey(d => d.AssignmentId)
-                .HasConstraintName("assignmentattachment_assignmentid_fkey");
+                .HasConstraintName("AssignmentAttachment_AssignmentId_fkey");
         });
 
         modelBuilder.Entity<Attendance>(entity =>
@@ -425,6 +429,8 @@ public partial class ApplicationDbContext : DbContext
 
             entity.ToTable("LearningMaterial");
 
+            entity.HasIndex(e => e.AuthorId, "idx_learningmaterial_authorid");
+
             entity.Property(e => e.MaterialId)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("MaterialID");
@@ -432,18 +438,38 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
-            entity.Property(e => e.FileType).HasMaxLength(50);
-            entity.Property(e => e.FileUrl).HasColumnName("FileURL");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Title).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
 
+            entity.HasOne(d => d.Author).WithMany(p => p.LearningMaterials)
+                .HasForeignKey(d => d.AuthorId)
+                .HasConstraintName("LearningMaterial_AuthorId_fkey");
+
             entity.HasOne(d => d.Class).WithMany(p => p.LearningMaterials)
                 .HasForeignKey(d => d.ClassId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("LearningMaterial_ClassID_fkey");
+        });
+
+        modelBuilder.Entity<MaterialAttachment>(entity =>
+        {
+            entity.HasKey(e => e.AttachmentId).HasName("MaterialAttachment_pkey");
+
+            entity.ToTable("MaterialAttachment");
+
+            entity.HasIndex(e => e.MaterialId, "idx_materialattach_materialid");
+
+            entity.Property(e => e.AttachmentId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.FileType).HasMaxLength(100);
+
+            entity.HasOne(d => d.Material).WithMany(p => p.MaterialAttachments)
+                .HasForeignKey(d => d.MaterialId)
+                .HasConstraintName("MaterialAttachment_MaterialId_fkey");
         });
 
         modelBuilder.Entity<Notification>(entity =>
@@ -477,7 +503,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.PostId)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("PostID");
-            entity.Property(e => e.AttachmentUrl).HasColumnName("AttachmentURL");
+            entity.Property(e => e.Title).HasMaxLength(255);
             entity.Property(e => e.AuthorId).HasColumnName("AuthorID");
             entity.Property(e => e.ClassId).HasColumnName("ClassID");
             entity.Property(e => e.CreatedAt)
@@ -497,6 +523,39 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.ClassId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("Post_ClassID_fkey");
+        });
+
+        modelBuilder.Entity<PostAttachment>(entity =>
+        {
+            // Thiết lập Khóa chính
+            entity.HasKey(e => e.AttachmentId).HasName("PostAttachment_pkey");
+
+            entity.ToTable("PostAttachment");
+
+            entity.Property(e => e.AttachmentId)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("AttachmentID");
+
+            entity.Property(e => e.PostId).HasColumnName("PostID");
+
+            entity.Property(e => e.FileName).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.FileType).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.FileUrl).HasColumnName("FileURL").IsRequired();
+
+            // Map với kiểu int8 trong PostgreSQL
+            entity.Property(e => e.FileSize).HasColumnType("bigint");
+
+            // Map với kiểu timestamptz trong PostgreSQL
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp with time zone");
+
+            // Thiết lập Khóa ngoại và Xóa liên đới (Cascade Delete)
+            entity.HasOne(d => d.Post)
+                .WithMany(p => p.PostAttachments)
+                .HasForeignKey(d => d.PostId)
+                .OnDelete(DeleteBehavior.Cascade) // Xóa Post thì tự động xóa Attachment
+                .HasConstraintName("PostAttachment_PostID_fkey");
         });
 
         modelBuilder.Entity<ProgressReport>(entity =>
@@ -573,8 +632,6 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
-            entity.Property(e => e.StartTime).HasColumnType("time without time zone");
-            entity.Property(e => e.EndTime).HasColumnType("time without time zone");
 
             entity.HasOne(d => d.Class).WithMany(p => p.Sessions)
                 .HasForeignKey(d => d.ClassId)

@@ -13,11 +13,15 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public string StudentName { get; set; } = null!;
         public Guid ClassId { get; set; }
         public string ClassName { get; set; } = null!;
+        public Guid TeacherId { get; set; }
+        public string TeacherName { get; set; } = null!;
+
         public string Title { get; set; } = null!;
         public string Content { get; set; } = null!;
-        public string? Status { get; set; }
+        public string Status { get; set; } = null!;
+
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-    
+
     }
 }

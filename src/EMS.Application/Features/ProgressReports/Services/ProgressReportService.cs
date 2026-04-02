@@ -13,80 +13,40 @@ namespace EMS.Application.Features.ProgressReports.Services
     public class ProgressReportService : IProgressReportService
     {
         private readonly IProgressReportRepository reportRepository;
-        private readonly ICurrentUserService currentServiceUser;
+        private readonly ICurrentUserService currentUserService;
 
-        public ProgressReportService(IProgressReportRepository reportRepository, ICurrentUserService currentServiceUser)
+        public ProgressReportService(IProgressReportRepository reportRepository,ICurrentUserService currentUserService)
         {
             this.reportRepository = reportRepository;
-            this.currentServiceUser = currentServiceUser;
+            this.currentUserService = currentUserService;
         }
 
         public async Task<Guid> CreateReportAsync(CreateProgressReportDto request)
         {
-            var newReport = new ProgressReport
+            var report = new ProgressReport
             {
                 ReportId = Guid.NewGuid(),
-                TeacherId = currentServiceUser.UserId, // Lấy TeacherId từ JWT Token
                 StudentId = request.StudentId,
                 ClassId = request.ClassId,
+                TeacherId = currentUserService.UserId,
                 Title = request.Title,
                 Content = request.Content,
-                Status = "Draft", // Mặc định là bản nháp khi mới tạo
-                CreatedAt = DateTime.UtcNow
+                Status = request.Status, // Thường sẽ là "Draft"
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
-            await reportRepository.AddAsync(newReport);
-            return newReport.ReportId;
+            await reportRepository.AddAsync(report);
+            return report.ReportId;
         }
 
-        public async Task<ProgressReportResponseDto> GetReportByIdAsync(Guid reportId)
+        public async Task UpdateReportAsync(Guid id, UpdateProgressReportDto request)
         {
-            var report = await reportRepository.GetByIdWithDetailsAsync(reportId);
-            if (report == null) throw new Exception("Progress report not found!");
+            var report = await reportRepository.GetByIdAsync(id);
+            if (report == null) throw new Exception("Report not found.");
 
-            return new ProgressReportResponseDto
-            {
-                ReportId = report.ReportId,
-                StudentId = report.StudentId,
-                StudentName = report.Student?.StudentNavigation?.FullName ?? "Unknown",
-                ClassId = report.ClassId,
-                ClassName = report.Class?.ClassName ?? "Unknown",
-                Title = report.Title,
-                Content = report.Content,
-                Status = report.Status,
-                CreatedAt = report.CreatedAt,
-                UpdatedAt = report.UpdatedAt
-            };
-        }
-
-        public async Task<IEnumerable<ProgressReportResponseDto>> GetMyTeachingReportsAsync()
-        {
-            var reports = await reportRepository.GetReportsByTeacherIdAsync(currentServiceUser.UserId);
-
-            return reports.Select(r => new ProgressReportResponseDto
-            {
-                ReportId = r.ReportId,
-                StudentId = r.StudentId,
-                StudentName = r.Student?.StudentNavigation?.FullName ?? "Unknown",
-                ClassId = r.ClassId,
-                ClassName = r.Class?.ClassName ?? "Unknown",
-                Title = r.Title,
-                Content = r.Content,
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
-            });
-        }
-
-        public async Task UpdateReportAsync(Guid reportId, UpdateProgressReportDto request)
-        {
-            var report = await reportRepository.GetByIdAsync(reportId);
-
-            if (report == null) throw new Exception("Progress report not found!");
-
-            // BẢO MẬT: Chỉ người tạo mới được sửa
-            if (report.TeacherId != currentServiceUser.UserId)
-                throw new Exception("Access Denied: You are not the author of this report!");
+            if (report.TeacherId != currentUserService.UserId)
+                throw new Exception("You do not have permission to edit this report.");
 
             report.Title = request.Title;
             report.Content = request.Content;
@@ -95,35 +55,120 @@ namespace EMS.Application.Features.ProgressReports.Services
             await reportRepository.UpdateAsync(report);
         }
 
-        public async Task DeleteReportAsync(Guid reportId)
+        public async Task DeleteReportAsync(Guid id)
         {
-            var report = await reportRepository.GetByIdAsync(reportId);
+            var report = await reportRepository.GetByIdAsync(id);
+            if (report == null) throw new Exception("Report not found.");
 
-            if (report == null) throw new Exception("Progress report not found!");
-
-            // BẢO MẬT: Chỉ người tạo mới được xóa
-            if (report.TeacherId != currentServiceUser.UserId)
-                throw new Exception("Access Denied: You are not authorized to delete this report!");
+            if (report.TeacherId != currentUserService.UserId)
+                throw new Exception("You do not have permission to delete this report.");
 
             await reportRepository.DeleteAsync(report);
         }
 
-        public async Task SendReportAsync(Guid reportId)
+        public async Task<ProgressReportResponseDto> GetReportDetailAsync(Guid id)
         {
-            var report = await reportRepository.GetByIdAsync(reportId);
+            var report = await reportRepository.GetByIdAsync(id);
+            if (report == null) throw new Exception("Report not found.");
 
-            if (report == null) throw new Exception("Progress report not found!");
+            return new ProgressReportResponseDto
+            {
+                ReportId = report.ReportId,
+                StudentId = report.StudentId,
+                StudentName = report.Student?.StudentNavigation?.FullName ?? null!,
+                ClassId = report.ClassId,
+                ClassName = report.Class?.ClassName ?? null!,
+                TeacherId = report.TeacherId,
+                TeacherName = report.Teacher?.TeacherNavigation?.FullName ?? null!,
+                Title = report.Title ?? null!,
+                Content = report.Content,
+                Status = report.Status ?? null!,
+                CreatedAt = report.CreatedAt,
+                UpdatedAt = report.UpdatedAt
+            };
+        }
 
-            if (report.TeacherId != currentServiceUser.UserId)
-                throw new Exception("Access Denied: You are not the author of this report!");
+        public async Task<IEnumerable<ProgressReportResponseDto>> GetReportsForStudentAsync(Guid studentId, Guid classId)
+        {
+            var reports = await reportRepository.GetReportsByStudentAndClassAsync(studentId, classId);
 
-            // Cập nhật trạng thái thành Sent
-            report.Status = "Sent";
+            return reports
+                .Where(r => r.Status == "Published") // Chốt chặn bảo mật
+                .Select(r => new ProgressReportResponseDto
+                {
+                    ReportId = r.ReportId,
+                    StudentId = r.StudentId,
+                    ClassId = r.ClassId,
+                    ClassName = r.Class?.ClassName ?? null!,
+                    TeacherId = r.TeacherId,
+                    TeacherName = r.Teacher?.TeacherNavigation?.FullName ?? null!,
+                    Title = r.Title ?? null!,
+                    Content = r.Content,
+                    Status = r.Status ?? null!,
+                    CreatedAt = r.CreatedAt
+                });
+        }
+
+        public async Task<IEnumerable<ProgressReportResponseDto>> GetReportsByClassAsync(Guid classId)
+        {
+            var reports = await reportRepository.GetReportsByClassIdAsync(classId);
+
+            return reports.Select(r => new ProgressReportResponseDto
+            {
+                ReportId = r.ReportId,
+                StudentId = r.StudentId,
+                StudentName = r.Student?.StudentNavigation?.FullName ?? null!,
+                ClassId = r.ClassId,
+                ClassName = r.Class?.ClassName ?? null!,
+                TeacherId = r.TeacherId,
+                TeacherName = r.Teacher?.TeacherNavigation?.FullName ?? null!,
+                Title = r.Title ?? null!,
+                Status = r.Status ?? null!,
+                Content = r.Content,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            });
+        }
+
+        public async Task<IEnumerable<ProgressReportResponseDto>> GetReportsByTeacherAsync()
+        {
+            var teacherId = currentUserService.UserId;
+            var reports = await reportRepository.GetReportsByTeacherAsync(teacherId);
+
+            return reports.Select(r => new ProgressReportResponseDto
+            {
+                ReportId = r.ReportId,
+                StudentId = r.StudentId,
+                StudentName = r.Student?.StudentNavigation?.FullName ?? null!,
+                ClassId = r.ClassId,
+                ClassName = r.Class?.ClassName ?? null!,
+                TeacherId = r.TeacherId,
+                TeacherName = r.Teacher?.TeacherNavigation?.FullName ?? null!,
+                Title = r.Title ?? null!,
+                Status = r.Status ?? null!,
+                Content = r.Content,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt
+            });
+        }
+
+        public async Task SendReportAsync(Guid id)
+        {
+            var report = await reportRepository.GetByIdAsync(id);
+            if (report == null) throw new Exception("Report not found.");
+
+            if (report.TeacherId != currentUserService.UserId)
+                throw new Exception("You do not have permission to send this report.");
+
+            if (report.Status == "Published")
+                throw new Exception("This report has already been sent.");
+
+            report.Status = "Published";
             report.UpdatedAt = DateTime.UtcNow;
 
             await reportRepository.UpdateAsync(report);
 
-            // TODO: Gắn logic gửi Email cho phụ huynh (nếu có) vào đây.
+            // Logic gửi Email / Thông báo Notification có thể thêm vào đây
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using EMS.Application.Features.Assignments.DTOs;
+using EMS.Application.Features.Assignments.DTOs;
 using EMS.Application.Features.Assignments.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +17,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAssignment([FromBody] CreateAssignmentDto request)
+        public async Task<IActionResult> CreateAssignment([FromForm] CreateAssignmentDto request)
         {
             try
             {
@@ -31,7 +31,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAssignment(Guid id, [FromBody] UpdateAssignmentDto request)
+        public async Task<IActionResult> UpdateAssignment(Guid id, [FromForm] UpdateAssignmentDto request)
         {
             try
             {
@@ -58,7 +58,22 @@ namespace EMS.API.Controllers
             }
         }
 
-        // Dùng để hiển thị danh sách bài tập trong 1 lớp
+        // Xem chi tiết assignment (kèm attachments)
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetAssignmentDetail(Guid id)
+        {
+            try
+            {
+                var result = await _assignmentService.GetAssignmentDetailAsync(id);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(new { Error = ex.Message });
+            }
+        }
+
+        // Xem toàn bộ assignment của 1 lớp
         [HttpGet("class/{classId}")]
         public async Task<IActionResult> GetAssignmentsByClass(Guid classId)
         {
@@ -66,7 +81,7 @@ namespace EMS.API.Controllers
             return Ok(assignments);
         }
 
-        // Dùng cho GV bấm vào bài tập để xem danh sách học sinh nộp bài
+        // Xem danh sách submissions của 1 assignment
         [HttpGet("{id}/submissions")]
         public async Task<IActionResult> GetAssignmentSubmissions(Guid id)
         {
@@ -80,6 +95,5 @@ namespace EMS.API.Controllers
                 return NotFound(new { Error = ex.Message });
             }
         }
-
     }
 }

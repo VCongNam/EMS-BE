@@ -12,5 +12,6 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public Guid ClassId { get; set; }
         public string Title { get; set; } = null!;
         public string Content { get; set; } = null!;
+        public string Status { get; set; } = "Draft"; 
     }
 }

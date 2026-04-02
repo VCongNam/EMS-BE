@@ -1,10 +1,11 @@
-﻿using EMS.Application.Features.Assignments.DTOs;
+using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Assignments.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Assignments.Services
@@ -12,13 +13,36 @@ namespace EMS.Application.Features.Assignments.Services
     public class AssignmentService : IAssignmentService
     {
         private readonly IAssignmentRepository _assignmentRepository;
-        // private readonly IUnitOfWork _unitOfWork;
         private readonly ISubmissionRepository _submissionRepository;
+        private readonly ISupabaseStorageService _storageService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public AssignmentService(IAssignmentRepository assignmentRepository, ISubmissionRepository submissionRepository)
+        // Giới hạn file: 10MB (theo cấu hình Supabase bucket)
+        private const long MaxFileSize = 10 * 1024 * 1024;
+        private static readonly string[] AllowedMimeTypes =
+        {
+            "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/svg+xml", "image/bmp",
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/zip",
+            "application/x-rar-compressed"
+        };
+
+        public AssignmentService(
+            IAssignmentRepository assignmentRepository,
+            ISubmissionRepository submissionRepository,
+            ISupabaseStorageService storageService,
+            ICurrentUserService currentUserService)
         {
             _assignmentRepository = assignmentRepository;
             _submissionRepository = submissionRepository;
+            _storageService = storageService;
+            _currentUserService = currentUserService;
         }
 
         public async Task<Guid> CreateAssignmentAsync(CreateAssignmentDto request)
@@ -27,18 +51,41 @@ namespace EMS.Application.Features.Assignments.Services
             {
                 AssignmentId = Guid.NewGuid(),
                 ClassId = request.ClassId,
-                AuthorId = request.AuthorId,
+                AuthorId = _currentUserService.UserId,
                 GradeCategoryId = request.GradeCategoryId,
                 Title = request.Title,
                 Description = request.Description,
-                //AttachmentPath = request.AttachmentPath,
                 DueDate = request.DueDate,
+                AllowLateSubmission = request.AllowLateSubmission,
                 Status = "Published",
                 IsDeleted = false,
-                CreatedAt = DateTime.UtcNow 
+                CreatedAt = DateTime.UtcNow
             };
 
             await _assignmentRepository.AddAsync(assignment);
+
+            // Upload attachments nếu có
+            if (request.Attachments != null && request.Attachments.Count > 0)
+            {
+                foreach (var file in request.Attachments)
+                {
+                    ValidateFile(file.FileName, file.Length, file.ContentType);
+
+                    var fileUrl = await _storageService.UploadFileAsync(file, $"assignments/{assignment.AssignmentId}");
+
+                    var attachment = new AssignmentAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        AssignmentId = assignment.AssignmentId,
+                        FileName = file.FileName,
+                        FileUrl = fileUrl,
+                        FileType = file.ContentType,
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _assignmentRepository.AddAttachmentAsync(attachment);
+                }
+            }
 
             return assignment.AssignmentId;
         }
@@ -47,23 +94,55 @@ namespace EMS.Application.Features.Assignments.Services
         {
             var assignment = await _assignmentRepository.GetByIdAsync(id);
             if (assignment == null)
-            {
                 throw new Exception($"Assignment with ID {id} not found.");
-            }
+
             assignment.Title = request.Title;
             assignment.Description = request.Description;
-            //assignment.AttachmentPath = request.AttachmentPath;
             assignment.DueDate = request.DueDate;
             assignment.GradeCategoryId = request.GradeCategoryId;
-            assignment.Status = request.Status;
+            assignment.AllowLateSubmission = request.AllowLateSubmission;
             assignment.UpdatedAt = DateTime.UtcNow;
 
             await _assignmentRepository.UpdateAsync(assignment);
-            // await _unitOfWork.SaveChangesAsync(); // <-- BẮT BUỘC PHẢI GỌI HÀM NÀY
-        }
-      
 
-        // 1. DELETE 
+            // Xóa attachments cũ nếu có yêu cầu
+            if (request.RemoveAttachmentIds != null && request.RemoveAttachmentIds.Count > 0)
+            {
+                foreach (var attachmentId in request.RemoveAttachmentIds)
+                {
+                    var attachment = await _assignmentRepository.GetAttachmentByIdAsync(attachmentId);
+                    if (attachment != null)
+                    {
+                        await _storageService.DeleteFileByUrlAsync(attachment.FileUrl);
+                        await _assignmentRepository.RemoveAttachmentAsync(attachment);
+                    }
+                }
+            }
+
+            // Upload attachments mới nếu có
+            if (request.NewAttachments != null && request.NewAttachments.Count > 0)
+            {
+                foreach (var file in request.NewAttachments)
+                {
+                    ValidateFile(file.FileName, file.Length, file.ContentType);
+
+                    var fileUrl = await _storageService.UploadFileAsync(file, $"assignments/{id}");
+
+                    var attachment = new AssignmentAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        AssignmentId = id,
+                        FileName = file.FileName,
+                        FileUrl = fileUrl,
+                        FileType = file.ContentType,
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _assignmentRepository.AddAttachmentAsync(attachment);
+                }
+            }
+        }
+
         public async Task DeleteAssignmentAsync(Guid id)
         {
             var assignment = await _assignmentRepository.GetByIdAsync(id);
@@ -73,10 +152,40 @@ namespace EMS.Application.Features.Assignments.Services
             assignment.UpdatedAt = DateTime.UtcNow;
 
             await _assignmentRepository.UpdateAsync(assignment);
-            // await _unitOfWork.SaveChangesAsync(); // <-- Nhớ gọi hàm này
         }
 
-        // 2. VIEW ASSIGNED ASSIGNMENTS 
+        public async Task<AssignmentDetailDto> GetAssignmentDetailAsync(Guid assignmentId)
+        {
+            var assignment = await _assignmentRepository.GetByIdWithDetailsAsync(assignmentId);
+            if (assignment == null)
+                throw new Exception("Assignment not found or has been deleted.");
+
+            return new AssignmentDetailDto
+            {
+                AssignmentId = assignment.AssignmentId,
+                ClassId = assignment.ClassId,
+                AuthorName = assignment.Author?.FullName ?? "Unknown",
+                GradeCategoryId = assignment.GradeCategoryId,
+                GradeCategoryName = assignment.GradeCategory?.Name ?? "Unknown",
+                Title = assignment.Title,
+                Description = assignment.Description,
+                DueDate = assignment.DueDate,
+                Status = GetAssignmentStatus(assignment),
+                AllowLateSubmission = assignment.AllowLateSubmission,
+                CreatedAt = assignment.CreatedAt,
+                UpdatedAt = assignment.UpdatedAt,
+                Attachments = assignment.AssignmentAttachments.Select(a => new AttachmentDto
+                {
+                    AttachmentId = a.AttachmentId,
+                    FileName = a.FileName,
+                    FileUrl = a.FileUrl,
+                    FileType = a.FileType,
+                    FileSize = a.FileSize,
+                    CreatedAt = a.CreatedAt
+                }).ToList()
+            };
+        }
+
         public async Task<IEnumerable<AssignmentSummaryDto>> GetAssignmentsByClassIdAsync(Guid classId)
         {
             var assignments = await _assignmentRepository.GetByClassIdAsync(classId);
@@ -90,7 +199,6 @@ namespace EMS.Application.Features.Assignments.Services
             });
         }
 
-        // 3. VIEW ASSIGNMENT SUBMISSIONS 
         public async Task<AssignmentSubmissionsDto> GetAssignmentSubmissionsAsync(Guid assignmentId)
         {
             var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
@@ -113,6 +221,44 @@ namespace EMS.Application.Features.Assignments.Services
                 }).ToList()
             };
         }
-    }
 
+        private string GetAssignmentStatus(Assignment assignment)
+        {
+            if (assignment.IsDeleted == true) return "Deleted";
+            if (assignment.DueDate < DateTime.UtcNow) return "Overdue";
+            return "Published";
+        }
+
+        //private void ValidateFile(string fileName, long fileSize, string contentType)
+        //{
+        //    if (fileSize > MaxFileSize)
+        //        throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
+
+
+        //    if (contentType.StartsWith("image/")) return;
+
+        //    if (!AllowedMimeTypes.Contains(contentType))
+        //        throw new Exception($"File type '{contentType}' is not allowed.");
+        //}
+        private void ValidateFile(string fileName, long fileSize, string contentType)
+        {
+            if (fileSize > MaxFileSize)
+                throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
+
+            var ext = Path.GetExtension(fileName).ToLower();
+
+            var allowedExtensions = new[]
+            {
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp",
+        ".pdf",
+        ".doc", ".docx",
+        ".xls", ".xlsx",
+        ".ppt", ".pptx",
+        ".zip", ".rar"
+    };
+
+            if (!allowedExtensions.Contains(ext))
+                throw new Exception($"File '{ext}' is not allowed.");
+        }
+    }
 }

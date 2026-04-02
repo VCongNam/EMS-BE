@@ -17,47 +17,33 @@ namespace EMS.API.Controllers
             this.postService = postService;
         }
 
+        // --- QUẢN LÝ BÀI ĐĂNG (POST) ---
+
         [HttpPost]
-        // TODO: Đổi [FromBody] thành [FromForm] khi làm chức năng Upload File
-        public async Task<IActionResult> CreatePost([FromBody] CreatePostDto request)
+        public async Task<IActionResult> CreatePost([FromForm] CreatePostDto request)
         {
             try
             {
                 var postId = await postService.CreatePostAsync(request);
-                return StatusCode(201, new { Message = "Post created successfully!", PostId = postId });
+                return Ok(new { Message = "Đăng bài thành công", PostId = postId });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetPostDetail(Guid id)
-        {
-            try
-            {
-                var post = await postService.GetPostByIdAsync(id);
-                return Ok(new { Message = "Success", Data = post });
-            }
-            catch (Exception ex)
-            {
-                return NotFound(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
         [HttpPut("{id}")]
-        // TODO: Đổi [FromBody] thành [FromForm] khi làm chức năng Upload File
-        public async Task<IActionResult> UpdatePost(Guid id, [FromBody] UpdatePostDto request)
+        public async Task<IActionResult> UpdatePost(Guid id, [FromForm] UpdatePostDto request)
         {
             try
             {
                 await postService.UpdatePostAsync(id, request);
-                return Ok(new { Message = "Post updated successfully!" });
+                return Ok(new { Message = "Cập nhật bài đăng thành công" });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -67,25 +53,69 @@ namespace EMS.API.Controllers
             try
             {
                 await postService.DeletePostAsync(id);
-                return Ok(new { Message = "Post deleted successfully!" });
+                return Ok(new { Message = "Xóa bài đăng thành công" });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpGet("{id}")]
+        // Ai cũng xem được (Student, Parent, Teacher...)
+        public async Task<IActionResult> GetPostDetail(Guid id)
+        {
+            try
+            {
+                var post = await postService.GetPostDetailAsync(id);
+                return Ok(post);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+        }
+
+        [HttpGet("class/{classId}")]
+        // Lấy danh sách bài đăng theo lớp
+        public async Task<IActionResult> GetPostsByClassId(Guid classId)
+        {
+            try
+            {
+                var posts = await postService.GetPostsByClassIdAsync(classId);
+                return Ok(posts);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
         [HttpPost("{id}/comments")]
-        public async Task<IActionResult> AddComment(Guid id, [FromBody] CreateCommentDto request)
+        public async Task<IActionResult> CreateComment(Guid id, [FromBody] CreateCommentDto request)
         {
             try
             {
-                var commentId = await postService.AddCommentAsync(id, request);
-                return StatusCode(201, new { Message = "Comment added successfully!", CommentId = commentId });
+                var commentId = await postService.CreateCommentAsync(id, request);
+                return Ok(new { Message = "Bình luận thành công", CommentId = commentId });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpDelete("comments/{commentId}")]
+        public async Task<IActionResult> DeleteComment(Guid commentId)
+        {
+            try
+            {
+                await postService.DeleteCommentAsync(commentId);
+                return Ok(new { Message = "Xóa bình luận thành công" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
             }
         }
     }

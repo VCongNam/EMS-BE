@@ -11,9 +11,9 @@ public partial class Post
 
     public Guid AuthorId { get; set; }
 
-    public string Content { get; set; } = null!;
+    public string? Title { get; set; }
 
-    public string? AttachmentUrl { get; set; }
+    public string Content { get; set; } = null!;
 
     public bool? IsDeleted { get; set; }
 
@@ -26,4 +26,6 @@ public partial class Post
     public virtual Class Class { get; set; } = null!;
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+    public virtual ICollection<PostAttachment> PostAttachments { get; set; } = new List<PostAttachment>();
 }

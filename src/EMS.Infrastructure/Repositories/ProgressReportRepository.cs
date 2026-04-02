@@ -25,32 +25,6 @@ namespace EMS.Infrastructure.Repositories
             await context.SaveChangesAsync();
         }
 
-        public async Task<ProgressReport?> GetByIdAsync(Guid reportId)
-        {
-            return await context.ProgressReports.FirstOrDefaultAsync(r => r.ReportId == reportId);
-        }
-
-        public async Task<ProgressReport?> GetByIdWithDetailsAsync(Guid reportId)
-        {
-            // Include các bảng liên quan để lấy tên Student và Class
-            return await context.ProgressReports
-                .Include(r => r.Class)
-                .Include(r => r.Student)
-                    .ThenInclude(s => s.StudentNavigation) // Link tới Account để lấy FullName
-                .FirstOrDefaultAsync(r => r.ReportId == reportId);
-        }
-
-        public async Task<IEnumerable<ProgressReport>> GetReportsByTeacherIdAsync(Guid teacherId)
-        {
-            return await context.ProgressReports
-                .Include(r => r.Class)
-                .Include(r => r.Student)
-                    .ThenInclude(s => s.StudentNavigation)
-                .Where(r => r.TeacherId == teacherId)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
-        }
-
         public async Task UpdateAsync(ProgressReport report)
         {
             context.ProgressReports.Update(report);
@@ -59,8 +33,57 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task DeleteAsync(ProgressReport report)
         {
-            context.ProgressReports.Remove(report); // Hard Delete
+            context.ProgressReports.Remove(report);
             await context.SaveChangesAsync();
+        }
+
+        public async Task<ProgressReport?> GetByIdAsync(Guid reportId)
+        {
+            return await context.ProgressReports
+                .Include(r => r.Student)
+                    .ThenInclude(s => s.StudentNavigation)
+                .Include(r => r.Teacher)
+                    .ThenInclude(t => t.TeacherNavigation)
+                .Include(r => r.Class)
+                .FirstOrDefaultAsync(r => r.ReportId == reportId);
+        }
+
+        public async Task<IEnumerable<ProgressReport>> GetReportsByStudentAndClassAsync(Guid studentId, Guid classId)
+        {
+            return await context.ProgressReports
+                .AsNoTracking()
+                .Include(r => r.Teacher)
+                    .ThenInclude(t => t.TeacherNavigation)
+                .Include(r => r.Class)
+                .Where(r => r.StudentId == studentId && r.ClassId == classId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<ProgressReport>> GetReportsByClassIdAsync(Guid classId)
+        {
+            return await context.ProgressReports
+                .AsNoTracking()
+                .Include(r => r.Student)
+                    .ThenInclude(s => s.StudentNavigation)
+                .Include(r => r.Teacher)
+                    .ThenInclude(t => t.TeacherNavigation)
+                .Include(r => r.Class)
+                .Where(r => r.ClassId == classId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<ProgressReport>> GetReportsByTeacherAsync(Guid teacherId)
+        {
+            return await context.ProgressReports
+                .AsNoTracking()
+                .Include(r => r.Student)
+                    .ThenInclude(s => s.StudentNavigation)
+                .Include(r => r.Class)
+                .Where(r => r.TeacherId == teacherId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
         }
     }
 }

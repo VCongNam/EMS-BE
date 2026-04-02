@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,9 +9,9 @@ namespace EMS.Application.Features.Posts.DTOs
 {
     public class UpdatePostDto
     {
+        public string Title { get; set; } = null!;
         public string Content { get; set; } = null!;
-
-        // TODO: Mở comment khi làm chức năng Upload File
-        // public IFormFile? Attachment { get; set; }
+        public List<IFormFile>? NewAttachments { get; set; }
+        public List<Guid>? RemoveAttachmentIds { get; set; }
     }
 }

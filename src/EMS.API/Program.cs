@@ -1,9 +1,10 @@
-﻿
+
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.Auth.Services;
+using EMS.Application.Features.ProgressReports.Services;
 using EMS.Infrastructure.Configuration;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
@@ -19,6 +20,7 @@ using EMS.Infrastructure.Services;
 
 using Microsoft.EntityFrameworkCore;
 using EMS.Application.Features.Assignments.Services;
+using EMS.Application.Features.LearningMaterials.Services;
 using EMS.Application.Features.Students.Services;
 using EMS.Application.Features.Sessions.Services;
 
@@ -48,11 +50,24 @@ builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<ITARepository, TARepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialRepository>();
+builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
 
 
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("SupabaseSettings"));
 
-// 3. Đăng ký Service (Application)
+// Supabase Client Setup
+var supabaseUrl = builder.Configuration["SupabaseSettings:Url"] ?? throw new ArgumentNullException("Supabase Url is missing");
+var supabaseKey = builder.Configuration["SupabaseSettings:Key"] ?? throw new ArgumentNullException("Supabase Key is missing");
+var options = new Supabase.SupabaseOptions
+{
+    AutoConnectRealtime = true
+};
+builder.Services.AddSingleton(provider => new Supabase.Client(supabaseUrl, supabaseKey, options));
+
+// 3. Đăng ký Service (Application/Infrastructure)
+builder.Services.AddScoped<ISupabaseStorageService, EMS.Infrastructure.Services.Supabase.SupabaseStorageService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IClassService, ClassService>();
 builder.Services.AddScoped<IStudentAccountService, StudentAccountService>();
@@ -67,6 +82,8 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<IClassTAService, ClassTAService>();
 builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
+builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 
 builder.Services.AddCors(options =>
 {

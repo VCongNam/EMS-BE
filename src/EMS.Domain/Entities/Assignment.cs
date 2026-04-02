@@ -15,7 +15,7 @@ public partial class Assignment
 
     public string Title { get; set; } = null!;
 
-    public string Description { get; set; } = null!;
+    public string? Description { get; set; }
 
     public DateTime DueDate { get; set; }
 
@@ -26,6 +26,8 @@ public partial class Assignment
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public bool? AllowLateSubmission { get; set; }
 
     public virtual ICollection<AssignmentAttachment> AssignmentAttachments { get; set; } = new List<AssignmentAttachment>();
 
