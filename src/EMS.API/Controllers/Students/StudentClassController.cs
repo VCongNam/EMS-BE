@@ -75,7 +75,7 @@ namespace EMS.API.Controllers.Students
         }
 
         [HttpGet("{classId}/materials")]
-        public async Task<IActionResult> GetMaterials(Guid classId)
+        public async Task<IActionResult> GetClassMaterials(Guid classId)
         {
             try
             {

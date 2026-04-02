@@ -51,5 +51,64 @@ namespace EMS.Application.Features.Students.Services
                 CurrentPage = filter.Page
             };
         }
+
+        public async Task<AssignmentDetailDto> GetClassAssignmentsDetailAsync(Guid assignmentId)
+        {
+            Guid studentId = _currentUser.UserId;
+
+            var (assignment, submission) = await _assignmentRepository.GetAssignmentDetailAsync(assignmentId, studentId);
+            if(assignment == null)
+            {
+                throw new KeyNotFoundException("Không tìm thấy bài tập này!");
+            }
+
+            SubmissionDetailDto? submissionDto = null;
+            if (submission != null)
+            {
+                submissionDto = new SubmissionDetailDto
+                {
+                    SubmissionID = submission.SubmissionId,
+                    SubmittedAt = (DateTime)submission.SubmittedAt,
+                    Grade = submission.Grade,
+                    Status = submission.Status,
+
+                    Attachments = submission.SubmissionAttachments?
+                    .Select(sa => new AttachmentDto
+                    {
+                        AttachmentID = sa.AttachmentId,
+                        FileName = sa.FileName,
+                        FileURL = sa.FileUrl,
+                        FileType = sa.FileType,
+                        FileSize = sa.FileSize
+                    }).ToList() ?? new List<AttachmentDto>(),
+
+                    Feedbacks = submission.SubmissionFeedbacks?
+                        .OrderBy(f => f.CreatedAt)
+                        .Select(f => f.Content)
+                        .ToList() ?? new List<string>()
+                };
+            }
+
+            return new AssignmentDetailDto
+            {
+                AssignmentID = assignment.AssignmentId,
+                Title = assignment.Title,
+                Description = assignment.Description,
+                DueDate = assignment.DueDate,
+
+                // MỚI: Map mảng file đính kèm của đề bài
+                Attachments = assignment.AssignmentAttachments?
+            .Select(aa => new AttachmentDto
+            {
+                AttachmentID = aa.AttachmentId,
+                FileName = aa.FileName,
+                FileURL = aa.FileUrl,
+                FileType = aa.FileType,
+                FileSize = aa.FileSize
+            }).ToList() ?? new List<AttachmentDto>(),
+
+                MySubmission = submissionDto
+            };
+        }
     }
 }

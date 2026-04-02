@@ -56,6 +56,7 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        //Student Learning Portal
         public async Task<int> CountPendingAssignmentAsync(Guid classId, Guid studentId)
         {
             int count = await _context.Assignments
@@ -95,6 +96,23 @@ namespace EMS.Infrastructure.Repositories
             return (items, totalCount);
         }
 
+        public async Task<(Assignment? Assignment, Submission? Submission)> GetAssignmentDetailAsync(Guid assignmentId, Guid studentId)
+        {
+            var dbResult = await _context.Assignments
+                .Include(a => a.AssignmentAttachments)
+                .Where(a =>a.AssignmentId == assignmentId)
+                .Select(a => new
+                {
+                    Assignment = a,
+                    Submission = _context.Submissions
+                    .Include(s => s.SubmissionAttachments)
+                    .Include(s => s.SubmissionFeedbacks)
+                    .FirstOrDefault(s => s.AssignmentId == a.AssignmentId && s.StudentId == studentId)
+                }).AsNoTracking().FirstOrDefaultAsync();
+            if (dbResult == null) return (null, null);
+            return (dbResult.Assignment, dbResult.Submission);
+        }
+
         // Attachment management
         public async Task AddAttachmentAsync(AssignmentAttachment attachment)
         {
@@ -113,5 +131,7 @@ namespace EMS.Infrastructure.Repositories
             _context.AssignmentAttachments.Remove(attachment);
             await _context.SaveChangesAsync();
         }
+
+
     }
 }

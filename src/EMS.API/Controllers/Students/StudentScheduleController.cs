@@ -1,5 +1,6 @@
 ﻿using EMS.Application.Features.Students.DTOs;
 using EMS.Application.Features.Students.Services;
+using EMS.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -25,13 +26,20 @@ namespace EMS.API.Controllers.Students
         [HttpGet]
         public async Task<IActionResult> GetMySchedules([FromQuery] ScheduleFilter filter)
         {
-            var result = await _scheduleService.GetMySchedulesAsync(filter);
-
-            return Ok(new
+            try
             {
-                Message = "Lấy lịch học thành công",
-                Data = result
-            });
+                var result = await _scheduleService.GetMySchedulesAsync(filter);
+
+                return Ok(new
+                {
+                    Message = "Lấy lịch học thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
         }
     }
 }
