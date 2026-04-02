@@ -54,6 +54,7 @@ namespace EMS.Infrastructure.Repositories
                 .Include(m => m.Author)
                 .Include(m => m.PostAttachments)
                 .Include(m => m.Comments.Where(c => c.IsDeleted != true))
+                    .ThenInclude(c => c.Author) // BỔ SUNG DÒNG NÀY ĐỂ LẤY TÊN NGƯỜI BÌNH LUẬN
                 .Where(m => m.ClassId == classId && m.IsDeleted != true)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
