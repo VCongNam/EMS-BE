@@ -54,5 +54,28 @@ namespace EMS.API.Controllers.Students
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        [HttpPost("{assignmentId}/submit")]
+        public async Task<IActionResult> SubmitAssignment(Guid assignmentId, [FromForm] SubmitAssignmentRequest request)
+        {
+            try
+            {
+                if (request.Files == null || !request.Files.Any())
+                {
+                    return BadRequest(new { Message = "Vui lòng đính kèm ít nhất 1 file." });
+                }
+
+                await _studentAssignmentService.SubmitAssignmentAsync(assignmentId, request);
+
+                return Ok(new
+                {
+                    Message = "Nộp bài thành công!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

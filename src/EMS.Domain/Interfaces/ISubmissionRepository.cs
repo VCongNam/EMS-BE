@@ -10,6 +10,13 @@ namespace EMS.Domain.Interfaces
     public interface ISubmissionRepository
     {
         Task<IEnumerable<Submission>> GetSubmissionsByAssignmentIdAsync(Guid assignmentId);
+        Task AddAsync(Submission submission);
+        Task UpdateAsync(Submission submission);
+        Task<Submission?> GetSubmissionWithAttachmentsAsync(Guid assignmentId, Guid studentId);
 
+        //Attachment
+        Task AddAttachmentAsync(SubmissionAttachment attachment);
+        Task<SubmissionAttachment?> GetAttachmentByIdAsync(Guid attachmentId);
+        Task RemoveAttachmentAsync(SubmissionAttachment attachment);
     }
 }
