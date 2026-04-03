@@ -11,5 +11,7 @@ namespace EMS.Application.Features.Students.Services
     {
         Task<PagedResult<TuitionDto>> GetMyTuitionAsync(TuitionFilter filter);
         Task<TuitionInvoiceDetailDto> GetTuitionInvoiceDetailAsync(Guid invoiceId);
+        Task<PaymentQrDto> GetPaymentQrCodeAsync(Guid invoiceId);
+        Task<bool> UploadPaymentProofAsync(Guid invoiceId, ProofUploadDto request);
     }
 }

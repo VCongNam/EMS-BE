@@ -50,5 +50,46 @@ namespace EMS.API.Controllers.Students
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        [HttpGet("{invoiceId}/paymentQr")]
+        public async Task<IActionResult> GetPaymentQr(Guid invoiceId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetPaymentQrCodeAsync(invoiceId);
+                return Ok(new
+                {
+                    Message = "Tạo mã QR thanh toán thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("{invoiceId}/proof")]
+        public async Task<IActionResult> UploadPaymentProof(Guid invoiceId, [FromForm] ProofUploadDto request)
+        {
+            try
+            {
+                if (request.ProofImage == null || request.ProofImage.Length == 0)
+                {
+                    return BadRequest(new { Message = "Vui lòng chọn ảnh minh chứng giao dịch." });
+                }
+
+                await _tuitionService.UploadPaymentProofAsync(invoiceId, request);
+
+                return Ok(new
+                {
+                    Message = "Nộp minh chứng thành công. Vui lòng chờ giáo viên xác nhận!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

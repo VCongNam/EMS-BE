@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EMS.Application.Common.DTOs;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,5 +9,6 @@ namespace EMS.Application.Common.Interfaces
 {
     public interface IVietQRService
     {
+        Task<string> GenerateQRCodeAsync(VietQRRequest request);
     }
 }

@@ -69,5 +69,26 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
             return (invoice, latestTransaction, attendances);
         }
+
+        public async Task<Invoice?> GetInvoiceWithTeacherBankInfoAsync(Guid invoiceId, Guid studentId)
+        {
+            return await _context.Invoices
+                .Include(i => i.Class)
+                    .ThenInclude(c => c.Teacher) 
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
+        }
+
+        public async Task<bool> HasPendingTransactionAsync(Guid invoiceId)
+        {
+            return await _context.Transactions
+                .AnyAsync(t => t.InvoiceId == invoiceId && t.Status == "Pending");
+        }
+
+        public async Task AddTransactionAsync(Transaction transaction)
+        {
+            await _context.Transactions.AddAsync(transaction);
+            await _context.SaveChangesAsync();
+        }
     }
 }
