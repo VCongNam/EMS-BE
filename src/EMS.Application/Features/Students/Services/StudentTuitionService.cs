@@ -14,11 +14,11 @@ namespace EMS.Application.Features.Students.Services
 {
     public class StudentTuitionService : IStudentTuitionService
     {
-        private readonly ITuitionRepository _tuitionRepository;
+        private readonly ITuitionFeeRepository _tuitionRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly IVietQRService _vietQRService;
         private readonly ISupabaseStorageService _supabaseStorageService;
-        public StudentTuitionService(ITuitionRepository tuitionRepository, ICurrentUserService currentUserService, IVietQRService vietQRService, ISupabaseStorageService supabaseStorageService)
+        public StudentTuitionService(ITuitionFeeRepository tuitionRepository, ICurrentUserService currentUserService, IVietQRService vietQRService, ISupabaseStorageService supabaseStorageService)
         {
             _tuitionRepository = tuitionRepository;
             _currentUserService = currentUserService;

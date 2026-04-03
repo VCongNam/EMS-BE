@@ -44,5 +44,23 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
+
+        [HttpPost("{transactionId}/review")]
+        public async Task<IActionResult> ReviewTransaction(Guid transactionId, [FromBody] ReviewTransactionDto request)
+        {
+            try
+            {
+                var result = await tuitionFeeService.ReviewTransactionAsync(transactionId, request);
+
+                if (result)
+                    return Ok(new { Message = request.IsApproved ? "Đã duyệt học phí." : " Đã từ chối minh chứng." });
+
+                return BadRequest(new { Message = "Có lỗi xảy ra trong quá trình xử lý." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EMS.Application.Features.Tuition.DTOs
+namespace EMS.Application.Features.TuitionFees.Dtos
 {
     public class ReviewTransactionDto
     {
