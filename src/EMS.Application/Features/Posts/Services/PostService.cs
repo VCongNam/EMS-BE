@@ -81,6 +81,9 @@ namespace EMS.Application.Features.Posts.Services
             var post = await postRepository.GetByIdAsync(id);
             if (post == null) throw new Exception($"Post with ID {id} not found.");
 
+            if (post.AuthorId != currentUserService.UserId)
+                throw new Exception("Bạn không có quyền chỉnh sửa bài đăng này.");
+
             post.Title = request.Title;
             post.Content = request.Content;
             post.UpdatedAt = DateTime.UtcNow;
@@ -126,6 +129,9 @@ namespace EMS.Application.Features.Posts.Services
         {
             var post = await postRepository.GetByIdAsync(id);
             if (post == null) throw new Exception("Post not found.");
+
+            if (post.AuthorId != currentUserService.UserId)
+                throw new Exception("Bạn không có quyền xóa bài đăng này.");
 
             post.IsDeleted = true;
             post.UpdatedAt = DateTime.UtcNow;
@@ -175,10 +181,29 @@ namespace EMS.Application.Features.Posts.Services
                 PostId = p.PostId,
                 Title = p.Title ?? null!,
                 Content = p.Content,
-                AuthorName = p.Author?.FullName ?? null!,
+                AuthorName = p.Author?.FullName ?? "Unknown",
                 CreatedAt = p.CreatedAt,
-                AttachmentCount = p.PostAttachments.Count,
-                CommentCount = p.Comments.Count
+
+                // MAP DANH SÁCH FILE ĐÍNH KÈM
+                Attachments = p.PostAttachments.Select(a => new PostAttachmentDto
+                {
+                    AttachmentId = a.AttachmentId,
+                    FileName = a.FileName,
+                    FileUrl = a.FileUrl,
+                    FileType = a.FileType,
+                    FileSize = a.FileSize,
+                    CreatedAt = a.CreatedAt
+                }).ToList(),
+
+                // MAP DANH SÁCH BÌNH LUẬN
+                Comments = p.Comments.Select(c => new CommentResponseDto
+                {
+                    CommentId = c.CommentId,
+                    AuthorId = c.AuthorId,
+                    AuthorName = c.Author?.FullName ?? "Unknown",
+                    Content = c.Content,
+                    CreatedAt = c.CreatedAt
+                }).OrderBy(c => c.CreatedAt).ToList()
             });
         }
 

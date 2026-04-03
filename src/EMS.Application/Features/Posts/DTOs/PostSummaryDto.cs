@@ -13,7 +13,7 @@ namespace EMS.Application.Features.Posts.DTOs
         public string Content { get; set; } = null!;
         public string AuthorName { get; set; } = null!;
         public DateTime? CreatedAt { get; set; }
-        public int AttachmentCount { get; set; }
-        public int CommentCount { get; set; }
+        public List<PostAttachmentDto> Attachments { get; set; } = new();
+        public List<CommentResponseDto> Comments { get; set; } = new();
     }
 }

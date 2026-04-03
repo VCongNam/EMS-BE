@@ -1,28 +1,28 @@
 
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
-using EMS.Application.Features.Classes.Services;
-using EMS.Application.Features.Posts.Services;
+using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Auth.Services;
+using EMS.Application.Features.Classes.Services;
+using EMS.Application.Features.Financials.Services;
+using EMS.Application.Features.LearningMaterials.Services;
+using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.ProgressReports.Services;
-using EMS.Infrastructure.Configuration;
+using EMS.Application.Features.Sessions.Services;
+using EMS.Application.Features.Students.Services;
+using EMS.Application.Features.TuitionFees.Services;
 using EMS.Domain.Interfaces;
+using EMS.Infrastructure.Configuration;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
 using EMS.Infrastructure.Services; 
+using EMS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using EMS.Infrastructure.Services;
-
-
-using Microsoft.EntityFrameworkCore;
-using EMS.Application.Features.Assignments.Services;
-using EMS.Application.Features.LearningMaterials.Services;
-using EMS.Application.Features.Students.Services;
-using EMS.Application.Features.Sessions.Services;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -52,6 +52,8 @@ builder.Services.AddScoped<ITARepository, TARepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialRepository>();
 builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
+builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
+builder.Services.AddScoped<ITuitionFeeRepository, TuitionFeeRepository>();
 
 
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
@@ -85,6 +87,9 @@ builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
 builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 builder.Services.AddHttpClient<IVietQRService, VietQRService>();
+builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
+builder.Services.AddScoped<IFinancialService, FinancialService>();
+
 
 builder.Services.AddCors(options =>
 {
