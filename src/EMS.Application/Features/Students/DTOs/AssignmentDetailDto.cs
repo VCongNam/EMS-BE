@@ -11,9 +11,18 @@ namespace EMS.Application.Features.Students.DTOs
         public Guid AssignmentID { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public string AttachmentPath { get; set; } // Link file đề bài gốc
+        public List<AttachmentDto> Attachments { get; set; } = new List<AttachmentDto>();
         public DateTime DueDate { get; set; }
 
         public SubmissionDetailDto? MySubmission { get; set; }
+    }
+
+    public class AttachmentDto
+    {
+        public Guid AttachmentID { get; set; }
+        public string FileName { get; set; }
+        public string FileURL { get; set; }
+        public string FileType { get; set; }
+        public long? FileSize { get; set; }
     }
 }

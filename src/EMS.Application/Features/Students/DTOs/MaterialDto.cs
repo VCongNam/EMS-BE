@@ -11,8 +11,17 @@ namespace EMS.Application.Features.Students.DTOs
         public Guid MaterialID { get; set; }
         public string Title { get; set; }
         public string? Description { get; set; }
-        public string FileURL { get; set; } 
-        public string FileType { get; set; } 
         public DateTime CreatedAt { get; set; }
+
+        public List<MaterialAttachmentDto> Attachments { get; set; } = new List<MaterialAttachmentDto>();
+    }
+
+    public class MaterialAttachmentDto
+    {
+        public Guid AttachmentId { get; set; }
+        public string FileName { get; set; }
+        public string FileUrl { get; set; }
+        public string FileType { get; set; }
+        public long? FileSize { get; set; }
     }
 }

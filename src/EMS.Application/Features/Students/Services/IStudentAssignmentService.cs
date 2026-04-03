@@ -10,5 +10,7 @@ namespace EMS.Application.Features.Students.Services
     public interface IStudentAssignmentService
     {
         Task<PagedResult<AssignmentItemDto>> GetClassAssignmentsAsync(Guid classId, AssignmentFilter filter);
+        Task<AssignmentDetailDto> GetClassAssignmentsDetailAsync(Guid assignmentId);
+        Task<bool> SubmitAssignmentAsync(Guid assignmentId, SubmitAssignmentRequest request);
     }
 }

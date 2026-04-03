@@ -86,8 +86,10 @@ builder.Services.AddScoped<IClassTAService, ClassTAService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
 builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
+builder.Services.AddHttpClient<IVietQRService, VietQRService>();
 builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
+
 
 builder.Services.AddCors(options =>
 {

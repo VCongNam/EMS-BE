@@ -22,6 +22,8 @@ namespace EMS.Application.Features.Students.Services
             _assignmentRepository = assignmentRepository;
         }
 
+
+
         public async Task<PagedResult<EnrolledClassDto>> GetMyClassesAsync(EnrolledClassFilter filter)
         {
             Guid studentId = _currentUser.UserId;
@@ -72,6 +74,10 @@ namespace EMS.Application.Features.Students.Services
             if (!isEnrolled)
             {
                 throw new UnauthorizedAccessException("Bạn không có quyền truy cập!");
+            }
+            if (filter.FromDate > filter.ToDate)
+            {
+                throw new ArgumentException("Ngày bắt đầu phải trước ngày kết thúc!");
             }
             var (entities, totalCount) = await _classRepository.GetClassPostAsync(classId, filter.Page, filter.Size, filter.FromDate, filter.ToDate);
             var items = entities.Select(p => new PostDto

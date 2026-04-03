@@ -23,5 +23,7 @@ public partial class Submission
 
     public virtual Student Student { get; set; } = null!;
 
+    public virtual ICollection<SubmissionAttachment> SubmissionAttachments { get; set; } = new List<SubmissionAttachment>();
+
     public virtual ICollection<SubmissionFeedback> SubmissionFeedbacks { get; set; } = new List<SubmissionFeedback>();
 }
