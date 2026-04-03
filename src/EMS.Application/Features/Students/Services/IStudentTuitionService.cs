@@ -10,6 +10,6 @@ namespace EMS.Application.Features.Students.Services
     public interface IStudentTuitionService
     {
         Task<PagedResult<TuitionDto>> GetMyTuitionAsync(TuitionFilter filter);
-        
+        Task<TuitionInvoiceDetailDto> GetTuitionInvoiceDetailAsync(Guid invoiceId);
     }
 }

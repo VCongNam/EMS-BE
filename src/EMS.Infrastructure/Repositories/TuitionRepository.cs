@@ -48,6 +48,26 @@ namespace EMS.Infrastructure.Repositories
             return (items, totalCount);
         }
 
-       
+        public async Task<(Invoice? Invoice, Transaction? LatestTransaction, List<Attendance> Attendances)> GetInvoiceDetailAsync(Guid invoiceId, Guid studentId)
+        {
+            var invoice = await _context.Invoices
+                .Include(i => i.Class)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
+            if (invoice == null) return (null, null, new List<Attendance>());
+            var latestTransaction = await _context.Transactions
+                .AsNoTracking()
+                .Where(t => t.InvoiceId == invoiceId)
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            var attendances = await _context.Attendances
+                .Include(a => a.Session)
+                .AsNoTracking()
+                .Where(a => a.InvoiceId == invoiceId && a.StudentId == studentId)
+                .OrderBy(a => a.Session.Date)
+                .ToListAsync();
+            return (invoice, latestTransaction, attendances);
+        }
     }
 }

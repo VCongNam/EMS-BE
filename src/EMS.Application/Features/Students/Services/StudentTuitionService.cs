@@ -72,6 +72,52 @@ namespace EMS.Application.Features.Students.Services
             };
         }
 
-        
+        public async Task<TuitionInvoiceDetailDto> GetTuitionInvoiceDetailAsync(Guid invoiceId)
+        {
+            Guid studentId = _currentUserService.UserId;
+            var (invoice, transaction, attendances) = await _tuitionRepository.GetInvoiceDetailAsync(invoiceId, studentId);
+            if (invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn này!");
+            string statusDisplay;
+            bool canPay = false;
+
+            if (invoice.Status == "Paid")
+            {
+                statusDisplay = "Đã hoàn thành";
+            }
+            else if (transaction != null && transaction.Status == "Pending")
+            {
+                statusDisplay = "Đang chờ giáo viên xác nhận";
+            }
+            else if (invoice.DueDate < DateTime.UtcNow)
+            {
+                statusDisplay = "Quá hạn";
+                canPay = true;
+            }
+            else
+            {
+                statusDisplay = "Chưa nộp";
+                canPay = true;
+            }
+            return new TuitionInvoiceDetailDto
+            {
+                InvoiceID = invoice.InvoiceId,
+                Title = $"Học phí lớp {invoice.Class?.ClassName} - Tháng {invoice.PeriodMonth}/{invoice.PeriodYear}",
+                Period = $"Tháng {invoice.PeriodMonth}/{invoice.PeriodYear}",
+                DueDate = invoice.DueDate,
+                UnitPrice = invoice.Class?.TuitionFee ?? 0,
+                TotalSessions = attendances.Count,
+
+                TotalAmount = invoice.Amount,
+                StatusDisplay = statusDisplay,
+                CanPay = canPay,
+
+                BilledSessions = attendances.Select(a => new BilledSessionDto
+                {
+                    Date = (DateOnly)(a.Session?.Date),
+                    Title = a.Session?.Title ?? "Buổi học",
+                    AttendanceStatus = a.Status == "Present" ? "Có mặt" : (a.IsExcused == true ? "Vắng có phép" : "Vắng không phép")
+                }).ToList()
+            };
+        }
     }
 }

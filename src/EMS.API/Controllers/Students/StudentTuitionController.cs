@@ -33,6 +33,22 @@ namespace EMS.API.Controllers.Students
             }
         }
 
-
+        [HttpGet("{invoiceId}")]
+        public async Task<IActionResult> GetTuitionDetail(Guid invoiceId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetTuitionInvoiceDetailAsync(invoiceId);
+                return Ok(new
+                {
+                    Message = "Lấy chi tiết hóa đơn thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }
