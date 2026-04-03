@@ -15,5 +15,9 @@ namespace EMS.Domain.Interfaces
         Task<Invoice?> GetInvoiceWithTeacherBankInfoAsync(Guid invoiceId, Guid studentId);
         Task<bool> HasPendingTransactionAsync(Guid invoiceId);
         Task AddTransactionAsync(Transaction transaction);
+
+        //Teacher features
+        Task<Transaction?> GetTransactionWithInvoiceAsync(Guid transactionId);
+        Task<bool> UpdateTransactionStatusAsync(Transaction transaction, Invoice? invoice);
     }
 }

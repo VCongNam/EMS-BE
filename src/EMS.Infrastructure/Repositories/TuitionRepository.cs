@@ -90,5 +90,39 @@ namespace EMS.Infrastructure.Repositories
             await _context.Transactions.AddAsync(transaction);
             await _context.SaveChangesAsync();
         }
+
+        //Teacher feature
+
+        public async Task<Transaction?> GetTransactionWithInvoiceAsync(Guid transactionId)
+        {
+            return await _context.Transactions
+                .Include(t => t.Invoice) 
+                .FirstOrDefaultAsync(t => t.TransactionId == transactionId);
+        }
+
+        public async Task<bool> UpdateTransactionStatusAsync(Transaction transaction, Invoice? invoice)
+        {
+            using var dbTransaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                _context.Transactions.Update(transaction);
+
+                if (invoice != null)
+                {
+                    _context.Invoices.Update(invoice);
+                }
+
+                await _context.SaveChangesAsync();
+                await dbTransaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await dbTransaction.RollbackAsync();
+                return false;
+            }
+        }
+
+       
     }
 }
