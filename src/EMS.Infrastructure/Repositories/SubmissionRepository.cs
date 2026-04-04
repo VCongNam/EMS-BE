@@ -36,7 +36,6 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task UpdateAsync(Submission submission)
         {
-             _context.Submissions.Update(submission);
             await _context.SaveChangesAsync();
         }
 
@@ -63,6 +62,16 @@ namespace EMS.Infrastructure.Repositories
         {
             _context.SubmissionAttachments.Remove(attachment);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSubmissionAttachmentsAsync(IEnumerable<SubmissionAttachment> attachments)
+        {
+            _context.SubmissionAttachments.RemoveRange(attachments);
+        }
+
+        public async Task AddAttachmentsAsync(IEnumerable<SubmissionAttachment> attachments)
+        {
+            await _context.SubmissionAttachments.AddRangeAsync(attachments);
         }
     }
 
