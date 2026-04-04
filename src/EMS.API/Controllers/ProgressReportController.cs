@@ -7,7 +7,7 @@ namespace EMS.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bắt buộc phải đăng nhập (Có JWT)
+    [Authorize] // Yêu cầu người dùng phải đăng nhập (có token JWT)
     public class ProgressReportController : ControllerBase
     {
         private readonly IProgressReportService reportService;
@@ -17,71 +17,17 @@ namespace EMS.API.Controllers
             this.reportService = reportService;
         }
 
-        // --- 1. Tạo mới (Draft) ---
-        [HttpPost]
-        [Authorize(Roles = "Teacher,Admin")]
-        public async Task<IActionResult> CreateReport([FromBody] CreateProgressReportDto request)
+        // --- MÀN HÌNH 2: Lấy danh sách học sinh của một lớp kèm trạng thái báo cáo ---
+        // GET: api/ProgressReport/class/{classId}?month=3&year=2026
+        [HttpGet("class/{classId}")]
+        public async Task<IActionResult> GetClassReportDetails(Guid classId, [FromQuery] int month, [FromQuery] int year)
         {
-            try
-            {
-                var reportId = await reportService.CreateReportAsync(request);
-                return Ok(new { Message = "Tạo báo cáo thành công", ReportId = reportId });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var result = await reportService.GetClassReportDetailsAsync(classId, month, year);
+            return Ok(result);
         }
 
-        // --- 2. Cập nhật bản nháp ---
-        [HttpPut("{id}")]
-        [Authorize(Roles = "Teacher,Admin")]
-        public async Task<IActionResult> UpdateReport(Guid id, [FromBody] UpdateProgressReportDto request)
-        {
-            try
-            {
-                await reportService.UpdateReportAsync(id, request);
-                return Ok(new { Message = "Cập nhật báo cáo thành công" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        // --- 3. Xóa báo cáo ---
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Teacher,Admin")]
-        public async Task<IActionResult> DeleteReport(Guid id)
-        {
-            try
-            {
-                await reportService.DeleteReportAsync(id);
-                return Ok(new { Message = "Xóa báo cáo thành công" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        // --- 4. Gửi báo cáo (Publish) ---
-        [HttpPatch("{id}/send")]
-        [Authorize(Roles = "Teacher,Admin")]
-        public async Task<IActionResult> SendReport(Guid id)
-        {
-            try
-            {
-                await reportService.SendReportAsync(id);
-                return Ok(new { Message = "Đã gửi báo cáo thành công tới Phụ huynh/Học sinh!" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        // --- 5. Lấy chi tiết ---
+        // --- MÀN HÌNH 3: Lấy chi tiết báo cáo để đổ dữ liệu lên form sửa ---
+        // GET: api/ProgressReport/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetReportDetail(Guid id)
         {
@@ -96,14 +42,18 @@ namespace EMS.API.Controllers
             }
         }
 
-        // --- 6. Dành cho Học sinh/Phụ huynh (Chỉ thấy Published) ---
-        [HttpGet("student/{studentId}/class/{classId}")]
-        public async Task<IActionResult> GetReportsForStudent(Guid studentId, Guid classId)
+        // --- MÀN HÌNH 3: Tạo mới báo cáo (Lưu nháp hoặc Gửi ngay) ---
+        // POST: api/ProgressReport
+        [HttpPost]
+        public async Task<IActionResult> CreateReport([FromBody] CreateProgressReportDto request)
         {
             try
             {
-                var reports = await reportService.GetReportsForStudentAsync(studentId, classId);
-                return Ok(reports);
+                var reportId = await reportService.CreateReportAsync(request);
+
+                // Trả về câu thông báo tùy theo trạng thái
+                string message = request.Status == "Published" ? "Đã gửi báo cáo thành công!" : "Lưu nháp thành công.";
+                return Ok(new { Message = message, ReportId = reportId });
             }
             catch (Exception ex)
             {
@@ -111,14 +61,17 @@ namespace EMS.API.Controllers
             }
         }
 
-        // --- 7. Dành cho Giáo viên (Quản lý toàn bộ 1 Lớp) ---
-        [HttpGet("class/{classId}")]
-        public async Task<IActionResult> GetReportsByClass(Guid classId)
+        // --- MÀN HÌNH 3: Cập nhật báo cáo đã tạo (Lưu tiếp nháp hoặc Chốt gửi) ---
+        // PUT: api/ProgressReport/{id}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateReport(Guid id, [FromBody] UpdateProgressReportDto request)
         {
             try
             {
-                var reports = await reportService.GetReportsByClassAsync(classId);
-                return Ok(reports);
+                await reportService.UpdateReportAsync(id, request);
+
+                string message = request.Status == "Published" ? "Đã gửi báo cáo thành công!" : "Cập nhật bản nháp thành công.";
+                return Ok(new { Message = message });
             }
             catch (Exception ex)
             {
@@ -126,14 +79,15 @@ namespace EMS.API.Controllers
             }
         }
 
-        // --- 8. Dành cho Giáo viên (Dashboard tổng quan) ---
-        [HttpGet("teacher/dashboard")]
-        public async Task<IActionResult> GetTeacherDashboardReports()
+        // --- MÀN HÌNH 2: Xóa báo cáo (Chỉ áp dụng cho bản nháp) ---
+        // DELETE: api/ProgressReport/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteReport(Guid id)
         {
             try
             {
-                var reports = await reportService.GetReportsByTeacherAsync();
-                return Ok(reports);
+                await reportService.DeleteReportAsync(id);
+                return Ok(new { Message = "Xóa báo cáo thành công." });
             }
             catch (Exception ex)
             {

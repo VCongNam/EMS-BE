@@ -207,7 +207,6 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
-
             entity.HasOne(d => d.Invoice).WithMany(p => p.Attendances)
                 .HasForeignKey(d => d.InvoiceId)
                 .HasConstraintName("Attendance_InvoiceID_fkey");
