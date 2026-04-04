@@ -39,7 +39,7 @@ namespace EMS.Application.Features.Students.Services
                 {
                     status = s.Grade.HasValue ? "Đã chấm" : "Đã Nộp";
                 }
-                if(s.SubmittedAt > a.DueDate){
+                if(a.DueDate > DateTime.Now){
                     status = "Quá hạn";
                 }
                 return new AssignmentItemDto
