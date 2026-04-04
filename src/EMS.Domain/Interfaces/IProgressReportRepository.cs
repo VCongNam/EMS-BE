@@ -17,9 +17,11 @@ namespace EMS.Domain.Interfaces
         Task<bool> IsReportExistAsync(Guid studentId, Guid classId, int month, int year);
         Task<IEnumerable<ClassEnrollment>> GetActiveStudentsInClassAsync(Guid classId);
 
-        // Thêm 2 hàm này để lấy dữ liệu tính GPA và Chuyên cần
         Task<List<Submission>> GetSubmissionsForCalcAsync(Guid classId, DateTime startDate, DateTime endDate);
         Task<List<Attendance>> GetAttendancesForCalcAsync(Guid classId, DateOnly startDate, DateOnly endDate);
-    
+        Task<List<Class>> GetClassesByTeacherAndPeriodAsync(Guid teacherId, int month, int year, string? searchTerm);
+
+        Task<Dictionary<Guid, int>> GetActiveStudentCountsByClassesAsync(List<Guid> classIds);
+        Task<List<ProgressReport>> GetReportsByClassesAndPeriodAsync(List<Guid> classIds, int month, int year);
     }
 }

@@ -188,5 +188,74 @@ namespace EMS.Application.Features.ProgressReports.Services
                 UpdatedAt = report.UpdatedAt
             };
         }
+        public async Task<ProgressReportDashboardDto> GetClassesSummaryAsync(int month, int year, string? searchTerm = null)
+        {
+            var teacherId = currentUserService.UserId;
+
+            // 1. Lấy danh sách lớp thuộc sở hữu của Teacher này
+            var classes = await reportRepository.GetClassesByTeacherAndPeriodAsync(teacherId, month, year, searchTerm);
+
+            var dashboardData = new ProgressReportDashboardDto
+            {
+                TotalClasses = classes.Count,
+                ClassSummaries = new List<ClassReportSummaryItemDto>()
+            };
+
+            if (!classes.Any()) return dashboardData;
+
+            var classIds = classes.Select(c => c.ClassId).ToList();
+
+            // 2. Lấy sĩ số và danh sách báo cáo hiện có trong kỳ
+            var studentCounts = await reportRepository.GetActiveStudentCountsByClassesAsync(classIds);
+            var reports = await reportRepository.GetReportsByClassesAndPeriodAsync(classIds, month, year);
+
+            int totalSystemStudents = 0;
+            int totalSystemCreatedReports = 0;
+
+            // Quy tắc Hạn chót: Ngày 5 của tháng kế tiếp
+            var reportDeadline = new DateTime(year, month, 1).AddMonths(1).AddDays(4).ToUniversalTime();
+
+            foreach (var c in classes)
+            {
+                var classReports = reports.Where(r => r.ClassId == c.ClassId).ToList();
+
+                int totalStudents = studentCounts.ContainsKey(c.ClassId) ? studentCounts[c.ClassId] : 0;
+                int draftCount = classReports.Count(r => r.Status == "Draft");
+                int publishedCount = classReports.Count(r => r.Status == "Published");
+                int createdReports = draftCount + publishedCount;
+
+                double completionRate = totalStudents > 0 ? Math.Round((double)createdReports / totalStudents * 100, 1) : 0;
+
+                // Logic cảnh báo đỏ cho UI: Còn dưới 48 tiếng và chưa hoàn thành 100%
+                var timeRemaining = reportDeadline - DateTime.UtcNow;
+                bool isNearDeadline = timeRemaining.TotalHours <= 48 && timeRemaining.TotalHours >= 0 && createdReports < totalStudents;
+
+                dashboardData.ClassSummaries.Add(new ClassReportSummaryItemDto
+                {
+                    ClassId = c.ClassId,
+                    ClassName = c.ClassName,
+                    Room = c.Room,
+                    TotalStudents = totalStudents,
+                    DraftCount = draftCount,
+                    PublishedCount = publishedCount,
+                    CompletionRate = completionRate,
+                    Deadline = reportDeadline,
+                    IsNearDeadline = isNearDeadline,
+                    LastUpdated = classReports.Any() ? classReports.Max(r => r.UpdatedAt) : null
+                });
+
+                totalSystemStudents += totalStudents;
+                totalSystemCreatedReports += createdReports;
+            }
+
+            // Tỷ lệ hoàn thành tổng (Hiển thị ở Header của Dashboard)
+            dashboardData.OverallCompletionRate = totalSystemStudents > 0
+                ? Math.Round((double)totalSystemCreatedReports / totalSystemStudents * 100, 1)
+                : 0;
+
+            return dashboardData;
+        }
+
+        
     }
 }
