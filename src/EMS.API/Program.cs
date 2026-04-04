@@ -8,6 +8,7 @@ using EMS.Application.Features.Financials.Services;
 using EMS.Application.Features.LearningMaterials.Services;
 using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.ProgressReports.Services;
+using EMS.Application.Features.ProgressReports.Validators;
 using EMS.Application.Features.Sessions.Services;
 using EMS.Application.Features.Students.Services;
 using EMS.Application.Features.TuitionFees.Services;
@@ -17,12 +18,14 @@ using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
 using EMS.Infrastructure.Services; 
 using EMS.Infrastructure.Services;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using FluentValidation.AspNetCore;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -91,6 +94,12 @@ builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
 
 
+
+builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Request nếu dữ liệu sai và trả về lỗi 400
+builder.Services.AddFluentValidationClientsideAdapters();
+// Lệnh này sẽ tự động tìm tất cả các class Validator trong cùng một thư mục/Assembly với CreateProgressReportValidator
+builder.Services.AddValidatorsFromAssemblyContaining<CreateProgressReportValidator>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -99,7 +108,8 @@ builder.Services.AddCors(options =>
             policy.WithOrigins(
                 "http://localhost:5173",
                 "https://ems-fe-six.vercel.app",
-                "https://ems-be-2-s2nk.onrender.com"
+                "https://ems-be-2-s2nk.onrender.com",
+                "https://localhost:7049"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()

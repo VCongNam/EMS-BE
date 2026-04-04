@@ -13,9 +13,8 @@ namespace EMS.Domain.Interfaces
         Task UpdateAsync(ProgressReport report);
         Task DeleteAsync(ProgressReport report);
         Task<ProgressReport?> GetByIdAsync(Guid reportId);
-
-        Task<IEnumerable<ProgressReport>> GetReportsByStudentAndClassAsync(Guid studentId, Guid classId);
-        Task<IEnumerable<ProgressReport>> GetReportsByClassIdAsync(Guid classId);
-        Task<IEnumerable<ProgressReport>> GetReportsByTeacherAsync(Guid teacherId);
+        Task<IEnumerable<ProgressReport>> GetReportsByClassAndPeriodAsync(Guid classId, int month, int year);
+        Task<bool> IsReportExistAsync(Guid studentId, Guid classId, int month, int year);
+        Task<IEnumerable<ClassEnrollment>> GetActiveStudentsInClassAsync(Guid classId);
     }
 }

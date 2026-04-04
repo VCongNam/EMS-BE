@@ -40,49 +40,33 @@ namespace EMS.Infrastructure.Repositories
         public async Task<ProgressReport?> GetByIdAsync(Guid reportId)
         {
             return await context.ProgressReports
-                .Include(r => r.Student)
-                    .ThenInclude(s => s.StudentNavigation)
-                .Include(r => r.Teacher)
-                    .ThenInclude(t => t.TeacherNavigation)
+                .Include(r => r.Student).ThenInclude(s => s.StudentNavigation)
+                .Include(r => r.Teacher).ThenInclude(t => t.TeacherNavigation)
                 .Include(r => r.Class)
                 .FirstOrDefaultAsync(r => r.ReportId == reportId);
         }
 
-        public async Task<IEnumerable<ProgressReport>> GetReportsByStudentAndClassAsync(Guid studentId, Guid classId)
+        public async Task<IEnumerable<ProgressReport>> GetReportsByClassAndPeriodAsync(Guid classId, int month, int year)
         {
             return await context.ProgressReports
                 .AsNoTracking()
-                .Include(r => r.Teacher)
-                    .ThenInclude(t => t.TeacherNavigation)
-                .Include(r => r.Class)
-                .Where(r => r.StudentId == studentId && r.ClassId == classId)
-                .OrderByDescending(r => r.CreatedAt)
+                .Where(r => r.ClassId == classId && r.PeriodMonth == month && r.PeriodYear == year)
                 .ToListAsync();
         }
-
-        public async Task<IEnumerable<ProgressReport>> GetReportsByClassIdAsync(Guid classId)
+        public async Task<bool> IsReportExistAsync(Guid studentId, Guid classId, int month, int year)
         {
-            return await context.ProgressReports
-                .AsNoTracking()
-                .Include(r => r.Student)
-                    .ThenInclude(s => s.StudentNavigation)
-                .Include(r => r.Teacher)
-                    .ThenInclude(t => t.TeacherNavigation)
-                .Include(r => r.Class)
-                .Where(r => r.ClassId == classId)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
+            return await context.ProgressReports.AnyAsync(r =>
+                r.StudentId == studentId &&
+                r.ClassId == classId &&
+                r.PeriodMonth == month &&
+                r.PeriodYear == year);
         }
 
-        public async Task<IEnumerable<ProgressReport>> GetReportsByTeacherAsync(Guid teacherId)
+        public async Task<IEnumerable<ClassEnrollment>> GetActiveStudentsInClassAsync(Guid classId)
         {
-            return await context.ProgressReports
-                .AsNoTracking()
-                .Include(r => r.Student)
-                    .ThenInclude(s => s.StudentNavigation)
-                .Include(r => r.Class)
-                .Where(r => r.TeacherId == teacherId)
-                .OrderByDescending(r => r.CreatedAt)
+            return await context.ClassEnrollments
+                .Include(e => e.Student).ThenInclude(s => s.StudentNavigation)
+                .Where(e => e.ClassId == classId && e.Status == "Active")
                 .ToListAsync();
         }
     }
