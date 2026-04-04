@@ -35,11 +35,11 @@ namespace EMS.Application.Features.Students.Services
                 var a = m.Assignment;
                 var s = m.Submission;
                 string status = "Chưa nộp";
-                if (s!=null)
+                if (s != null)
                 {
                     status = s.Grade.HasValue ? "Đã chấm" : "Đã Nộp";
                 }
-                if(a.DueDate > DateTime.Now){
+                if (a.DueDate < DateTime.Now) {
                     status = "Quá hạn";
                 }
                 return new AssignmentItemDto
@@ -64,7 +64,7 @@ namespace EMS.Application.Features.Students.Services
             Guid studentId = _currentUser.UserId;
 
             var (assignment, submission) = await _assignmentRepository.GetAssignmentDetailAsync(assignmentId, studentId);
-            if(assignment == null)
+            if (assignment == null)
             {
                 throw new KeyNotFoundException("Không tìm thấy bài tập này!");
             }
@@ -125,19 +125,19 @@ namespace EMS.Application.Features.Students.Services
             {
                 throw new Exception("Bài tập không tồn tại!");
             }
-            if(assignment.DueDate < DateTime.UtcNow && assignment.AllowLateSubmission == false)
+            if (assignment.DueDate < DateTime.UtcNow && assignment.AllowLateSubmission == false)
             {
                 throw new Exception("Đã hết hạn nộp bài");
             }
 
-            foreach(var file in request.Files)
+            foreach (var file in request.Files)
             {
                 DataValidator.ValidateFile(file);
             }
 
             //New submission
             var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, studentId);
-            if(existingSubmission == null)
+            if (existingSubmission == null)
             {
                 var newSubmission = new Submission
                 {
@@ -163,7 +163,7 @@ namespace EMS.Application.Features.Students.Services
                     });
                 }
                 await _submissionRepository.AddAsync(newSubmission);
-            } 
+            }
             else
             {
                 if (existingSubmission.Grade.HasValue)
@@ -197,6 +197,45 @@ namespace EMS.Application.Features.Students.Services
                 await _submissionRepository.UpdateAsync(existingSubmission);
 
                 var deleteTasks = oldFileUrls.Select(url => _supabaseStorageService.DeleteFileByUrlAsync(url));
+                await Task.WhenAll(deleteTasks);
+            }
+
+            return true;
+        }
+
+        public async Task<bool> UnsubmitAssignmentAsync(Guid assignmentId)
+        {
+            Guid studentId = _currentUser.UserId;
+            var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, studentId);
+            if (existingSubmission == null)
+            {
+                throw new Exception("Bạn chưa nộp bài tập này nên không thể hủy.");
+            }
+            if (existingSubmission.Grade.HasValue)
+            {
+                throw new Exception("Bài tập đã được chấm điểm, không thể hủy nộp bài.");
+            }
+
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            if (assignment != null && assignment.DueDate < DateTime.UtcNow)
+            { 
+                if ((bool)!assignment.AllowLateSubmission)
+                {
+                    throw new Exception("Đã quá hạn nộp bài. Việc hủy bài lúc này sẽ khiến bạn không thể nộp lại được nữa!");
+                }
+            }
+            var fileUrlsToDelete = existingSubmission.SubmissionAttachments?
+                .Select(a => a.FileUrl)
+                .ToList() ?? new List<string>();
+
+            if (existingSubmission.SubmissionAttachments != null && existingSubmission.SubmissionAttachments.Any())
+            {
+                await _submissionRepository.DeleteSubmissionAttachmentsAsync(existingSubmission.SubmissionAttachments);
+            }
+            await _submissionRepository.DeleteSubmissionAsync(existingSubmission);
+            if (fileUrlsToDelete.Any())
+            {
+                var deleteTasks = fileUrlsToDelete.Select(url => _supabaseStorageService.DeleteFileByUrlAsync(url));
                 await Task.WhenAll(deleteTasks);
             }
 

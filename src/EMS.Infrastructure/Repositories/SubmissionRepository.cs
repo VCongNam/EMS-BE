@@ -39,6 +39,12 @@ namespace EMS.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task DeleteSubmissionAsync(Submission submission)
+        {
+            _context.Submissions.Remove(submission);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<Submission?> GetSubmissionWithAttachmentsAsync(Guid assignmentId, Guid studentId)
         {
             return await _context.Submissions

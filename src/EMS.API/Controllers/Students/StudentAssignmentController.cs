@@ -4,6 +4,7 @@ using EMS.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace EMS.API.Controllers.Students
 {
@@ -70,6 +71,24 @@ namespace EMS.API.Controllers.Students
                 return Ok(new
                 {
                     Message = "Nộp bài thành công!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpDelete("{assignmentId}/unsubmit")]
+        public async Task<IActionResult> UnsubmitAssignment(Guid assignmentId)
+        {
+            try
+            {
+                await _studentAssignmentService.UnsubmitAssignmentAsync(assignmentId);
+
+                return Ok(new
+                {
+                    Message = "Đã hủy nộp bài!"
                 });
             }
             catch (Exception ex)
