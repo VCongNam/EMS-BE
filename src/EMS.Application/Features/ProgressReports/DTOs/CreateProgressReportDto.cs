@@ -14,6 +14,6 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public int PeriodYear { get; set; }
         public string Title { get; set; } = null!;
         public string Content { get; set; } = null!;
-        public string Status { get; set; } = "Draft"; // UI truyền lên "Draft" hoặc "Published"
+        public string Status { get; set; }
     }
 }
