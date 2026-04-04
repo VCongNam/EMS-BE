@@ -17,11 +17,13 @@ public partial class ProgressReport
 
     public string Content { get; set; } = null!;
 
-    public string? Status { get; set; }
+    public string? Status { get; set; } = "Draft";
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+    public int PeriodMonth { get; set; }
+    public int PeriodYear { get; set; }
 
     public virtual Class Class { get; set; } = null!;
 
