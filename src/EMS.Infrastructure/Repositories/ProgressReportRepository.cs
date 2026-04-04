@@ -88,5 +88,40 @@ namespace EMS.Infrastructure.Repositories
                          && a.Session.Date >= startDate && a.Session.Date <= endDate)
                 .ToListAsync();
         }
+
+        public async Task<List<Class>> GetClassesByTeacherAndPeriodAsync(Guid teacherId, int month, int year, string? searchTerm)
+        {
+            var periodStart = new DateOnly(year, month, 1);
+            var periodEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+
+            var query = context.Classes
+                .Where(c => c.TeacherId == teacherId) 
+                .Where(c => c.IsDeleted != true)
+                .Where(c => c.StartDate <= periodEnd && c.EndDate >= periodStart);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var lowerTerm = searchTerm.ToLower();
+                query = query.Where(c => c.ClassName.ToLower().Contains(lowerTerm));
+            }
+
+            return await query.OrderByDescending(c => c.CreatedAt).ToListAsync();
+        }
+
+        public async Task<Dictionary<Guid, int>> GetActiveStudentCountsByClassesAsync(List<Guid> classIds)
+        {
+            return await context.ClassEnrollments
+                .Where(e => classIds.Contains(e.ClassId) && e.Status == "Active")
+                .GroupBy(e => e.ClassId)
+                .ToDictionaryAsync(g => g.Key, g => g.Count());
+        }
+
+        public async Task<List<ProgressReport>> GetReportsByClassesAndPeriodAsync(List<Guid> classIds, int month, int year)
+        {
+            return await context.ProgressReports
+                .AsNoTracking()
+                .Where(r => classIds.Contains(r.ClassId) && r.PeriodMonth == month && r.PeriodYear == year)
+                .ToListAsync();
+        }
     }
 }

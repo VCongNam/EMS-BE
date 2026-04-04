@@ -16,7 +16,7 @@ namespace EMS.API.Controllers
         {
             this.tuitionFeeService = tuitionFeeService;
         }
-
+        
         [HttpPut("class/{classId}/fee")]
         public async Task<IActionResult> UpdateTuitionFee(Guid classId, [FromBody] UpdateTuitionFeeDto request)
         {

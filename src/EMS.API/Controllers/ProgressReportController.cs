@@ -77,5 +77,22 @@ namespace EMS.API.Controllers
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
+
+        [HttpGet("classes/summary")]
+        public async Task<IActionResult> GetClassesReportSummary(
+     [FromQuery] int month,
+     [FromQuery] int year,
+     [FromQuery] string? search)
+        {
+            try
+            {
+                var result = await reportService.GetClassesSummaryAsync(month, year, search);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }

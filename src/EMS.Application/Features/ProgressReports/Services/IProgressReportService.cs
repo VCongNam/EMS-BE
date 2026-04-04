@@ -14,6 +14,8 @@ namespace EMS.Application.Features.ProgressReports.Services
         Task DeleteReportAsync(Guid id);
         Task<ProgressReportResponseDto> GetReportDetailAsync(Guid id);
         Task<IEnumerable<ProgressReportResponseDto>> GetClassReportDetailsAsync(Guid classId, int month, int year);
-        Task SendReportAsync(Guid id); 
+        Task SendReportAsync(Guid id);
+        Task<ProgressReportDashboardDto> GetClassesSummaryAsync(int month, int year, string? searchTerm = null);
+
     }
 }
