@@ -102,8 +102,6 @@ namespace EMS.Application.Features.Students.Services
                 Title = assignment.Title,
                 Description = assignment.Description,
                 DueDate = assignment.DueDate,
-
-                // MỚI: Map mảng file đính kèm của đề bài
                 Attachments = assignment.AssignmentAttachments?
             .Select(aa => new AttachmentDto
             {
@@ -137,21 +135,7 @@ namespace EMS.Application.Features.Students.Services
                 DataValidator.ValidateFile(file);
             }
 
-            var newAttachment = new List<SubmissionAttachment>();
-            foreach(var file in request.Files)
-            {
-                string fileUrl = await _supabaseStorageService.UploadFileAsync(file, "submissions");
-                newAttachment.Add(new SubmissionAttachment
-                {
-                    AttachmentId = Guid.NewGuid(),
-                    FileUrl = fileUrl,
-                    FileName = file.FileName,
-                    FileType = Path.GetExtension(file.FileName),
-                    FileSize = file.Length,
-                    CreatedAt = DateTime.UtcNow,
-                });
-            }
-
+            //New submission
             var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, studentId);
             if(existingSubmission == null)
             {
@@ -162,8 +146,22 @@ namespace EMS.Application.Features.Students.Services
                     StudentId = studentId,
                     SubmittedAt = DateTime.UtcNow,
                     Status = "Submitted",
-                    SubmissionAttachments = newAttachment
+                    SubmissionAttachments = new List<SubmissionAttachment>()
                 };
+                foreach (var file in request.Files)
+                {
+                    string fileUrl = await _supabaseStorageService.UploadFileAsync(file, "submissions");
+                    newSubmission.SubmissionAttachments.Add(new SubmissionAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        SubmissionId = newSubmission.SubmissionId,
+                        FileUrl = fileUrl,
+                        FileName = file.FileName,
+                        FileType = Path.GetExtension(file.FileName),
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                }
                 await _submissionRepository.AddAsync(newSubmission);
             } 
             else
@@ -172,19 +170,32 @@ namespace EMS.Application.Features.Students.Services
                 {
                     throw new Exception("Bài tập đã được chấm, không thể nộp lại!");
                 }
+                // Update assignment
+                var oldAttachments = existingSubmission.SubmissionAttachments.ToList();
+                var oldFileUrls = oldAttachments.Select(a => a.FileUrl).ToList();
 
-                var oldFileUrls = existingSubmission.SubmissionAttachments
-                    .Select(x => x.FileUrl)
-                    .ToList();
-                // Xóa url cũ
-                existingSubmission.SubmissionAttachments.Clear();
-                foreach(var attachment in newAttachment)
+                await _submissionRepository.DeleteSubmissionAttachmentsAsync(oldAttachments);
+
+                var newAttachments = new List<SubmissionAttachment>();
+                foreach (var file in request.Files)
                 {
-                    existingSubmission.SubmissionAttachments.Add(attachment);
+                    string fileUrl = await _supabaseStorageService.UploadFileAsync(file, "submissions");
+                    newAttachments.Add(new SubmissionAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        SubmissionId = existingSubmission.SubmissionId, // Gắn ID bài nộp vào
+                        FileUrl = fileUrl,
+                        FileName = file.FileName,
+                        FileType = Path.GetExtension(file.FileName),
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow,
+                    });
                 }
+                await _submissionRepository.AddAttachmentsAsync(newAttachments);
                 existingSubmission.SubmittedAt = DateTime.UtcNow;
+
                 await _submissionRepository.UpdateAsync(existingSubmission);
-                // xóa file cũ trong storage
+
                 var deleteTasks = oldFileUrls.Select(url => _supabaseStorageService.DeleteFileByUrlAsync(url));
                 await Task.WhenAll(deleteTasks);
             }
