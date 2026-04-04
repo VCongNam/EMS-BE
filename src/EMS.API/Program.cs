@@ -75,9 +75,14 @@ builder.Services.AddSingleton(provider => new Supabase.Client(supabaseUrl, supab
 builder.Services.AddScoped<ISupabaseStorageService, EMS.Infrastructure.Services.Supabase.SupabaseStorageService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IClassService, ClassService>();
+//Student
 builder.Services.AddScoped<IStudentAccountService, StudentAccountService>();
 builder.Services.AddScoped<IStudentClassService, StudentClassService>();
 builder.Services.AddScoped<IStudentAssignmentService, StudentAssignmentService>();
+builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
+builder.Services.AddScoped<IStudentScheduleService, StudentScheduleService>();
+builder.Services.AddScoped<IStudentTuitionService, StudentTuitionService>();
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();

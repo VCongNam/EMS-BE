@@ -11,5 +11,7 @@ namespace EMS.Application.Features.TuitionFees.Services
     {
         Task UpdateTuitionFeeAsync(Guid classId, UpdateTuitionFeeDto request);
         Task UpdateTuitionDeadlineAsync(Guid classId, UpdateTuitionFeeDeadlineDto request);
+
+        Task<bool> ReviewTransactionAsync(Guid transactionId, ReviewTransactionDto request);
     }
 }
