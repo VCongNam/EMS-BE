@@ -92,7 +92,8 @@ builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 builder.Services.AddHttpClient<IVietQRService, VietQRService>();
 builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
-
+// Đăng ký Interface và Class triển khai thực tế của nó
+builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
 
 
 builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Request nếu dữ liệu sai và trả về lỗi 400
