@@ -53,13 +53,11 @@ namespace EMS.Infrastructure.Repositories
                 .Where(r => r.ClassId == classId && r.PeriodMonth == month && r.PeriodYear == year)
                 .ToListAsync();
         }
+
         public async Task<bool> IsReportExistAsync(Guid studentId, Guid classId, int month, int year)
         {
             return await context.ProgressReports.AnyAsync(r =>
-                r.StudentId == studentId &&
-                r.ClassId == classId &&
-                r.PeriodMonth == month &&
-                r.PeriodYear == year);
+                r.StudentId == studentId && r.ClassId == classId && r.PeriodMonth == month && r.PeriodYear == year);
         }
 
         public async Task<IEnumerable<ClassEnrollment>> GetActiveStudentsInClassAsync(Guid classId)
@@ -67,6 +65,27 @@ namespace EMS.Infrastructure.Repositories
             return await context.ClassEnrollments
                 .Include(e => e.Student).ThenInclude(s => s.StudentNavigation)
                 .Where(e => e.ClassId == classId && e.Status == "Active")
+                .ToListAsync();
+        }
+
+        // --- Lấy dữ liệu điểm số ---
+        public async Task<List<Submission>> GetSubmissionsForCalcAsync(Guid classId, DateTime startDate, DateTime endDate)
+        {
+            return await context.Submissions
+                .Include(s => s.Assignment).ThenInclude(a => a.GradeCategory)
+                .Where(s => s.Assignment.ClassId == classId
+                         && s.Assignment.DueDate >= startDate && s.Assignment.DueDate <= endDate
+                         && s.Grade != null)
+                .ToListAsync();
+        }
+
+        // --- Lấy dữ liệu điểm danh ---
+        public async Task<List<Attendance>> GetAttendancesForCalcAsync(Guid classId, DateOnly startDate, DateOnly endDate)
+        {
+            return await context.Attendances
+                .Include(a => a.Session)
+                .Where(a => a.Session.ClassId == classId
+                         && a.Session.Date >= startDate && a.Session.Date <= endDate)
                 .ToListAsync();
         }
     }

@@ -567,6 +567,8 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("ReportID");
             entity.Property(e => e.ClassId).HasColumnName("ClassID");
+            entity.Property(e => e.Gpa).HasColumnName("GPA");
+            entity.Property(e => e.AttendanceRate).HasColumnName("AttendanceRate");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
