@@ -74,6 +74,7 @@ namespace EMS.Application.Features.ProgressReports.Services
                     // Lấy giá trị snapshot nếu đã tạo, nếu chưa thì lấy giá trị tính "Live"
                     Gpa = report?.Gpa ?? liveGpa,
                     AttendanceRate = report?.AttendanceRate ?? liveAtt,
+                    CreatedAt = report?.CreatedAt,
                     UpdatedAt = report?.UpdatedAt
                 });
             }
@@ -108,8 +109,7 @@ namespace EMS.Application.Features.ProgressReports.Services
                 Status = request.Status, // Draft hoặc Published
                 Gpa = gpa,
                 AttendanceRate = attRate,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow
             };
 
             await reportRepository.AddAsync(report);

@@ -20,7 +20,7 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public int PeriodYear { get; set; }
         public string? Title { get; set; }
         public string? Content { get; set; }
-        public string Status { get; set; } = "Draft";
+        public string Status { get; set; }
 
         // Bổ sung điểm số giả định để render UI Màn hình 2
         public double? Gpa { get; set; }
