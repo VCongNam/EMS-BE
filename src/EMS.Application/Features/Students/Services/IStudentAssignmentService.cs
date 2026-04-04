@@ -12,5 +12,6 @@ namespace EMS.Application.Features.Students.Services
         Task<PagedResult<AssignmentItemDto>> GetClassAssignmentsAsync(Guid classId, AssignmentFilter filter);
         Task<AssignmentDetailDto> GetClassAssignmentsDetailAsync(Guid assignmentId);
         Task<bool> SubmitAssignmentAsync(Guid assignmentId, SubmitAssignmentRequest request);
+        Task<bool> UnsubmitAssignmentAsync(Guid assignmentId);
     }
 }
