@@ -25,6 +25,8 @@ public partial class ProgressReport
     public int PeriodMonth { get; set; }
     public int PeriodYear { get; set; }
 
+    public double? Gpa { get; set; }
+    public double? AttendanceRate { get; set; }
     public virtual Class Class { get; set; } = null!;
 
     public virtual Student Student { get; set; } = null!;

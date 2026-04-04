@@ -20,11 +20,11 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public int PeriodYear { get; set; }
         public string? Title { get; set; }
         public string? Content { get; set; }
-        public string Status { get; set; } = "Ready"; // Mặc định là "Ready" cho UI
+        public string Status { get; set; } = "Draft";
 
         // Bổ sung điểm số giả định để render UI Màn hình 2
-        public double Gpa { get; set; }
-        public double AttendanceRate { get; set; }
+        public double? Gpa { get; set; }
+        public double? AttendanceRate { get; set; }
 
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }    
