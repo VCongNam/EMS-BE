@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class UpdateTuitionFeeDeadlineDto
+    public class GenerateInvoiceDto
     {
         public int PeriodMonth { get; set; }
         public int PeriodYear { get; set; }

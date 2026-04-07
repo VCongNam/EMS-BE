@@ -9,5 +9,6 @@ namespace EMS.Application.Features.TuitionFees.Dtos
     public class ReviewTransactionDto
     {
         public bool IsApproved { get; set; }
+        public string? Note { get; set; }
     }
 }

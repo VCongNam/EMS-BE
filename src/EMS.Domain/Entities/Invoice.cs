@@ -22,6 +22,8 @@ public partial class Invoice
     public string? Status { get; set; }
 
     public bool? IsDeleted { get; set; }
+    public int? SessionCount { get; set; }
+    public string? Description { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
