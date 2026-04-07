@@ -164,5 +164,90 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task UpdateInvoicesAsync(IEnumerable<Invoice> invoices)
+        {
+            context.Invoices.UpdateRange(invoices);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<(List<(Invoice Invoice, Transaction? LatestTransaction)> Items, int TotalCount)> GetStudentInvoicesAsync(Guid studentId, int page, int size, Guid? classId)
+        {
+            var query = context.Invoices
+                .Include(i => i.Class)
+                .Where(i => i.StudentId == studentId)
+                .AsNoTracking();
+            if (classId.HasValue)
+            {
+                query = query.Where(i => i.ClassId == classId.Value);
+            }
+
+            int totalCount = await query.CountAsync();
+            var dbResult = await query
+                .OrderBy(i => i.DueDate)
+                .Skip((page - 1) * size)
+                .Take(size)
+                .Select(i => new
+                {
+                    Invoice = i,
+                    LatestTransaction = context.Transactions
+                        .Where(t => t.InvoiceId == i.InvoiceId)
+                        .OrderByDescending(t => t.CreatedAt)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            var items = dbResult.Select(x => (x.Invoice, x.LatestTransaction)).ToList();
+            return (items, totalCount);
+        }
+
+        public async Task<(Invoice? Invoice, Transaction? LatestTransaction, List<Attendance> Attendances)> GetInvoiceDetailAsync(Guid invoiceId, Guid studentId)
+        {
+            var invoice = await context.Invoices
+                .Include(i => i.Class)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
+            if (invoice == null) return (null, null, new List<Attendance>());
+            var latestTransaction = await context.Transactions
+                .AsNoTracking()
+                .Where(t => t.InvoiceId == invoiceId)
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            var attendances = await context.Attendances
+                .Include(a => a.Session)
+                .AsNoTracking()
+                .Where(a => a.InvoiceId == invoiceId && a.StudentId == studentId)
+                .OrderBy(a => a.Session.Date)
+                .ToListAsync();
+            return (invoice, latestTransaction, attendances);
+        }
+
+        public async Task<Invoice?> GetInvoiceWithTeacherBankInfoAsync(Guid invoiceId, Guid studentId)
+        {
+            return await context.Invoices
+                .Include(i => i.Class)
+                    .ThenInclude(c => c.Teacher)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
+        }
+
+        public async Task<bool> HasPendingTransactionAsync(Guid invoiceId)
+        {
+            return await context.Transactions
+                .AnyAsync(t => t.InvoiceId == invoiceId && t.Status == "Pending");
+        }
+
+        public async Task AddTransactionAsync(Transaction transaction)
+        {
+            await context.Transactions.AddAsync(transaction);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<Invoice>> GetInvoicesByClassAndPeriodAsync(Guid classId, int month, int year)
+        {
+            return await context.Invoices
+               .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true)
+               .ToListAsync();
+        }
     }
 }

@@ -38,5 +38,17 @@ namespace EMS.Domain.Interfaces
 
         // --- HÀM DÀNH RIÊNG CHO BACKGROUND SERVICE (Hệ thống tự động) ---
         Task<IEnumerable<Class>> GetAllClassesWithStudentsAsync();
+
+
+
+        Task<IEnumerable<Invoice>> GetInvoicesByClassAndPeriodAsync(Guid classId, int month, int year);
+        Task UpdateInvoicesAsync(IEnumerable<Invoice> invoices);
+        Task<(List<(Invoice Invoice, Transaction? LatestTransaction)> Items, int TotalCount)> GetStudentInvoicesAsync(
+            Guid studentId, int page, int size, Guid? classId);
+        Task<(Invoice? Invoice, Transaction? LatestTransaction, List<Attendance> Attendances)> GetInvoiceDetailAsync(Guid invoiceId, Guid studentId);
+        Task<Invoice?> GetInvoiceWithTeacherBankInfoAsync(Guid invoiceId, Guid studentId);
+        Task<bool> HasPendingTransactionAsync(Guid invoiceId);
+        Task AddTransactionAsync(Transaction transaction);
+
     }
 }

@@ -1,4 +1,5 @@
 ﻿using EMS.Application.Features.TuitionFees.Dtos;
+using EMS.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,5 +25,8 @@ namespace EMS.Application.Features.TuitionFees.Services
         Task<ClassFinancialDetailDto> GetClassFinancialDetailAsync(Guid classId, int month, int year, Guid teacherId);
 
         Task<OverallReportDto> GetOverallReportAsync(Guid teacherId);
+
+        Task<bool> ReviewTransactionAsync(Guid transactionId, ReviewTransactionDto request);
+
     }
 }
