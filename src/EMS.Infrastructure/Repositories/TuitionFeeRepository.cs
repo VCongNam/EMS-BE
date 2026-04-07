@@ -13,11 +13,11 @@ namespace EMS.Infrastructure.Repositories
 {
     public class TuitionFeeRepository : ITuitionFeeRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext context;
 
         public TuitionFeeRepository(ApplicationDbContext context)
         {
-            _context = context;
+            this.context = context;
         }
 
         // --- 1. KIỂM TRA QUYỀN SỞ HỮU LỚP ---
