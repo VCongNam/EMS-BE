@@ -1,4 +1,5 @@
 
+using EMS.API.BackgroundServices;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Assignments.Services;
@@ -11,7 +12,9 @@ using EMS.Application.Features.ProgressReports.Services;
 using EMS.Application.Features.ProgressReports.Validators;
 using EMS.Application.Features.Sessions.Services;
 using EMS.Application.Features.Students.Services;
+using EMS.Application.Features.SystemAdmin.Services;
 using EMS.Application.Features.TuitionFees.Services;
+using EMS.Application.Features.TuitionFees.Validators;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Configuration;
 using EMS.Infrastructure.Data;
@@ -19,13 +22,13 @@ using EMS.Infrastructure.Repositories;
 using EMS.Infrastructure.Services; 
 using EMS.Infrastructure.Services;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using FluentValidation.AspNetCore;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -57,6 +60,7 @@ builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialReposito
 builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
 builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
 builder.Services.AddScoped<ITuitionFeeRepository, TuitionFeeRepository>();
+builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
 
 
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
@@ -91,6 +95,7 @@ builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
 builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
+builder.Services.AddScoped<ISystemAdminService,SystemAdminService>();
 
 
 
@@ -98,6 +103,10 @@ builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Req
 builder.Services.AddFluentValidationClientsideAdapters();
 // Lệnh này sẽ tự động tìm tất cả các class Validator trong cùng một thư mục/Assembly với CreateProgressReportValidator
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProgressReportValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<UpdateTuitionFeeValidator>();
+
+// Đăng ký Worker tự động hóa
+builder.Services.AddHostedService<InvoiceAutomationWorker>();
 
 builder.Services.AddCors(options =>
 {

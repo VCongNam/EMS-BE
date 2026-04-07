@@ -9,7 +9,20 @@ namespace EMS.Application.Features.TuitionFees.Services
 {
     public interface ITuitionFeeService
     {
-        Task UpdateTuitionFeeAsync(Guid classId, UpdateTuitionFeeDto request);
-        Task UpdateTuitionDeadlineAsync(Guid classId, UpdateTuitionFeeDeadlineDto request);
+        Task<IEnumerable<TuitionFeeConfigDto>> GetTuitionFeeConfigsAsync(Guid teacherId);
+
+        Task UpdateTuitionFeeAsync(Guid classId, UpdateTuitionFeeDto request, Guid teacherId);
+
+        Task GenerateInvoicesForClassAsync(Guid classId, GenerateInvoiceDto request, Guid teacherId);
+
+        Task ReconcilePrepaidClassAsync(Guid classId, int month, int year, Guid teacherId);
+
+        Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync(Guid teacherId);
+
+        Task ReviewTransactionAsync(Guid transactionId, bool isApproved, Guid approverId, string? note);
+
+        Task<ClassFinancialDetailDto> GetClassFinancialDetailAsync(Guid classId, int month, int year, Guid teacherId);
+
+        Task<OverallReportDto> GetOverallReportAsync(Guid teacherId);
     }
 }

@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class UpdateTuitionFeeDto
+    public class GenerateInvoiceDto
     {
-        public decimal TuitionFee { get; set; }
-        public string BillingMethod { get; set; } = "Postpaid";
+        public int PeriodMonth { get; set; }
+        public int PeriodYear { get; set; }
+        public DateTime DueDate { get; set; }
     }
 }

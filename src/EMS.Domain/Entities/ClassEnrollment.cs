@@ -24,4 +24,5 @@ public partial class ClassEnrollment
     public virtual Class Class { get; set; } = null!;
 
     public virtual Student Student { get; set; } = null!;
+    public decimal? CreditBalance { get; set; }
 }
