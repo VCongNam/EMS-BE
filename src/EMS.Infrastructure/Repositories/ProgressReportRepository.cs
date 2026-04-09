@@ -40,7 +40,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<ProgressReport?> GetByIdAsync(Guid reportId)
         {
             return await context.ProgressReports
-                .Include(r => r.Student).ThenInclude(s => s.StudentNavigation)
+                .Include(r => r.Student).ThenInclude(s => s.Account)
                 .Include(r => r.Teacher).ThenInclude(t => t.TeacherNavigation)
                 .Include(r => r.Class)
                 .FirstOrDefaultAsync(r => r.ReportId == reportId);
@@ -63,7 +63,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<IEnumerable<ClassEnrollment>> GetActiveStudentsInClassAsync(Guid classId)
         {
             return await context.ClassEnrollments
-                .Include(e => e.Student).ThenInclude(s => s.StudentNavigation)
+                .Include(e => e.Student).ThenInclude(s => s.Account)
                 .Where(e => e.ClassId == classId && e.Status == "Active")
                 .ToListAsync();
         }

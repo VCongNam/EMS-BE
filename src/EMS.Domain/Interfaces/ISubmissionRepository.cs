@@ -1,4 +1,4 @@
-﻿using EMS.Domain.Entities;
+using EMS.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +15,9 @@ namespace EMS.Domain.Interfaces
         Task DeleteSubmissionAsync(Submission submission);
         Task<Submission?> GetSubmissionWithAttachmentsAsync(Guid assignmentId, Guid studentId);
         Task DeleteSubmissionAttachmentsAsync(IEnumerable<SubmissionAttachment> attachments);
-
+        Task<Submission?> GetByIdAsync(Guid submissionId);
+        Task<IEnumerable<Submission>> GetSubmissionsForClassAsync(Guid classId);
+        Task AddFeedbackAsync(SubmissionFeedback feedback);
         //Attachment
         Task AddAttachmentAsync(SubmissionAttachment attachment);
         Task<SubmissionAttachment?> GetAttachmentByIdAsync(Guid attachmentId);

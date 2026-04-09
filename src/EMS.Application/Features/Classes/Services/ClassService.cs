@@ -111,10 +111,9 @@ namespace EMS.Application.Features.Classes.Services
             var memberList = enrollments.Select(ce => new ClassMemberResponse
             {
                 StudentID = ce.StudentId,
-                FullName = ce.Student.StudentNavigation.FullName,
-                Email = ce.Student.StudentNavigation.Email,
-                ParentName = ce.Student.ParentName,
-                ParentPhone = ce.Student.ParentPhone,
+                FullName = ce.Student.FullName,
+                PhoneNumber = ce.Student.Account.PhoneNumber,
+                Email = ce.Student.Account.Email,
                 EnrolledDate = ce.EnrolledDate,
                 Status = ce.Status
             }).ToList();

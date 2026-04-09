@@ -10,9 +10,8 @@ namespace EMS.Application.Features.Classes.DTOs
     {
         public Guid StudentID { get; set; }
         public string FullName { get; set; }
+        public string PhoneNumber { get; set; }    
         public string Email { get; set; }    
-        public string ParentName { get; set; } 
-        public string ParentPhone { get; set; } 
         public DateOnly? EnrolledDate { get; set; } 
         public string Status { get; set; }
     }

@@ -196,7 +196,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             {
                 TransactionId = t.TransactionId,
                 AmountPaid = t.AmountPaid,
-                StudentName = t.Invoice!.Student!.StudentNavigation!.FullName,
+                StudentName = t.Invoice!.Student!.FullName,
                 ClassName = t.Invoice.Class.ClassName,
                 ProofImageURL = t.ProofImageUrl,
                 PaidDate = t.PaidDate ?? DateTime.UtcNow
@@ -254,7 +254,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 Students = invs.Select(i => new StudentInvoiceItemDto
                 {
                     StudentId = i.StudentId,
-                    StudentName = i.Student!.StudentNavigation!.FullName,
+                    StudentName = i.Student!.FullName,
                     AttendedSessions = i.SessionCount,
                     TotalAmount = i.Amount,
                     PaidAmount = i.Transactions.Sum(t => t.AmountPaid),

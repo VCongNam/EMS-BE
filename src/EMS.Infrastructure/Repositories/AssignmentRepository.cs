@@ -50,6 +50,7 @@ namespace EMS.Infrastructure.Repositories
             return await _context.Assignments
                 .AsNoTracking()
                 .Include(a => a.Author)
+                .Include(a => a.GradeCategory)
                 .Include(a => a.AssignmentAttachments)
                 .Where(a => a.ClassId == classId && a.IsDeleted != true)
                 .OrderByDescending(a => a.CreatedAt)

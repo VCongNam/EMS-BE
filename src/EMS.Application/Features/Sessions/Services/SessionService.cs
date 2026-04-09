@@ -212,7 +212,7 @@ namespace EMS.Application.Features.Sessions.Services
                     {
                         AttendanceId = existingAttendance.AttendanceId,
                         StudentId = student.StudentId,
-                        FullName = student.Student.StudentNavigation.FullName, 
+                        FullName = student.Student.FullName, 
                         Status = existingAttendance.Status,
                         IsExcused = existingAttendance.IsExcused,
                         Note = existingAttendance.Note
@@ -224,7 +224,7 @@ namespace EMS.Application.Features.Sessions.Services
                     {
                         AttendanceId = Guid.Empty,
                         StudentId = student.StudentId,
-                        FullName = student.Student.StudentNavigation.FullName,
+                        FullName = student.Student.FullName,
                         Status = "Not Taken",
                         IsExcused = false,
                         Note = null

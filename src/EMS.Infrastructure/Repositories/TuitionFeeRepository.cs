@@ -39,7 +39,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<IEnumerable<Transaction>> GetPendingTransactionsByTeacherAsync(Guid teacherId)
         {
             return await context.Transactions
-                .Include(t => t.Invoice).ThenInclude(i => i.Student).ThenInclude(s => s.StudentNavigation)
+                .Include(t => t.Invoice).ThenInclude(i => i.Student).ThenInclude(s => s.Account)
                 .Include(t => t.Invoice).ThenInclude(i => i.Class)
                 .Where(t => t.Status == "Pending" && t.Invoice.Class.TeacherId == teacherId)
                 .ToListAsync();
@@ -151,7 +151,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<IEnumerable<Invoice>> GetClassInvoicesAsync(Guid classId, int month, int year)
         {
             return await context.Invoices
-                .Include(i => i.Student).ThenInclude(s => s.StudentNavigation)
+                .Include(i => i.Student).ThenInclude(s => s.Account)
                 .Include(i => i.Transactions.Where(t => t.Status == "Completed"))
                 .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year).ToListAsync();
         }

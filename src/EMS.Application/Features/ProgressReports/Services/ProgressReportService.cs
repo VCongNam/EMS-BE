@@ -68,7 +68,7 @@ namespace EMS.Application.Features.ProgressReports.Services
                 {
                     ReportId = report?.ReportId,
                     StudentId = e.StudentId,
-                    StudentName = e.Student?.StudentNavigation?.FullName ?? "Unknown",
+                    StudentName = e.Student?.FullName ?? "Unknown",
                     ClassId = e.ClassId,
                     PeriodMonth = month,
                     PeriodYear = year,
@@ -180,7 +180,7 @@ namespace EMS.Application.Features.ProgressReports.Services
             {
                 ReportId = report.ReportId,
                 StudentId = report.StudentId,
-                StudentName = report.Student?.StudentNavigation?.FullName ?? "Unknown",
+                StudentName = report.Student?.FullName ?? "Unknown",
                 ClassId = report.ClassId,
                 TeacherId = report.TeacherId,
                 PeriodMonth = report.PeriodMonth,
