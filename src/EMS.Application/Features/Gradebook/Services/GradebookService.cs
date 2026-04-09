@@ -237,7 +237,7 @@ namespace EMS.Application.Features.Gradebook.Services
                 var studentRow = new GradebookStudentRowDto
                 {
                     StudentId = e.StudentId,
-                    StudentName = e.Student?.StudentNavigation?.FullName ?? "Unknown"
+                    StudentName = e.Student?.FullName ?? "Unknown"
                 };
 
                 double sumGradeWeight = 0;

@@ -91,7 +91,7 @@ namespace EMS.Infrastructure.Repositories
         {
             return await _context.Attendances
                 .Include(a => a.Student)
-                .ThenInclude(s => s.StudentNavigation)
+                .ThenInclude(s => s.Account)
                 .Where(a => a.SessionId == sessionId)
                 .ToListAsync();
         }
@@ -132,7 +132,7 @@ namespace EMS.Infrastructure.Repositories
 
             return await _context.ClassEnrollments
                 .Include(ce => ce.Student)
-                .ThenInclude(s => s.StudentNavigation)
+                .ThenInclude(s => s.Account)
                 .Where(ce => ce.ClassId == session.ClassId && ce.Status == "Active")
                 .ToListAsync();
         }

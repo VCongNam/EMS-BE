@@ -657,18 +657,20 @@ public partial class ApplicationDbContext : DbContext
             entity.ToTable("Student");
 
             entity.Property(e => e.StudentId)
-                .ValueGeneratedNever()
+                .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("StudentID");
+            entity.Property(e => e.AccountId).HasColumnName("AccountID");
             entity.Property(e => e.Address).HasMaxLength(255);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.Property(e => e.Dob).HasColumnName("DOB");
-            entity.Property(e => e.ParentEmail).HasMaxLength(255);
-            entity.Property(e => e.ParentName).HasMaxLength(100);
-            entity.Property(e => e.ParentPhone).HasMaxLength(15);
+            entity.Property(e => e.FullName).HasColumnType("character varying");
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(d => d.StudentNavigation).WithOne(p => p.Student)
-                .HasForeignKey<Student>(d => d.StudentId)
+            entity.HasOne(d => d.Account).WithMany(p => p.Students)
+                .HasForeignKey(d => d.AccountId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("Student_StudentID_fkey");
+                .HasConstraintName("Student_AccountID_fkey");
         });
 
         modelBuilder.Entity<Subject>(entity =>
