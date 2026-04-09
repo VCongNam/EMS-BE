@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class UpdateTuitionFeeDeadlineDto
+    public class ExtendClassInvoicesDto
     {
         public int PeriodMonth { get; set; }
         public int PeriodYear { get; set; }
-        public DateTime DueDate { get; set; }
+        public int AdditionalDays { get; set; }
     }
 }

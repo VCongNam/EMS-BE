@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class ReviewTransactionDto
+    public class GenerateInvoiceDto
     {
-        public bool IsApproved { get; set; }
-        public string? Note { get; set; }
+        public int PeriodMonth { get; set; }
+        public int PeriodYear { get; set; }
+        public DateTime DueDate { get; set; }
     }
 }

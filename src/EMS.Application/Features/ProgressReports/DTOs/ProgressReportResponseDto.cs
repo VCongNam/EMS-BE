@@ -16,15 +16,15 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public Guid TeacherId { get; set; }
         public string TeacherName { get; set; } = null!;
 
-        public int PeriodMonth { get; set; }
-        public int PeriodYear { get; set; }
+        public int? PeriodMonth { get; set; }
+        public int? PeriodYear { get; set; }
         public string? Title { get; set; }
         public string? Content { get; set; }
         public string Status { get; set; }
 
         // Bổ sung điểm số giả định để render UI Màn hình 2
-        public double? Gpa { get; set; }
-        public double? AttendanceRate { get; set; }
+        public decimal? Gpa { get; set; }
+        public decimal? AttendanceRate { get; set; }
 
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }    

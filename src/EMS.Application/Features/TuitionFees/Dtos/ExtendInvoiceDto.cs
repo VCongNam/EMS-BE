@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class ReviewTransactionDto
+    public class ExtendInvoiceDto
     {
-        public bool IsApproved { get; set; }
-        public string? Note { get; set; }
+        public int AdditionalDays { get; set; }
     }
 }
