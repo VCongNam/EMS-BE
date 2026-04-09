@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class TuitionFeeConfigDto
+    public class ClassFinancialSummaryDto
     {
         public Guid ClassId { get; set; }
         public string ClassName { get; set; } = null!;
-        public bool IsInvoiceGeneratedThisMonth { get; set; } // Cờ hiệu kiểm tra
-        public string BillingMethod { get; set; } = null!; // Prepaid / Postpaid
-        public decimal PricePerSession { get; set; }
         public int StudentCount { get; set; }
-        public int PaymentDeadlineDays { get; set; }
+        public decimal ExpectedRevenue { get; set; }
+        public decimal ActualRevenue { get; set; }
+        public decimal DebtAmount { get; set; }
+        public double CollectionRate { get; set; }
     }
 }

@@ -50,5 +50,15 @@ namespace EMS.Domain.Interfaces
         Task<bool> HasPendingTransactionAsync(Guid invoiceId);
         Task AddTransactionAsync(Transaction transaction);
 
+
+
+
+        // --- BỔ SUNG: DASHBOARD & GIA HẠN ---
+        Task<int> GetTotalActiveStudentsByTeacherAsync(Guid teacherId);
+        Task<IEnumerable<(Guid ClassId, string ClassName, int StudentCount, decimal ExpectedRevenue, decimal ActualRevenue)>> GetClassFinancialSummariesAsync(Guid teacherId);
+        Task<IEnumerable<(string MonthLabel, decimal Revenue)>> GetRevenueTrendAsync(Guid teacherId, int monthsToLookBack);
+        Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId);
+        Task UpdateInvoiceAsync(Invoice invoice);
+
     }
 }

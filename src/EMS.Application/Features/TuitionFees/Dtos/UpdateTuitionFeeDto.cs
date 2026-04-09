@@ -10,5 +10,6 @@ namespace EMS.Application.Features.TuitionFees.Dtos
     {
         public decimal TuitionFee { get; set; }
         public string BillingMethod { get; set; } = "Postpaid";
+        public int PaymentDeadlineDays { get; set; }
     }
 }

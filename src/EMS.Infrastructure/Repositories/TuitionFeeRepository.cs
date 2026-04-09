@@ -249,5 +249,61 @@ namespace EMS.Infrastructure.Repositories
                .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true)
                .ToListAsync();
         }
+
+
+        // =======================================================
+        // PHẦN BỔ SUNG: DASHBOARD & GIA HẠN (SỬ DỤNG TUPLE, KHÔNG DTO)
+        // =======================================================
+        public async Task<int> GetTotalActiveStudentsByTeacherAsync(Guid teacherId)
+        {
+            return await context.ClassEnrollments
+                .Where(e => e.Status == "Active" && e.Class.TeacherId == teacherId && !e.Class.IsDeleted.Value)
+                .Select(e => e.StudentId)
+                .Distinct()
+                .CountAsync();
+        }
+
+        public async Task<IEnumerable<(Guid ClassId, string ClassName, int StudentCount, decimal ExpectedRevenue, decimal ActualRevenue)>> GetClassFinancialSummariesAsync(Guid teacherId)
+        {
+            var classes = await context.Classes
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true)
+                .Select(c => new
+                {
+                    c.ClassId,
+                    c.ClassName,
+                    StudentCount = c.ClassEnrollments.Count(e => e.Status == "Active"),
+                    Expected = c.Invoices.Sum(i => i.Amount),
+                    Actual = c.Invoices.SelectMany(i => i.Transactions).Where(t => t.Status == "Completed").Sum(t => t.AmountPaid)
+                })
+                .ToListAsync();
+
+            return classes.Select(c => (c.ClassId, c.ClassName, c.StudentCount, c.Expected, c.Actual));
+        }
+
+        public async Task<IEnumerable<(string MonthLabel, decimal Revenue)>> GetRevenueTrendAsync(Guid teacherId, int monthsToLookBack)
+        {
+            var startDate = DateTime.UtcNow.AddMonths(-monthsToLookBack);
+            var transactions = await context.Transactions
+                .Where(t => t.Status == "Completed" && t.Invoice.Class.TeacherId == teacherId && t.PaidDate >= startDate)
+                .ToListAsync();
+
+            return transactions
+                .GroupBy(t => new { t.PaidDate!.Value.Year, t.PaidDate.Value.Month })
+                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
+                .Select(g => ($"Tháng {g.Key.Month:D2}/{g.Key.Year.ToString().Substring(2)}", g.Sum(t => t.AmountPaid)));
+        }
+
+        public async Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId)
+        {
+            return await context.Invoices
+                .Include(i => i.Class)
+                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
+        }
+
+        public async Task UpdateInvoiceAsync(Invoice invoice)
+        {
+            context.Invoices.Update(invoice);
+            await context.SaveChangesAsync();
+        }
     }
 }

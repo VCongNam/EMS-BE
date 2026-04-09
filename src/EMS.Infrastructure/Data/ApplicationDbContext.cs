@@ -245,6 +245,8 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Room).HasMaxLength(50);
+            entity.Property(e => e.PaymentDeadlineDays)
+            .HasDefaultValueSql("5");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Ongoing'::character varying");

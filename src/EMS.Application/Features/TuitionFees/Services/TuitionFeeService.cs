@@ -300,6 +300,187 @@ namespace EMS.Application.Features.TuitionFees.Services
             transaction.UpdatedAt = DateTime.UtcNow;
             return await tuitionFeeRepository.UpdateTransactionStatusAsync(transaction, invoiceToUpdate);
         }
+        public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId)
+        {
+            var invoice = await tuitionFeeRepository.GetInvoiceByIdAsync(invoiceId);
+
+            if (invoice == null)
+            {
+                throw new Exception("Không tìm thấy hóa đơn.");
+            }
+
+            if (invoice.Class.TeacherId != teacherId)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền gia hạn hóa đơn này.");
+            }
+
+            invoice.DueDate = invoice.DueDate.AddDays(additionalDays);
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            await tuitionFeeRepository.UpdateInvoiceAsync(invoice);
+        }
+
+        // Nhận TUPLE từ Repo và map sang DTO
+        public async Task<IEnumerable<ClassFinancialSummaryDto>> GetClassFinancialSummariesAsync(Guid teacherId)
+        {
+            var rawData = await tuitionFeeRepository.GetClassFinancialSummariesAsync(teacherId);
+
+            return rawData.Select(x => new ClassFinancialSummaryDto
+            {
+                ClassId = x.ClassId,
+                ClassName = x.ClassName,
+                StudentCount = x.StudentCount,
+                ExpectedRevenue = x.ExpectedRevenue,
+                ActualRevenue = x.ActualRevenue,
+                DebtAmount = Math.Max(0, x.ExpectedRevenue - x.ActualRevenue),
+                CollectionRate = x.ExpectedRevenue > 0 ? (double)(x.ActualRevenue / x.ExpectedRevenue) * 100 : 0
+            }).ToList();
+        }
+
+        // Nhận TUPLE từ Repo và map sang DTO
+        public async Task<DashboardAnalyticsDto> GetDashboardAnalyticsAsync(Guid teacherId)
+        {
+            var rawSummaries = await tuitionFeeRepository.GetClassFinancialSummariesAsync(teacherId);
+            var totalRevenue = rawSummaries.Sum(s => s.ActualRevenue);
+            var activeClassCount = rawSummaries.Count();
+
+            var rawTrends = await tuitionFeeRepository.GetRevenueTrendAsync(teacherId, 6);
+
+            var trends = rawTrends.Select(t => new RevenueTrendDto { MonthLabel = t.MonthLabel, Revenue = t.Revenue }).ToList();
+
+            var revenueByClasses = rawSummaries
+                .Select(s => new ClassRevenueDistributionDto { ClassName = s.ClassName, Revenue = s.ActualRevenue })
+                .Where(r => r.Revenue > 0)
+                .OrderByDescending(r => r.Revenue)
+                .ToList();
+
+            return new DashboardAnalyticsDto
+            {
+                TotalRevenue = totalRevenue,
+                TotalStudents = await tuitionFeeRepository.GetTotalActiveStudentsByTeacherAsync(teacherId),
+                AverageRevenuePerClass = activeClassCount > 0 ? totalRevenue / activeClassCount : 0,
+                QuarterlyTarget = 1000000000,
+                RevenueTrends = trends,
+                RevenueByClasses = revenueByClasses
+            };
+        }
+        public async Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId)
+        {
+            // BẢO MẬT: Kiểm tra quyền sở hữu lớp
+            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
+            }
+
+            // Lấy toàn bộ hóa đơn của lớp trong kỳ đó
+            var invoices = await tuitionFeeRepository.GetInvoicesByClassAndPeriodAsync(classId, request.PeriodMonth, request.PeriodYear);
+
+            if (invoices == null || !invoices.Any())
+            {
+                throw new Exception($"Không tìm thấy hóa đơn nào cho lớp này trong kỳ {request.PeriodMonth}/{request.PeriodYear}.");
+            }
+
+            // Quét qua các hóa đơn và cộng thêm ngày
+            foreach (var invoice in invoices)
+            {
+                // Chỉ gia hạn cho những hóa đơn đang nợ (Pending hoặc Partial)
+                if (invoice.Status != "Paid")
+                {
+                    invoice.DueDate = invoice.DueDate.AddDays(request.AdditionalDays);
+                    invoice.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            // Lưu đồng loạt xuống Database
+            await tuitionFeeRepository.UpdateInvoicesAsync(invoices);
+        }
+
+        //public async Task<(IEnumerable<StudentInvoiceListDto> Invoices, int TotalCount)> GetMyInvoicesAsync(Guid studentId, int page, int size, Guid? classId)
+        //{
+        //    var (items, totalCount) = await tuitionFeeRepository.GetStudentInvoicesAsync(studentId, page, size, classId);
+
+        //    var dtos = items.Select(x => new StudentInvoiceListDto
+        //    {
+        //        InvoiceId = x.Invoice.InvoiceId,
+        //        ClassName = x.Invoice.Class.ClassName,
+        //        PeriodMonth = x.Invoice.PeriodMonth,
+        //        PeriodYear = x.Invoice.PeriodYear,
+        //        Amount = x.Invoice.Amount,
+        //        DueDate = x.Invoice.DueDate,
+        //        Status = x.Invoice.Status,
+        //        LatestTransactionStatus = x.LatestTransaction?.Status
+        //    });
+
+        //    return (dtos, totalCount);
+        //}
+
+        //public async Task<StudentInvoiceDetailDto> GetMyInvoiceDetailAsync(Guid invoiceId, Guid studentId)
+        //{
+        //    var (invoice, latestTrans, attendances) = await tuitionFeeRepository.GetInvoiceDetailAsync(invoiceId, studentId);
+
+        //    if (invoice == null)
+        //    {
+        //        throw new Exception("Không tìm thấy hóa đơn.");
+        //    }
+
+        //    var invoiceWithTeacher = await tuitionFeeRepository.GetInvoiceWithTeacherBankInfoAsync(invoiceId, studentId);
+
+        //    return new StudentInvoiceDetailDto
+        //    {
+        //        InvoiceId = invoice.InvoiceId,
+        //        ClassName = invoice.Class.ClassName,
+        //        PeriodMonth = invoice.PeriodMonth,
+        //        PeriodYear = invoice.PeriodYear,
+        //        Amount = invoice.Amount,
+        //        DueDate = invoice.DueDate,
+        //        Status = invoice.Status,
+        //        Description = invoice.Description,
+        //        LatestTransactionStatus = latestTrans?.Status,
+        //        TeacherBankName = invoiceWithTeacher?.Class?.Teacher?.BankName,
+        //        TeacherBankAccount = invoiceWithTeacher?.Class?.Teacher?.BankAccount,
+        //        TeacherBankAccountName = invoiceWithTeacher?.Class?.Teacher?.BankAccountName,
+        //        Attendances = attendances.Select(a => new AttendanceSummaryDto
+        //        {
+        //            Date = a.Session.Date,
+        //            Status = a.Status,
+        //            IsExcused = a.IsExcused ?? false
+        //        }).ToList()
+        //    };
+        //}
+
+        //public async Task SubmitPaymentProofAsync(Guid invoiceId, SubmitTransactionDto dto, Guid studentId)
+        //{
+        //    var invoice = await tuitionFeeRepository.GetInvoiceWithTeacherBankInfoAsync(invoiceId, studentId);
+
+        //    if (invoice == null)
+        //    {
+        //        throw new Exception("Không tìm thấy hóa đơn.");
+        //    }
+        //    if (invoice.Status == "Paid")
+        //    {
+        //        throw new Exception("Hóa đơn đã được thanh toán.");
+        //    }
+
+        //    bool hasPending = await tuitionFeeRepository.HasPendingTransactionAsync(invoiceId);
+        //    if (hasPending)
+        //    {
+        //        throw new Exception("Bạn đang có một giao dịch chờ duyệt. Vui lòng đợi giáo viên xác nhận.");
+        //    }
+
+        //    var transaction = new Transaction
+        //    {
+        //        TransactionId = Guid.NewGuid(),
+        //        InvoiceId = invoiceId,
+        //        AmountPaid = dto.AmountPaid,
+        //        PaymentMethod = dto.PaymentMethod,
+        //        ProofImageUrl = dto.ProofImageURL,
+        //        Status = "Pending",
+        //        PaidDate = DateTime.UtcNow,
+        //        CreatedAt = DateTime.UtcNow
+        //    };
+
+        //    await tuitionFeeRepository.AddTransactionAsync(transaction);
+        //}
 
     }
 }

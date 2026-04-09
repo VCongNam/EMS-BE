@@ -28,5 +28,17 @@ namespace EMS.Application.Features.TuitionFees.Services
 
         Task<bool> ReviewTransactionAsync(Guid transactionId, ReviewTransactionDto request);
 
+
+        // --- BỔ SUNG: DASHBOARD & GIA HẠN ---
+        Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
+        Task<IEnumerable<ClassFinancialSummaryDto>> GetClassFinancialSummariesAsync(Guid teacherId);
+        Task<DashboardAnalyticsDto> GetDashboardAnalyticsAsync(Guid teacherId);
+        Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId);
+
+        //// --- BỔ SUNG: STUDENT API ---
+        //Task<(IEnumerable<StudentInvoiceListDto> Invoices, int TotalCount)> GetMyInvoicesAsync(Guid studentId, int page, int size, Guid? classId);
+        //Task<StudentInvoiceDetailDto> GetMyInvoiceDetailAsync(Guid invoiceId, Guid studentId);
+        //Task SubmitPaymentProofAsync(Guid invoiceId, SubmitTransactionDto dto, Guid studentId);
+
     }
 }

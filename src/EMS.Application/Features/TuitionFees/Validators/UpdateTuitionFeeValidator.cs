@@ -19,6 +19,7 @@ namespace EMS.Application.Features.TuitionFees.Validators
             RuleFor(x => x.BillingMethod)
                 .Must(x => x == "Prepaid" || x == "Postpaid")
                 .WithMessage("Hình thức thu phí phải là 'Prepaid' hoặc 'Postpaid'.");
+            RuleFor(x => x.PaymentDeadlineDays).GreaterThan(0).WithMessage("Hạn nộp phải lớn hơn 0 ngày.");
         }
     }
 }

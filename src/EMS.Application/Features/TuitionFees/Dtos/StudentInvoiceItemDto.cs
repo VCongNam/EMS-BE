@@ -13,6 +13,7 @@ namespace EMS.Application.Features.TuitionFees.Dtos
         public int? AttendedSessions { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal PaidAmount { get; set; }
+        public decimal CreditBalance { get; set; } // Thêm để show ví cấn trừ
         public string Status { get; set; } = null!;
     }
 }
