@@ -47,7 +47,7 @@ public partial class Account
 
     public virtual Role Role { get; set; } = null!;
 
-    public virtual Student? Student { get; set; }
+    public virtual ICollection<Student> Students { get; set; } = new List<Student>();
 
     public virtual ICollection<SubmissionFeedback> SubmissionFeedbacks { get; set; } = new List<SubmissionFeedback>();
 

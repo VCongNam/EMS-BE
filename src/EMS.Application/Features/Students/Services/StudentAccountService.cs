@@ -12,47 +12,55 @@ namespace EMS.Application.Features.Students.Services
     public class StudentAccountService : IStudentAccountService
     {
         private readonly IAccountRepository _accountRepository;
-        public StudentAccountService(IAccountRepository accountRepository)
+        private readonly IStudentRepository _studentRepository;
+        public StudentAccountService(IAccountRepository accountRepository, IStudentRepository studentRepository)
         {
             _accountRepository = accountRepository;
+            _studentRepository = studentRepository;
         }
         public async Task<Guid> CreateStudentAsync(CreateStudentDto request)
         {
-            //var existingAccount = await _accountRepository.GetByEmailAsync(request.Email);
-            //if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
+            Guid accountIdToUse;
+            var isAccountExisted = await _accountRepository.GetByPhoneAsync(request.PhoneNumber);
 
-            var phoneCheck = await _accountRepository.GetByPhoneAsync(request.PhoneNumber);
-            if(phoneCheck != null) throw new Exception("Số điện thoại đã được sử dụng!");
-
-            var studentRole = await _accountRepository.GetRoleByNameAsync("Student");
-            Guid newAccountId = Guid.NewGuid();
-            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
-            var accountEntity = new Account
+            //Tạo accocunt mới
+            if (isAccountExisted == null)
             {
-                AccountId = newAccountId,
-                RoleId = studentRole.RoleId,
-                Email = request.Email, // Have to hash
-                PasswordHash = hashedPassword, // have to hash
-                FullName = request.FullName,
-                PhoneNumber = request.PhoneNumber,
-                Status = "Active",
-                IsDeleted = false,
-                CreatedAt = DateTime.Now,
-
-                Student = new Student
+                var studentRole = await _accountRepository.GetRoleByNameAsync("Student");
+                accountIdToUse = Guid.NewGuid();
+                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                var accountEntity = new Account
                 {
-                    StudentId = newAccountId,
-                    ParentName = request.ParentName,
-                    ParentPhone = request.ParentPhone,
-                    ParentEmail = request.ParentEmail,
-                    Address = request.Address,
-                    Dob = DateOnly.FromDateTime(request.DOB),
-                }
-            };
+                    AccountId = accountIdToUse,
+                    RoleId = studentRole.RoleId,
+                    PasswordHash = hashedPassword,
+                    PhoneNumber = request.PhoneNumber,
+                    Status = "Unverified",
+                    IsDeleted = false,
+                    CreatedAt = DateTime.Now,
+                };
+                await _accountRepository.AddAsync(accountEntity);
+            } else
+            {
+                accountIdToUse = isAccountExisted.AccountId;
+            }
 
-            await _accountRepository.AddAsync(accountEntity);
-            return newAccountId;
+            var isDuplicate = await _studentRepository.IsStudentExistAsync(accountIdToUse, request.FullName, DateOnly.FromDateTime(request.DOB));
+            if (isDuplicate)
+            {
+                throw new Exception("Hồ sơ học sinh đã tồn tại");
+            }
+            Guid newStudentId = Guid.NewGuid();
+            var studentProfile = new Student
+            {
+                StudentId = newStudentId,
+                AccountId = accountIdToUse,
+                FullName = request.FullName,
+                Dob = DateOnly.FromDateTime(request.DOB),
+                Address = request.Address
+            };
+            await _studentRepository.AddAsync(studentProfile);
+            return newStudentId;
         }
     }
 }

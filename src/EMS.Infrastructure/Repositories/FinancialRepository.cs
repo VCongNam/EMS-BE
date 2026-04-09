@@ -41,7 +41,7 @@ namespace EMS.Infrastructure.Repositories
                 .AsNoTracking()
                 .Where(i => i.ClassId == classId && i.IsDeleted != true)
                 .Include(i => i.Student)
-                    .ThenInclude(s => s.StudentNavigation)
+                    .ThenInclude(s => s.Account)
                 .Include(i => i.Transactions)
                 .ToListAsync();
         }
@@ -52,7 +52,7 @@ namespace EMS.Infrastructure.Repositories
                 .AsNoTracking()
                 .Include(t => t.Invoice)
                     .ThenInclude(i => i.Student)
-                        .ThenInclude(s => s.StudentNavigation)
+                        .ThenInclude(s => s.Account)
                 .Include(t => t.Invoice)
                     .ThenInclude(i => i.Class)
                 .OrderByDescending(t => t.PaidDate)

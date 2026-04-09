@@ -47,7 +47,7 @@ namespace EMS.Application.Features.Financials.Services
             report.RecentTransactions = recentTransactions.Select(t => new TransactionDto
             {
                 TransactionId = t.TransactionId,
-                StudentName = t.Invoice?.Student?.StudentNavigation?.FullName ?? null!,
+                StudentName = t.Invoice?.Student?.FullName ?? null!,
                 ClassName = t.Invoice?.Class?.ClassName ?? null!,
                 AmountPaid = t.AmountPaid,
                 PaymentMethod = t.PaymentMethod ?? null!,
@@ -85,7 +85,7 @@ namespace EMS.Application.Features.Financials.Services
                 {
                     InvoiceId = invoice.InvoiceId,
                     StudentId = invoice.StudentId,
-                    StudentName = invoice.Student?.StudentNavigation?.FullName ?? null!,
+                    StudentName = invoice.Student?.FullName ?? null!,
                     ParentName = invoice.Student?.ParentName ?? null!,
                     ParentPhone = invoice.Student?.ParentPhone ?? null!,
                     PeriodMonth = invoice.PeriodMonth,
