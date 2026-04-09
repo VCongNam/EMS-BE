@@ -87,7 +87,7 @@ namespace EMS.Application.Features.SystemAdmin.Services
             if (account.Role?.RoleName == "Admin")
                 throw new Exception("Cannot change status of another Admin account.");
 
-            var validStatuses = new[] { "Active", "Inactive", "Banned", "Unverified", "Pending" };
+            var validStatuses = new[] { "Active", "Banned", "Unverified"};
             if (!validStatuses.Contains(request.NewStatus))
                 throw new Exception("Invalid status value.");
 
@@ -95,6 +95,11 @@ namespace EMS.Application.Features.SystemAdmin.Services
             account.UpdatedAt = DateTime.UtcNow;
 
             await adminRepository.UpdateAccountAsync(account);
+            // Kiểm tra xem email dưới DB có trống không
+            if (string.IsNullOrEmpty(account.Email))
+            {
+                throw new Exception($"Tài khoản {account.FullName} không có địa chỉ Email trong hệ thống để gửi!");
+            }
 
             // 1. Chuẩn bị nội dung
             var subject = $"[EMS Platform] Thông báo trạng thái tài khoản";
@@ -122,9 +127,12 @@ namespace EMS.Application.Features.SystemAdmin.Services
                     await emailService.SendEmailAsync(emailMessage);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                Console.WriteLine($"[Cảnh báo] Không thể gửi email thông báo tới {account.Email}");
+                Console.WriteLine("========== LỖI GỬI EMAIL ==========");
+                Console.WriteLine($"Tài khoản nhận: {account.Email}");
+                Console.WriteLine($"Thông báo lỗi: {ex.Message}");
+                Console.WriteLine("=====================================");
             }
         }
 
