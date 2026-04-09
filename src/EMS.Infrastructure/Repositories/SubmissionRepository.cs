@@ -1,4 +1,4 @@
-﻿using EMS.Domain.Entities;
+using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +51,27 @@ namespace EMS.Infrastructure.Repositories
                 .Include(s => s.SubmissionAttachments)
                 .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId);
         }
+
+        public async Task<Submission?> GetByIdAsync(Guid submissionId)
+        {
+            return await _context.Submissions.FindAsync(submissionId);
+        }
+
+        public async Task<IEnumerable<Submission>> GetSubmissionsForClassAsync(Guid classId)
+        {
+            return await _context.Submissions
+                .Include(s => s.Assignment)
+                    .ThenInclude(a => a.GradeCategory)
+                .Where(s => s.Assignment.ClassId == classId)
+                .ToListAsync();
+        }
+
+        public async Task AddFeedbackAsync(SubmissionFeedback feedback)
+        {
+            await _context.SubmissionFeedbacks.AddAsync(feedback);
+            await _context.SaveChangesAsync();
+        }
+
         //Attachment
         public async Task AddAttachmentAsync(SubmissionAttachment attachment)
         {

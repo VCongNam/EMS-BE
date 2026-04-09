@@ -60,6 +60,7 @@ builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialReposito
 builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
 builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
 builder.Services.AddScoped<ITuitionFeeRepository, TuitionFeeRepository>();
+builder.Services.AddScoped<IGradeCategoryRepository, GradeCategoryRepository>();
 builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
 
 
@@ -97,10 +98,15 @@ builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<IClassTAService, ClassTAService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
-builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
+//builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 builder.Services.AddHttpClient<IVietQRService, VietQRService>();
 builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
+// Gradebook feature
+builder.Services.AddScoped<EMS.Application.Features.Gradebook.Services.IGradebookService, EMS.Application.Features.Gradebook.Services.GradebookService>();
+
+// Đăng ký Interface và Class triển khai thực tế của nó
+builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
 builder.Services.AddScoped<ISystemAdminService,SystemAdminService>();
 
 
