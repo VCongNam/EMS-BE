@@ -30,10 +30,15 @@ public partial class Class
     public short? MaxStudents { get; set; }
 
     public Guid SubjectId { get; set; }
+
     public string? BillingMethod { get; set; }
+
     public string? BillingCycle { get; set; }
+
     public string? TuitionNote { get; set; }
-    public int PaymentDeadlineDays { get; set; } = 5;
+
+    public int? PaymentDeadlineDays { get; set; }
+
     public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
     public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; } = new List<ClassEnrollment>();

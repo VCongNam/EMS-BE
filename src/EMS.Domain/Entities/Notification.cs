@@ -17,5 +17,9 @@ public partial class Notification
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? Type { get; set; }
+
+    public string? ActionUrl { get; set; }
+
     public virtual Account Account { get; set; } = null!;
 }

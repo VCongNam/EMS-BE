@@ -10,7 +10,6 @@ public partial class Attendance
     public Guid SessionId { get; set; }
 
     public Guid StudentId { get; set; }
-    public Guid? InvoiceId { get; set; }
 
     public string Status { get; set; } = null!;
 
@@ -21,6 +20,9 @@ public partial class Attendance
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public Guid? InvoiceId { get; set; }
+
     public virtual Invoice? Invoice { get; set; }
 
     public virtual Session Session { get; set; } = null!;

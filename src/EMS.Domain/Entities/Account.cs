@@ -56,4 +56,6 @@ public partial class Account
     public virtual Teacher? Teacher { get; set; }
 
     public virtual TeachingAssistant? TeachingAssistant { get; set; }
+
+    public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

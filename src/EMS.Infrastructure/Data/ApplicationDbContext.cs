@@ -141,6 +141,12 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.DueDate).HasColumnType("timestamp without time zone");
             entity.Property(e => e.GradeCategoryId).HasColumnName("GradeCategoryID");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.Isgraded)
+                .HasDefaultValue(false)
+                .HasColumnName("isgraded");
+            entity.Property(e => e.Isoffline)
+                .HasDefaultValue(false)
+                .HasColumnName("isoffline");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Published'::character varying");
@@ -161,7 +167,6 @@ public partial class ApplicationDbContext : DbContext
 
             entity.HasOne(d => d.GradeCategory).WithMany(p => p.Assignments)
                 .HasForeignKey(d => d.GradeCategoryId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("Assignment_GradeCategoryID_fkey");
         });
 
@@ -207,6 +212,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
+
             entity.HasOne(d => d.Invoice).WithMany(p => p.Attendances)
                 .HasForeignKey(d => d.InvoiceId)
                 .HasConstraintName("Attendance_InvoiceID_fkey");
@@ -231,22 +237,19 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.ClassId)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("ClassID");
-            entity.Property(e => e.ClassName).HasMaxLength(100);
-            // Bổ sung cho Tuition Fee Management
-            entity.Property(e => e.BillingMethod)
-                .HasMaxLength(20)
-                .HasDefaultValueSql("'Postpaid'::character varying");
             entity.Property(e => e.BillingCycle)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Monthly'::character varying");
-            entity.Property(e => e.TuitionNote);
+            entity.Property(e => e.BillingMethod)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'Postpaid'::character varying");
+            entity.Property(e => e.ClassName).HasMaxLength(100);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.PaymentDeadlineDays).HasDefaultValue(5);
             entity.Property(e => e.Room).HasMaxLength(50);
-            entity.Property(e => e.PaymentDeadlineDays)
-            .HasDefaultValueSql("5");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Ongoing'::character varying");
@@ -278,13 +281,12 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("EnrollmentID");
             entity.Property(e => e.ClassId).HasColumnName("ClassID");
-            // Ví cấn trừ học phí
-            entity.Property(e => e.CreditBalance)
-                .HasPrecision(12, 2)
-                .HasDefaultValueSql("0");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.CreditBalance)
+                .HasPrecision(12, 2)
+                .HasDefaultValueSql("0");
             entity.Property(e => e.EnrolledDate).HasDefaultValueSql("CURRENT_DATE");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
@@ -415,14 +417,12 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("InvoiceID");
             entity.Property(e => e.Amount).HasPrecision(12, 2);
             entity.Property(e => e.ClassId).HasColumnName("ClassID");
-            // Chi tiết số buổi và mô tả
-            entity.Property(e => e.SessionCount).HasDefaultValueSql("0");
-            entity.Property(e => e.Description);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.DueDate).HasColumnType("timestamp without time zone");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.SessionCount).HasDefaultValue(0);
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Pending'::character varying");
@@ -506,6 +506,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.IsRead).HasDefaultValue(false);
             entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Type).HasColumnType("character varying");
 
             entity.HasOne(d => d.Account).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.AccountId)
@@ -573,12 +574,14 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.ReportId)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasColumnName("ReportID");
+            entity.Property(e => e.AttendanceRate).HasPrecision(5, 2);
             entity.Property(e => e.ClassId).HasColumnName("ClassID");
-            entity.Property(e => e.Gpa).HasColumnName("GPA");
-            entity.Property(e => e.AttendanceRate).HasColumnName("AttendanceRate");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.Gpa)
+                .HasPrecision(5, 2)
+                .HasColumnName("GPA");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Draft'::character varying");
@@ -873,12 +876,6 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.InvoiceId).HasColumnName("InvoiceID");
-            entity.Property(e => e.ApprovedBy);
-            entity.Property(e => e.Note);
-            entity.HasOne(d => d.ApprovedByNavigation)
-                .WithMany() 
-                .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("Transaction_ApprovedBy_fkey");
             entity.Property(e => e.PaidDate)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
@@ -890,6 +887,10 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
+
+            entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.Transactions)
+                .HasForeignKey(d => d.ApprovedBy)
+                .HasConstraintName("Transaction_ApprovedBy_fkey");
 
             entity.HasOne(d => d.Invoice).WithMany(p => p.Transactions)
                 .HasForeignKey(d => d.InvoiceId)

@@ -11,7 +11,7 @@ public partial class Assignment
 
     public Guid AuthorId { get; set; }
 
-    public Guid GradeCategoryId { get; set; }
+    public Guid? GradeCategoryId { get; set; }
 
     public string Title { get; set; } = null!;
 
@@ -29,13 +29,17 @@ public partial class Assignment
 
     public bool? AllowLateSubmission { get; set; }
 
+    public bool? Isoffline { get; set; }
+
+    public bool? Isgraded { get; set; }
+
     public virtual ICollection<AssignmentAttachment> AssignmentAttachments { get; set; } = new List<AssignmentAttachment>();
 
     public virtual Account Author { get; set; } = null!;
 
     public virtual Class Class { get; set; } = null!;
 
-    public virtual GradeCategory GradeCategory { get; set; } = null!;
+    public virtual GradeCategory? GradeCategory { get; set; }
 
     public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();
 }

@@ -165,7 +165,7 @@ namespace EMS.Application.Features.Assignments.Services
                 AssignmentId = assignment.AssignmentId,
                 ClassId = assignment.ClassId,
                 AuthorName = assignment.Author?.FullName ?? "Unknown",
-                GradeCategoryId = assignment.GradeCategoryId,
+                GradeCategoryId = assignment.GradeCategoryId.Value,
                 GradeCategoryName = assignment.GradeCategory?.Name ?? "Unknown",
                 Title = assignment.Title,
                 Description = assignment.Description,
