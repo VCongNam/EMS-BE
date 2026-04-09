@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EMS.Application.Features.Students.Services
+namespace EMS.Application.Features.Students.DTOs
 {
     public class PaymentQrDto
     {
