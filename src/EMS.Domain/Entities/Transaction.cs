@@ -23,5 +23,11 @@ public partial class Transaction
 
     public DateTime? UpdatedAt { get; set; }
 
+    public Guid? ApprovedBy { get; set; }
+
+    public string? Note { get; set; }
+
+    public virtual Account? ApprovedByNavigation { get; set; }
+
     public virtual Invoice Invoice { get; set; } = null!;
 }

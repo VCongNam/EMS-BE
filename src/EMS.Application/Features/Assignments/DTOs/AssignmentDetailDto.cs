@@ -8,8 +8,8 @@ namespace EMS.Application.Features.Assignments.DTOs
         public Guid AssignmentId { get; set; }
         public Guid ClassId { get; set; }
         public string AuthorName { get; set; } = string.Empty;
-        public Guid GradeCategoryId { get; set; }
-        public string GradeCategoryName { get; set; } = string.Empty;
+        public Guid? GradeCategoryId { get; set; }
+        public string? GradeCategoryName { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public DateTime DueDate { get; set; }

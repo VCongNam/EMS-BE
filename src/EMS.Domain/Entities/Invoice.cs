@@ -27,6 +27,10 @@ public partial class Invoice
 
     public DateTime? UpdatedAt { get; set; }
 
+    public int? SessionCount { get; set; }
+
+    public string? Description { get; set; }
+
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
     public virtual Class Class { get; set; } = null!;

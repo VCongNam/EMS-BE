@@ -21,6 +21,8 @@ public partial class ClassEnrollment
 
     public DateTime? UpdatedAt { get; set; }
 
+    public decimal? CreditBalance { get; set; }
+
     public virtual Class Class { get; set; } = null!;
 
     public virtual Student Student { get; set; } = null!;
