@@ -1,4 +1,5 @@
-﻿using EMS.Domain.Entities;
+﻿using DocumentFormat.OpenXml.InkML;
+using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -304,6 +305,31 @@ namespace EMS.Infrastructure.Repositories
         {
             context.Invoices.Update(invoice);
             await context.SaveChangesAsync();
+        }
+
+        // Transaction
+        public async Task<List<Transaction>> GetTransactionsByStudentIdAsync(Guid studentId, Guid? classId)
+        {
+            var result = await context.Transactions
+            .Include(t => t.Invoice)
+            .Where(t => t.Invoice.StudentId == studentId)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+            if (classId.HasValue)
+            {
+                result = result.Where(i => i.Invoice.ClassId == classId.Value).ToList();
+            }
+            return result;
+        }
+
+        public async Task<Transaction?> GetTransactionDetailAsync(Guid transactionId, Guid studentId)
+        {
+            return await context.Transactions
+                .Include(t => t.Invoice)  
+                .Where(t => t.TransactionId == transactionId
+                         && t.Invoice.StudentId == studentId 
+                         && t.Invoice.IsDeleted == false)
+                .FirstOrDefaultAsync();
         }
     }
 }

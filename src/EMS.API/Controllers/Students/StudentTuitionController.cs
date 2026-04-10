@@ -1,5 +1,7 @@
-﻿using EMS.Application.Features.Students.DTOs;
+﻿using DocumentFormat.OpenXml.Office2010.Excel;
+using EMS.Application.Features.Students.DTOs;
 using EMS.Application.Features.Students.Services;
+using EMS.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -87,6 +89,34 @@ namespace EMS.API.Controllers.Students
                 {
                     Message = "Nộp minh chứng thành công. Vui lòng chờ giáo viên xác nhận!"
                 });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("myTransactions")]
+        public async Task<IActionResult> GetMyTransactions([FromBody] Guid classId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetMyTransactionsAsync(classId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("myTransactions/{transactionId}")]
+        public async Task<IActionResult> GetTransactionDetail(Guid transactionId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetTransactionByIdAsync(transactionId);
+                return Ok(result);
             }
             catch (Exception ex)
             {

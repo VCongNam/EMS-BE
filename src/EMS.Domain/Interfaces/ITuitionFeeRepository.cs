@@ -60,5 +60,8 @@ namespace EMS.Domain.Interfaces
         Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId);
         Task UpdateInvoiceAsync(Invoice invoice);
 
+        //Transaction
+        Task<List<Transaction>> GetTransactionsByStudentIdAsync(Guid studentId, Guid? classId);
+        Task<Transaction?> GetTransactionDetailAsync(Guid transactionId, Guid studentId);
     }
 }
