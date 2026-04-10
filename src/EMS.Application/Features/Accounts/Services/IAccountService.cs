@@ -1,5 +1,6 @@
 ﻿using EMS.Application.Features.Accounts.DTOs;
 using EMS.Domain.Interfaces;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,5 +19,6 @@ namespace EMS.Application.Features.Accounts.Services
         Task<UserProfileResponse> UpdateTAProfileAsync(Guid accountId, UpdateTAProfileRequest request);
         Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, UpdateStudentProfileRequest request);
         Task<(string NewUrl, string? OldUrl)> UpdateAvatarUrlAsync(Guid accountId, string avatarUrl);
+        Task<string> UpdateAvatarAsync(IFormFile file);
     }
 }

@@ -9,6 +9,6 @@ namespace EMS.Application.Common.Interfaces
 {
     public interface IJwtTokenGenerator
     {
-        string GenerateToken(Account account, string roleName);
+        string GenerateToken(Account account, string roleName, bool isTempToken = false, Guid? studentId = null);
     }
 }

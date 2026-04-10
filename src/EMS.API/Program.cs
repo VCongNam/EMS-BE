@@ -5,7 +5,6 @@ using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Auth.Services;
 using EMS.Application.Features.Classes.Services;
-using EMS.Application.Features.Financials.Services;
 using EMS.Application.Features.LearningMaterials.Services;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.Services;
@@ -48,6 +47,7 @@ builder.Services.AddHttpClient<IEmailService, EmailService>();
 
 
 // 3. ĐĂNG KÝ REPOSITORY (Infrastructure)
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IClassRepository, ClassRepository>();
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -59,7 +59,6 @@ builder.Services.AddScoped<ITARepository, TARepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialRepository>();
 builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
-builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
 builder.Services.AddScoped<ITuitionFeeRepository, TuitionFeeRepository>();
 builder.Services.AddScoped<IGradeCategoryRepository, GradeCategoryRepository>();
 builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
@@ -80,7 +79,6 @@ builder.Services.AddSingleton(provider => new Supabase.Client(supabaseUrl, supab
 
 // 3. Đăng ký Service (Application/Infrastructure)
 builder.Services.AddScoped<ISupabaseStorageService, EMS.Infrastructure.Services.Supabase.SupabaseStorageService>();
-builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IClassService, ClassService>();
 //Student
 builder.Services.AddScoped<IStudentAccountService, StudentAccountService>();
@@ -103,7 +101,6 @@ builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
 //builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 builder.Services.AddHttpClient<IVietQRService, VietQRService>();
 builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
-builder.Services.AddScoped<IFinancialService, FinancialService>();
 // Gradebook feature
 builder.Services.AddScoped<EMS.Application.Features.Gradebook.Services.IGradebookService, EMS.Application.Features.Gradebook.Services.GradebookService>();
 

@@ -25,12 +25,11 @@ namespace EMS.Infrastructure.Repositories
             await context.SaveChangesAsync();
             return account;
         }
-
         public async Task<Account?> GetByEmailAsync(string email)
         {
             return await context.Accounts
-                .Include(a => a.Role) // Load kèm thông tin Role
-                .FirstOrDefaultAsync(a => a.Email == email);
+                .Include(a => a.Role)
+                .FirstOrDefaultAsync(a => a.Email == email && a.IsDeleted != true);
         }
 
         public async Task<Account?> GetByIdAsync(Guid id)
@@ -57,7 +56,10 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Account?> GetByPhoneAsync(string phone)
         {
-            return await context.Accounts.FirstOrDefaultAsync( a => a.PhoneNumber == phone);
+            return await context.Accounts
+                .Include(a => a.Role)
+                .Include(a => a.Students) // Cần Students để chọn Profile
+                .FirstOrDefaultAsync(a => a.PhoneNumber == phone && a.IsDeleted != true);
         }
     }
 }
