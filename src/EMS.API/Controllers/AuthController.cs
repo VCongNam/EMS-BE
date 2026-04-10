@@ -1,6 +1,9 @@
-﻿using EMS.Application.Features.Auth.Services;
-using Microsoft.AspNetCore.Mvc;
+﻿using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Auth.DTOs;
+using EMS.Application.Features.Auth.Services;
+using EMS.Infrastructure.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 namespace EMS.API.Controllers
 {
     [ApiController]
@@ -69,5 +72,27 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Message = ex.Message }); 
             }
         }
+
+        [Authorize]
+        [HttpPost("select-profile")]
+        public async Task<IActionResult> SelectProfile([FromBody] SelectProfileRequest request)
+        {
+            // Token validation logic vẫn để ở Controller là chuẩn (thuộc về lớp vận chuyển)
+            var tokenType = User.FindFirst("TokenType")?.Value;
+            if (tokenType != "Temp") return BadRequest(new { Message = "Token không hợp lệ." });
+
+            // Chỉ việc gọi Service, không cần truyền ID
+            return Ok(await authService.SelectProfileAsync(request.StudentId));
+        }
+
+        [Authorize(Roles = "Student")]
+        [HttpPost("verify-onboarding")]
+        public async Task<IActionResult> VerifyOnboarding([FromBody] OnboardingRequest request)
+        {
+            // Gọi Service, ID tự được xử lý bên dưới
+            await authService.VerifyOnboardingAsync(request);
+            return Ok(new { Message = "Kích hoạt tài khoản thành công!" });
+        }
+
     }
 }

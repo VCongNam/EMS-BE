@@ -9,10 +9,12 @@ namespace EMS.Application.Features.Auth.DTOs
     public class AuthResponse
     {
         public Guid AccountId { get; set; }
-        public string Email { get; set; } = null!;
-        public string FullName { get; set; } = null!;
-        public string RoleName { get; set; } = null!; // Ví dụ: "Teacher", "Student", "Admin"
-        public string? AvatarUrl { get; set; } // Tuỳ chọn, rất tốt để hiện trên thanh Header của React
-        public string Token { get; set; } = null!; // Chuỗi JWT
+        public string FullName { get; set; } = string.Empty;
+        public string RoleName { get; set; } = string.Empty;
+        public bool RequiresProfileSelection { get; set; }
+        public string? Token { get; set; } // Main Token
+        public string? TempToken { get; set; } // Dùng cho bước chọn Profile
+        public string? Status { get; set; }
+        public List<StudentProfileDto>? AvailableProfiles { get; set; }
     }
 }

@@ -17,7 +17,7 @@ namespace EMS.Infrastructure.Services
         {
             _httpContextAccessor = httpContextAccessor;
         }
-
+        
         public Guid UserId => Guid.Parse(
             _httpContextAccessor.HttpContext?.User
                 .FindFirst(ClaimTypes.NameIdentifier)?.Value ?? Guid.Empty.ToString());
@@ -27,6 +27,19 @@ namespace EMS.Infrastructure.Services
 
         public string Role => _httpContextAccessor.HttpContext?.User
             .FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+
+        public Guid? StudentId
+        {
+            get
+            {
+                var claimValue = _httpContextAccessor.HttpContext?.User.FindFirst("StudentId")?.Value;
+                if (Guid.TryParse(claimValue, out var studentId))
+                {
+                    return studentId;
+                }
+                return null;
+            }
+        }
     }
 
 }

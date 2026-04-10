@@ -26,7 +26,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<PagedResult<EnrolledClassDto>> GetMyClassesAsync(EnrolledClassFilter filter)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             var (entities, totalCount) = await _classRepository.GetClassByStudentIdAsync(studentId, filter.Page, filter.Size, filter.Status);
             var responseItems = entities.Select(ce => new EnrolledClassDto

@@ -8,9 +8,10 @@ namespace EMS.Application.Common.Interfaces
 {
     public interface ICurrentUserService
     {
-        Guid UserId { get; }
+        Guid UserId { get; }   
         string Email { get; }
-        string Role { get; }
+        string Role { get; }   
+        Guid? StudentId { get; }
     }
 
 }
