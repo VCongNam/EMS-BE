@@ -24,7 +24,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<List<MaterialDto>> GetClassMaterialsAsync(Guid classId)
         {
-            Guid studentId = _currentUserService.UserId;
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             bool isEnrolled = await _classRepo.IsStudentAlreadyEnrolledAsync(classId, studentId);
             if (!isEnrolled)

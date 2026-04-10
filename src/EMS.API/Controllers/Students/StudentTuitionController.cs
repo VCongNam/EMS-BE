@@ -1,5 +1,6 @@
 ﻿using EMS.Application.Features.Students.DTOs;
 using EMS.Application.Features.Students.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace EMS.API.Controllers.Students
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class StudentTuitionController : ControllerBase
     {
         private readonly IStudentTuitionService _tuitionService;

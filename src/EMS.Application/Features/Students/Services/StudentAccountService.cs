@@ -102,7 +102,7 @@ namespace EMS.Application.Features.Students.Services
                     var createStudentDto = new CreateStudentDto
                     {
                         FullName = studentName,
-                        Password = "123456",
+                        Password = "123456", // hash
                         DOB = birthDate,
                         Address = address,
                         PhoneNumber = phone,

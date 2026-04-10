@@ -65,7 +65,6 @@ builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 
-builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("SupabaseSettings"));
 
 // Supabase Client Setup

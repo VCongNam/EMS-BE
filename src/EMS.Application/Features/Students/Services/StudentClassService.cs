@@ -49,7 +49,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<EnrolledClassDetailDto> GetClassDetailAsync(Guid classId)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             var enrollmentEntity = await _classRepository.GetClassSummaryAsync(classId, studentId);
             bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, studentId);
@@ -69,7 +69,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<PagedResult<PostDto>> GetClassPostsAsync(Guid classId, PostFilter filter)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, studentId);
             if (!isEnrolled)
             {

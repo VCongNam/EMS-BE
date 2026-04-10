@@ -23,11 +23,11 @@ namespace EMS.Infrastructure.Services
         {
             var payload = new
             {
-                accountNo = request.AccountNo,
-                accountName = request.AccountName,
-                acqId = request.BankId,
+                accountNo = request.AccountNo.Trim(),
+                accountName = request.AccountName.Trim(),
+                acqId = request.BankId.Trim(),
                 amount = request.Amount,
-                addInfo = request.Content,
+                addInfo = request.Content.Trim(),
                 format = "text",
                 template = "compact"
             };
@@ -45,6 +45,15 @@ namespace EMS.Infrastructure.Services
                 .GetString();
 
             return qrDataUrl ?? string.Empty;
+        }
+
+        public Task<string> GenerateQRUrlAsync(VietQRRequest request)
+        {
+            var qrUrl = $"https://img.vietqr.io/image/{request.BankId}-{request.AccountNo}-compact.png" +
+                        $"?amount={request.Amount}" +
+                        $"&addInfo={Uri.EscapeDataString(request.Content ?? "")}" +
+                        $"&accountName={Uri.EscapeDataString(request.AccountName ?? "")}";
+            return Task.FromResult(qrUrl);
         }
     }
 }
