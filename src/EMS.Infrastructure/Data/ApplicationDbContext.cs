@@ -505,6 +505,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.IsRead).HasDefaultValue(false);
+            entity.Property(e => e.StudentId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("StudentID");
             entity.Property(e => e.Title).HasMaxLength(255);
             entity.Property(e => e.Type).HasColumnType("character varying");
 
@@ -512,6 +515,10 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.AccountId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("Notification_AccountID_fkey");
+
+            entity.HasOne(d => d.Student).WithMany(p => p.Notifications)
+                .HasForeignKey(d => d.StudentId)
+                .HasConstraintName("Notification_StudentID_fkey");
         });
 
         modelBuilder.Entity<Post>(entity =>

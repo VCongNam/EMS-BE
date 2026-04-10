@@ -1,6 +1,9 @@
-﻿using EMS.Application.Features.Students.DTOs;
+﻿using ClosedXML.Excel;
+using DocumentFormat.OpenXml.VariantTypes;
+using EMS.Application.Features.Students.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +25,7 @@ namespace EMS.Application.Features.Students.Services
         {
             Guid accountIdToUse;
             var isAccountExisted = await _accountRepository.GetByPhoneAsync(request.PhoneNumber);
+
 
             //Tạo accocunt mới
             if (isAccountExisted == null)
@@ -61,6 +65,62 @@ namespace EMS.Application.Features.Students.Services
             };
             await _studentRepository.AddAsync(studentProfile);
             return newStudentId;
+        }
+
+        public async Task<ImportResultDto> ImportStudentsFromExcelAsync(IFormFile excelFile)
+        {
+            var result = new ImportResultDto();
+            if (excelFile == null || excelFile.Length == 0)
+            {
+                throw new Exception("File không được để trống.");
+            }
+
+            var extension = Path.GetExtension(excelFile.FileName).ToLower();
+            if (extension != ".xlsx")
+                throw new Exception("Hệ thống chỉ hỗ trợ file Excel định dạng .xlsx");
+            using var stream = new MemoryStream();
+            await excelFile.CopyToAsync(stream);
+
+            using var workbook = new XLWorkbook(stream);
+            var worksheet = workbook.Worksheet(1);
+            var rows = worksheet.RowsUsed().Skip(1);
+
+            result.TotalRows = rows.Count();
+            foreach (var row in rows)
+            {
+                int rowNumber = row.RowNumber();
+                string studentName = row.Cell(1).GetString().Trim();
+                try
+                {
+                    string phone = row.Cell(2).GetString().Trim();
+                    string dob = row.Cell(3).GetString().Trim();
+                    string address = row.Cell(4).GetString().Trim();
+                    if (string.IsNullOrEmpty(studentName)) throw new Exception("Tên học sinh không được để trống.");
+                    if (string.IsNullOrEmpty(phone)) throw new Exception("Số điện thoại phụ huynh bắt buộc nhập.");
+                    if (!DateTime.TryParse(dob, out DateTime birthDate)) throw new Exception("Ngày sinh không đúng định dạng (VD: 01/12/2010).");
+
+                    var createStudentDto = new CreateStudentDto
+                    {
+                        FullName = studentName,
+                        Password = "123456",
+                        DOB = birthDate,
+                        Address = address,
+                        PhoneNumber = phone,
+                    };
+                    await CreateStudentAsync(createStudentDto);
+                    result.SuccessCount++;
+                } catch (Exception ex)
+                {
+                    result.FailedCount++;
+                    result.ErrorList.Add(new ImportErrorDto
+                    {
+                        RowNumber = rowNumber,
+                        StudentName = string.IsNullOrEmpty(studentName) ? "Không xác định" : studentName,
+                        ErrorMessage = ex.Message
+                    });
+                }
+            }
+            return result;
         }
     }
 }

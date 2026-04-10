@@ -29,10 +29,24 @@ namespace EMS.API.Controllers.Students
             }
             catch (Exception ex)
             {
-                
                 return BadRequest(new { Error = ex.Message });
             }
         }
 
+        [HttpPost("import-excel")]
+        public async Task<IActionResult> ImportExcel(IFormFile file)
+        {
+            try
+            {
+                var result = await _studentAccountService.ImportStudentsFromExcelAsync(file);
+                return Ok(result); 
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
+
 }
+

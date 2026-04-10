@@ -59,11 +59,11 @@ namespace EMS.Application.Features.Accounts.Services
                 case "Student":
                     response.RoleSpecificData = new
                     {
-                        ParentName = account.Student?.ParentName,
-                        ParentPhone = account.Student?.ParentPhone,
-                        ParentEmail = account.Student?.ParentEmail,
-                        Address = account.Student?.Address,
-                        Dob = account.Student?.Dob
+                        //ParentName = account.Student?.ParentName,
+                        //ParentPhone = account.Student?.ParentPhone,
+                        //ParentEmail = account.Student?.ParentEmail,
+                        //Address = account.Student?.Address,
+                        //Dob = account.Student?.Dob
                     };
                     break;
             }
@@ -129,14 +129,14 @@ namespace EMS.Application.Features.Accounts.Services
             account.PhoneNumber = request.PhoneNumber;
             account.UpdatedAt = DateTime.UtcNow;
 
-            if (account.Student != null)
-            {
-                account.Student.ParentName = request.ParentName;
-                account.Student.ParentPhone = request.ParentPhone;
-                account.Student.ParentEmail = request.ParentEmail;
-                account.Student.Address = request.Address;
-                account.Student.Dob = request.Dob;
-            }
+            //if (account.Student != null)
+            //{
+            //    account.Student.ParentName = request.ParentName;
+            //    account.Student.ParentPhone = request.ParentPhone;
+            //    account.Student.ParentEmail = request.ParentEmail;
+            //    account.Student.Address = request.Address;
+            //    account.Student.Dob = request.Dob;
+            //}
 
             await accountRepository.UpdateAsync(account);
             return await GetProfileAsync(accountId);

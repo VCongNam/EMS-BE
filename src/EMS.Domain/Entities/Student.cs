@@ -29,6 +29,8 @@ public partial class Student
 
     public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
 
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
     public virtual ICollection<ProgressReport> ProgressReports { get; set; } = new List<ProgressReport>();
 
     public virtual ICollection<Submission> Submissions { get; set; } = new List<Submission>();

@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.1.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="CloudinaryDotNet" Version="1.28.0" />
     <PackageReference Include="EPPlus" Version="8.5.1" />
     <PackageReference Include="FluentValidation" Version="12.1.1" />
@@ -20,6 +21,7 @@
   <ItemGroup>
     <Folder Include="Common\Exceptions\" />
     <Folder Include="Common\Mappings\" />
+    <Folder Include="Features\Notifications\DTOs\" />
   </ItemGroup>
 
   <ItemGroup>
