@@ -16,13 +16,15 @@ namespace EMS.Application.Features.Auth.Services
         private readonly IJwtTokenGenerator jwtTokenGenerator;
         private readonly IOtpService otpService;
         private readonly IEmailService emailService;
+        private readonly ICurrentUserService currentUserService;
 
-        public AuthService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailService emailService)
+        public AuthService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailService emailService, ICurrentUserService currentUserService)
         {
             this.accountRepository = accountRepository;
             this.jwtTokenGenerator = jwtTokenGenerator;
             this.otpService = otpService;
             this.emailService = emailService;
+            this.currentUserService = currentUserService;
         }
 
         // Đăng ký
@@ -112,10 +114,8 @@ namespace EMS.Application.Features.Auth.Services
             return new AuthResponse
             {
                 AccountId = saveAccount.AccountId,
-                Email = saveAccount.Email,
                 FullName = saveAccount.FullName,
-                RoleName = saveAccount.Role.RoleName,
-                AvatarUrl = saveAccount.AvatarUrl
+                RoleName = saveAccount.Role.RoleName
             };
         }
 
@@ -143,25 +143,52 @@ namespace EMS.Application.Features.Auth.Services
         // Đăng nhập
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
-            var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) throw new Exception("Tài khoản không tồn tại!");
-            if (account.Status == "Unverified") throw new Exception("Tài khoản chưa được xác thực");
-            if (account.Status == "Banned") throw new Exception("Tài khoản đã bị khóa");
+            Account? account;
 
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash);
-            if (!isPasswordValid) throw new Exception("Sai mật khẩu!");
+            // Tìm kiếm đích danh theo Role và Identifier (Email/SĐT)
+            if (request.SelectedRole == "Student")
+            {
+                account = await accountRepository.GetByPhoneAsync(request.Identifier);
+            }
+            else
+            {
+                account = await accountRepository.GetByEmailAsync(request.Identifier);
+            }
 
-            var roleName = account.Role?.RoleName ?? throw new Exception("Tài khoản bị lỗi dữ liệu phân quyền!");
-            var token = jwtTokenGenerator.GenerateToken(account, roleName);
+            if (account == null || account.Role.RoleName != request.SelectedRole)
+                throw new Exception("Thông tin đăng nhập không chính xác hoặc sai vai trò!");
 
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash))
+                throw new Exception("Mật khẩu không chính xác!");
+
+            // LUỒNG CHO HỌC SINH (Student)
+            if (request.SelectedRole == "Student")
+            {
+                return new AuthResponse
+                {
+                    AccountId = account.AccountId,
+                    FullName = account.FullName,
+                    RoleName = "Student",
+                    RequiresProfileSelection = true,
+                    TempToken = jwtTokenGenerator.GenerateToken(account, "Student", isTempToken: true),
+                    AvailableProfiles = account.Students.Select(s => new StudentProfileDto
+                    {
+                        StudentId = s.StudentId,
+                        FullName = s.FullName ?? "Học sinh"
+                    }).ToList()
+                };
+            }
+
+            // LUỒNG CHO ADMIN, TEACHER, TA (Vào thẳng)
+            var mainToken = jwtTokenGenerator.GenerateToken(account, account.Role.RoleName);
             return new AuthResponse
             {
                 AccountId = account.AccountId,
-                Email = account.Email,
                 FullName = account.FullName,
-                RoleName = roleName,
-                Token = token, 
-                AvatarUrl = account.AvatarUrl
+                RoleName = account.Role.RoleName,
+                Token = mainToken,
+                Status = account.Status,
+                RequiresProfileSelection = false
             };
         }
 
@@ -207,8 +234,44 @@ namespace EMS.Application.Features.Auth.Services
             return true;
         }
 
+        // 2. Hàm Chọn Profile (Tự lấy AccountId từ CurrentUserService)
+        public async Task<AuthResponse> SelectProfileAsync(Guid studentId)
+        {
+            var accountId = currentUserService.UserId;
+
+            var account = await accountRepository.GetByIdAsync(accountId);
+            var student = account?.Students.FirstOrDefault(s => s.StudentId == studentId);
+
+            if (student == null) throw new Exception("Profile học sinh không hợp lệ!");
+
+            return new AuthResponse
+            {
+                AccountId = account!.AccountId,
+                FullName = student.FullName ?? account.FullName,
+                RoleName = "Student",
+                Token = jwtTokenGenerator.GenerateToken(account, "Student", false, studentId),
+                Status = account.Status
+            };
+        }
+
+        // 3. Hàm Onboarding (Tự lấy AccountId từ CurrentUserService)
+        public async Task<bool> VerifyOnboardingAsync(OnboardingRequest request)
+        {
+            var accountId = currentUserService.UserId;
+
+            var account = await accountRepository.GetByIdAsync(accountId);
+            if (account == null || account.Status != "Unverified") throw new Exception("Yêu cầu không hợp lệ!");
+
+            if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, account.PasswordHash))
+                throw new Exception("Mật khẩu hiện tại không chính xác!");
+
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            account.Status = "Active";
+
+            await accountRepository.UpdateAsync(account);
+            return true;
+        }
 
 
-        
     }
 }

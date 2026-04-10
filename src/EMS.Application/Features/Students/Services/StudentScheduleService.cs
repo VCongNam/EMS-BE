@@ -23,7 +23,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<List<StudentScheduleDto>> GetMySchedulesAsync(ScheduleFilter filter)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             if (filter.FromDate > filter.ToDate)
             {

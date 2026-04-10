@@ -28,7 +28,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<PagedResult<AssignmentItemDto>> GetClassAssignmentsAsync(Guid classId, AssignmentFilter filter)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             var (models, totalCount) = await _assignmentRepository.GetStudentAssignmentsAsync(classId, studentId, filter.Page, filter.Size);
             var items = models.Select(m =>
             {
@@ -61,7 +61,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<AssignmentDetailDto> GetClassAssignmentsDetailAsync(Guid assignmentId)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             var (assignment, submission) = await _assignmentRepository.GetAssignmentDetailAsync(assignmentId, studentId);
             if (assignment == null)
@@ -118,7 +118,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<bool> SubmitAssignmentAsync(Guid assignmentId, SubmitAssignmentRequest request)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
             if (assignment == null)
@@ -205,7 +205,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<bool> UnsubmitAssignmentAsync(Guid assignmentId)
         {
-            Guid studentId = _currentUser.UserId;
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, studentId);
             if (existingSubmission == null)
             {

@@ -28,7 +28,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<PagedResult<TuitionDto>> GetMyTuitionAsync(TuitionFilter filter)
         {
-            Guid studentId = _currentUserService.UserId;
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             var (tuples, totalCount) = await _tuitionRepository.GetStudentInvoicesAsync(studentId, filter.Page, filter.Size, filter.ClassID);
             var items = tuples.Select(t =>
@@ -81,7 +81,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<TuitionInvoiceDetailDto> GetTuitionInvoiceDetailAsync(Guid invoiceId)
         {
-            Guid studentId = _currentUserService.UserId;
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             var (invoice, transaction, attendances) = await _tuitionRepository.GetInvoiceDetailAsync(invoiceId, studentId);
             if (invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn này!");
             string statusDisplay;
@@ -129,7 +129,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<PaymentQrDto> GetPaymentQrCodeAsync(Guid invoiceId)
         {
-            Guid studentId = _currentUserService.UserId;
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             var invoice = await _tuitionRepository.GetInvoiceWithTeacherBankInfoAsync(invoiceId, studentId);
             if (invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn!");
             if (invoice.Status == "Paid") throw new InvalidOperationException("Hóa đơn này đã được thanh toán!");
@@ -165,7 +165,7 @@ namespace EMS.Application.Features.Students.Services
 
         public async Task<bool> UploadPaymentProofAsync(Guid invoiceId, ProofUploadDto request)
         {
-            Guid studentId = _currentUserService.UserId;
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             var invoice = await _tuitionRepository.GetInvoiceDetailAsync(invoiceId, studentId);
             if (invoice.Invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn!");

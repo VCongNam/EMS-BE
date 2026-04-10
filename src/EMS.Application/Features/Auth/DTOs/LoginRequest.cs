@@ -8,7 +8,8 @@ namespace EMS.Application.Features.Auth.DTOs
 {
     public class LoginRequest
     {
-        public string Email { get; set; } = string.Empty;
+        public string Identifier { get; set; } = string.Empty; // SĐT hoặc Email
         public string Password { get; set; } = string.Empty;
+        public string SelectedRole { get; set; } = string.Empty; // "Admin", "Teacher", "TA", "Student"
     }
 }

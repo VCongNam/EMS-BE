@@ -31,5 +31,25 @@ namespace EMS.Infrastructure.Repositories
                 .OrderBy(t => t.DueDate)
                 .ToListAsync();
         }
+
+        public async Task<TeachingAssistant> GetTAByEmailAsync(string email)
+        {
+            var ta = await _context.TeachingAssistants
+                .Include(ta => ta.Ta)
+                .Where(ta => ta.Ta.IsDeleted == false)
+                .FirstOrDefaultAsync(ta => ta.Ta.Email == email);
+            return ta;
+        }
+
+        public async Task<IEnumerable<ClassTum>> GetTAsByTeacherIdAsync(Guid teacherId)
+        {
+            var result = await _context.ClassTa
+                .Include(ct => ct.Class)
+                .Include(ct => ct.Ta)
+                    .ThenInclude(ta => ta.Ta)
+                .Where(ct => ct.Class.TeacherId == teacherId)
+                .ToListAsync();
+            return result;
+        }
     }
 }
