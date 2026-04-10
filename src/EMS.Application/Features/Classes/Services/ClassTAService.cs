@@ -1,4 +1,5 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Classes.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
@@ -106,6 +107,43 @@ namespace EMS.Application.Features.Classes.Services
                 Status = t.Status ?? "N/A",
                 Type = t.Type ?? "N/A"
             }).ToList();
+        }
+
+        public async Task<IEnumerable<TAViewDto>> GetTAsByTeacherIdAsync()
+        {
+            Guid teacherId = _currentUser.UserId;
+            var tas = await _taRepository.GetTAsByTeacherIdAsync(teacherId);
+            if (tas == null) throw new Exception("Bạn chưa có trợ giảng ở lớp nào!");
+            var result = tas.Select(ct => new TAViewDto
+            {
+                TAId = ct.Taid,
+                ClassId = ct.ClassId,
+                ClassName = ct.Class.ClassName,
+                Permission = ct.Permission,
+                SalaryPerSession = ct.SalaryPerSession,
+                FullName = ct.Ta.Ta.FullName,
+                Email = ct.Ta.Ta.Email,
+                PhoneNumber = ct.Ta.Ta.PhoneNumber,
+            }).ToList();
+            return result;
+        }
+
+        public async Task<TAProfileDto?> FindTAByEmailAsync(string email)
+        {
+            if(email == null) throw new ArgumentNullException("Hãy thêm email để tìm trợ giảng!");
+            var taEntity = await _taRepository.GetTAByEmailAsync(email);
+            if (taEntity == null)
+                throw new Exception("Không có trợ giảng nào có email này!");
+
+            return new TAProfileDto
+            {
+                TAId = taEntity.Taid, 
+                FullName = taEntity.Ta.FullName,
+                Email = taEntity.Ta.Email,
+                PhoneNumber = taEntity.Ta.PhoneNumber,
+                Bio = taEntity.Bio,
+                AvatarURL = taEntity.Ta.AvatarUrl,
+            };
         }
     }
 }
