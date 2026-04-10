@@ -7,6 +7,7 @@ using EMS.Application.Features.Auth.Services;
 using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.Financials.Services;
 using EMS.Application.Features.LearningMaterials.Services;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.ProgressReports.Services;
 using EMS.Application.Features.ProgressReports.Validators;
@@ -62,7 +63,8 @@ builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
 builder.Services.AddScoped<ITuitionFeeRepository, TuitionFeeRepository>();
 builder.Services.AddScoped<IGradeCategoryRepository, GradeCategoryRepository>();
 builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
-
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("SupabaseSettings"));
@@ -108,7 +110,7 @@ builder.Services.AddScoped<EMS.Application.Features.Gradebook.Services.IGradeboo
 // Đăng ký Interface và Class triển khai thực tế của nó
 builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
 builder.Services.AddScoped<ISystemAdminService,SystemAdminService>();
-
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 
 builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Request nếu dữ liệu sai và trả về lỗi 400

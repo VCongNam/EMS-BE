@@ -21,5 +21,9 @@ public partial class Notification
 
     public string? ActionUrl { get; set; }
 
+    public Guid? StudentId { get; set; }
+
     public virtual Account Account { get; set; } = null!;
+
+    public virtual Student? Student { get; set; }
 }

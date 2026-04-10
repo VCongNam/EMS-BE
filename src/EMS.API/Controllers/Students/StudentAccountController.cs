@@ -43,11 +43,10 @@ namespace EMS.API.Controllers.Students
             }
             catch (Exception ex)
             {
-                // Lỗi này là lỗi hệ thống (ví dụ: mất kết nối DB, file hỏng), không phải lỗi data từng dòng
                 return BadRequest(new { Message = ex.Message });
             }
         }
     }
 
 }
-}
+
