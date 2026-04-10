@@ -16,6 +16,6 @@ namespace EMS.Application.Features.Classes.Services
         Task<Guid> CreateTaskAsync(CreateTaskDto request);
         Task<IEnumerable<TaskDto>> GetTasksAsync(Guid classTaId);
         Task<IEnumerable<TAViewDto>> GetTAsByTeacherIdAsync();
-        Task<TeachingAssistant?> FindTAByEmailAsync(string email);
+        Task<TAProfileDto?> FindTAByEmailAsync(string email);
     }
 }
