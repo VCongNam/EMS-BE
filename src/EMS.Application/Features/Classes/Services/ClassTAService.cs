@@ -161,9 +161,7 @@ namespace EMS.Application.Features.Classes.Services
                 Title = t.Title,
                 DueDate = t.DueDate,
                 Status = t.Status ?? "N/A",
-                Type = t.Type ?? "N/A",
-                ClassID = t.ClassTa.ClassId,
-                ClassName = t.ClassTa.Class.ClassName
+                Type = t.Type ?? "N/A"
             }).ToList();
         }
 
@@ -178,8 +176,7 @@ namespace EMS.Application.Features.Classes.Services
                 ClassID = a.ClassId,
                 ClassName = a.Class.ClassName, // Giả sử bảng Class có trường ClassName
                 Permission = a.Permission,
-                SalaryPerSession = a.SalaryPerSession,
-                TeacherName = a.Class?.Teacher.TeacherNavigation.FullName
+                SalaryPerSession = a.SalaryPerSession
             }).ToList();
         }
     }

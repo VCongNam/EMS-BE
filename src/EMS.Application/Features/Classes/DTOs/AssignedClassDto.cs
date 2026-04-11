@@ -12,6 +12,5 @@ namespace EMS.Application.Features.Classes.DTOs
         public string ClassName { get; set; } = string.Empty;
         public string? Permission { get; set; }
         public decimal? SalaryPerSession { get; set; }
-        public string TeacherName { get; set; } = string.Empty; 
     }
 }
