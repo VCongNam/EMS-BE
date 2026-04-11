@@ -13,5 +13,7 @@ namespace EMS.Application.Features.Classes.DTOs
         public DateTime DueDate { get; set; }
         public string Status { get; set; }
         public string Type { get; set; }
+        public Guid ClassID { get; set; }      
+        public string ClassName { get; set; } = string.Empty; 
     }
 }

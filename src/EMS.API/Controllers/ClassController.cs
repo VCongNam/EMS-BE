@@ -243,6 +243,38 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
+
+        // API: Lấy tất cả công việc của một Trợ giảng (tổng hợp từ các lớp)
+        [HttpGet("ta/{taId}/tasks")]
+        [Authorize]
+        public async Task<IActionResult> GetTATasks(Guid taId)
+        {
+            try
+            {
+                var tasks = await _classTAService.GetTasksByTAIdAsync(taId);
+                return Ok(new { Message = "Lấy danh sách công việc thành công!", Data = tasks });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // API: Lấy danh sách các lớp mà Trợ giảng này đang tham gia
+        [HttpGet("ta/{taId}/classes")]
+        [Authorize]
+        public async Task<IActionResult> GetTAAssignedClasses(Guid taId)
+        {
+            try
+            {
+                var classes = await _classTAService.GetClassesByTAIdAsync(taId);
+                return Ok(new { Message = "Lấy danh sách lớp học thành công!", Data = classes });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 
 }

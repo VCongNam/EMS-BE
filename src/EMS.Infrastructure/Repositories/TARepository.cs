@@ -31,5 +31,13 @@ namespace EMS.Infrastructure.Repositories
                 .OrderBy(t => t.DueDate)
                 .ToListAsync();
         }
+        public async Task<IEnumerable<TeachingAssistantTask>> GetTasksByTAIdAsync(Guid taId)
+        {
+            return await _context.TeachingAssistantTasks
+                .Include(t => t.ClassTa) // Join sang bảng trung gian ClassTum
+                .Where(t => t.ClassTa.Taid == taId) // Lọc theo TAID
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+        }
     }
 }
