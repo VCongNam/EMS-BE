@@ -78,6 +78,7 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             classObj.TuitionFee = req.TuitionFee;
             classObj.BillingMethod = req.BillingMethod;
+            classObj.PaymentDeadlineDays = req.PaymentDeadlineDays;
             classObj.UpdatedAt = DateTime.UtcNow;
 
             await tuitionFeeRepository.UpdateClassAsync(classObj);
