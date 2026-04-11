@@ -39,7 +39,8 @@ namespace EMS.Application.Features.TuitionFees.Services
                     IsInvoiceGeneratedThisMonth = isGenerated,
                     PricePerSession = c.TuitionFee,
                     BillingMethod = c.BillingMethod ?? "Postpaid",
-                    StudentCount = c.ClassEnrollments.Count
+                    StudentCount = c.ClassEnrollments.Count,
+                    PaymentDeadlineDays = c.PaymentDeadlineDays ?? 0
                 });
             }
 
