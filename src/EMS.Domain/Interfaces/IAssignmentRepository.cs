@@ -10,11 +10,12 @@ namespace EMS.Domain.Interfaces
         Task AddAsync(Assignment assignment);
         Task UpdateAsync(Assignment assignment);
         Task<Assignment?> GetByIdAsync(Guid assignmentId);
+        Task<Assignment?> GetWithClassByIdAsync(Guid assignmentId);
         Task<Assignment?> GetByIdWithDetailsAsync(Guid assignmentId);
         //Student Learning Portal
         Task<IEnumerable<Assignment>> GetByClassIdAsync(Guid classId);
         Task<int> CountPendingAssignmentAsync(Guid classId, Guid studentId);
-        Task<(List<(Assignment Assignment, Submission? Submission)> Items, int TotalCount)> GetStudentAssignmentsAsync(
+        Task<(IEnumerable<Assignment> Items, int TotalCount)> GetStudentAssignmentsAsync(
             Guid classId, Guid studentId, int page, int size);
         Task<(Assignment? Assignment, Submission? Submission)> GetAssignmentDetailAsync(Guid assignmentId, Guid studentId);
 

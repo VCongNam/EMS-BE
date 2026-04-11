@@ -11,6 +11,7 @@ namespace EMS.Application.Features.Classes.DTOs
         public Guid ClassId { get; set; }
         public string ClassName { get; set; }
         public Guid TAId { get; set; }
+        public Guid ClassTaId { get; set; }
         public string FullName { get; set; }
         public string Email { get; set; }
         public string? PhoneNumber { get; set; }
