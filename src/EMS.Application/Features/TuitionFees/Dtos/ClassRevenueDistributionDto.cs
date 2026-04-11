@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class ReviewTransactionDto
+    public class ClassRevenueDistributionDto
     {
-        public bool IsApproved { get; set; }
-        public string? Note { get; set; }
+        public string ClassName { get; set; } = null!;
+        public decimal Revenue { get; set; }
     }
 }
