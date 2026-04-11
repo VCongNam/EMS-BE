@@ -140,7 +140,7 @@ namespace EMS.Application.Features.Students.Services
                 throw new Exception("Giáo viên chưa cập nhật thông tin tài khoản ngân hàng. Vui lòng liên hệ giáo viên.");
             }
             string shortInvoiceId = invoice.InvoiceId.ToString().Substring(0, 6).ToUpper();
-            string transferContent = $"HOC PHI LOP {invoice.Class?.ClassName} {shortInvoiceId}";
+            string transferContent = $"HOC PHI LOP {invoice.Class?.ClassName} THANG {invoice.PeriodMonth}/{invoice.PeriodYear}";
 
             var qrRequest = new VietQRRequest
             {
@@ -192,6 +192,47 @@ namespace EMS.Application.Features.Students.Services
             await _tuitionRepository.AddTransactionAsync(transaction);
 
             return true;
+        }
+
+        public async Task<List<TransactionViewDto>> GetMyTransactionsAsync(Guid? classId)
+        {
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
+            var transactions = await _tuitionRepository.GetTransactionsByStudentIdAsync(studentId, classId);
+            if (transactions == null)
+                throw new Exception("Bạn chưa có giao dịch nào!");
+            var result = transactions.Select(t => new TransactionViewDto
+            {
+                TransactionId = t.TransactionId,
+                InvoiceContent = !string.IsNullOrWhiteSpace(t.Invoice.Description)
+                             ? t.Invoice.Description
+                             : $"Học phí tháng {t.Invoice.PeriodMonth}/{t.Invoice.PeriodYear}",
+                AmountPaid = t.AmountPaid,
+                PaidDate = t.PaidDate,
+                Status = t.Status
+            }).ToList();
+            return result;
+        }
+
+        public async Task<TransactionDetailDto?> GetTransactionByIdAsync(Guid transactionId)
+        {
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
+            var transaction = await _tuitionRepository.GetTransactionDetailAsync(transactionId, studentId);
+            if (transaction == null)
+            {
+                throw new Exception("Không tìm thấy giao dịch");
+            }
+            return new TransactionDetailDto
+            {
+                TransactionId = transaction.TransactionId,
+                InvoiceContent = !string.IsNullOrWhiteSpace(transaction.Invoice.Description)
+                            ? transaction.Invoice.Description
+                            : $"Học phí tháng {transaction.Invoice.PeriodMonth}/{transaction.Invoice.PeriodYear}",
+                AmountPaid = transaction.AmountPaid,
+                PaymentMethod = transaction.PaymentMethod,
+                ProofImageURL = transaction.ProofImageUrl,
+                PaidDate = transaction.PaidDate,
+                Status = transaction.Status
+            };
         }
     }
 }

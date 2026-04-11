@@ -22,7 +22,6 @@
   <ItemGroup>
     <Folder Include="Common\Exceptions\" />
     <Folder Include="Common\Mappings\" />
-    <Folder Include="Features\Notifications\DTOs\" />
   </ItemGroup>
 
   <ItemGroup>
