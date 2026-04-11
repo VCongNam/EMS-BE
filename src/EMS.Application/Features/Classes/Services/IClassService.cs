@@ -18,6 +18,8 @@ namespace EMS.Application.Features.Classes.Services
         Task UpdateClassAsync(Guid classId, UpdateClassDto request);
         Task ArchiveClassAsync(Guid classId);
         Task RestoreClassAsync(Guid classId);
+        Task<bool> RemoveStudentFromClassAsync(Guid classId, Guid studentId);
+        Task<bool> RestoreStudentInClassAsync(Guid classId, Guid studentId);
     }
 
 }
