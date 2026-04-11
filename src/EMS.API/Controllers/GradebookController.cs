@@ -89,48 +89,6 @@ namespace EMS.API.Controllers
             }
         }
 
-        [HttpPut("classes/{classId}/submissions/{submissionId}/grade")]
-        public async Task<IActionResult> GradeSubmission(Guid classId, Guid submissionId, [FromBody] GradeSubmissionDto request)
-        {
-            try
-            {
-                await _gradebookService.GradeSubmissionAsync(classId, submissionId, request);
-                return Ok(new { Message = "Submission graded successfully" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        [HttpPost("classes/{classId}/submissions/{submissionId}/feedback")]
-        public async Task<IActionResult> GiveFeedback(Guid classId, Guid submissionId, [FromBody] FeedbackSubmissionDto request)
-        {
-            try
-            {
-                await _gradebookService.GiveFeedbackAsync(classId, submissionId, request);
-                return Ok(new { Message = "Feedback given successfully" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        [HttpPost("classes/{classId}/assignments/{assignmentId}/offline-grade")]
-        public async Task<IActionResult> OfflineGrade(Guid classId, Guid assignmentId, [FromBody] OfflineGradeDto request)
-        {
-            try
-            {
-                var submissionId = await _gradebookService.OfflineGradeAsync(classId, assignmentId, request);
-                return Ok(new { SubmissionId = submissionId, Message = "Offline grade saved successfully" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
         [HttpGet("classes/{classId}")]
         public async Task<IActionResult> GetClassGradebook(Guid classId)
         {

@@ -137,68 +137,6 @@ namespace EMS.Application.Features.Gradebook.Services
             await _gradeCategoryRepository.DeleteAsync(category);
         }
 
-        public async Task GradeSubmissionAsync(Guid classId, Guid submissionId, GradeSubmissionDto request)
-        {
-            await RequireTeacherAccessAsync(classId);
-
-            var submission = await _submissionRepository.GetByIdAsync(submissionId);
-            if (submission == null) throw new Exception("Submission not found.");
-
-            submission.Grade = request.Grade;
-            submission.Status = "Graded";
-            await _submissionRepository.UpdateAsync(submission);
-        }
-
-        public async Task GiveFeedbackAsync(Guid classId, Guid submissionId, FeedbackSubmissionDto request)
-        {
-            await RequireTeacherAccessAsync(classId);
-
-            var submission = await _submissionRepository.GetByIdAsync(submissionId);
-            if (submission == null) throw new Exception("Submission not found.");
-
-            var feedback = new SubmissionFeedback
-            {
-                FeedbackId = Guid.NewGuid(),
-                SubmissionId = submission.SubmissionId,
-                AuthorId = _currentUserService.UserId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                Content = request.Content
-            };
-
-            await _submissionRepository.AddFeedbackAsync(feedback);
-        }
-
-        public async Task<Guid> OfflineGradeAsync(Guid classId, Guid assignmentId, OfflineGradeDto request)
-        {
-            await RequireTeacherAccessAsync(classId);
-
-            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
-            if (assignment == null || assignment.ClassId != classId) throw new Exception("Assignment not found in this class.");
-
-            var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, request.StudentId);
-            if (existingSubmission != null)
-            {
-                existingSubmission.Grade = request.Grade;
-                existingSubmission.Status = "Graded";
-                await _submissionRepository.UpdateAsync(existingSubmission);
-                return existingSubmission.SubmissionId;
-            }
-
-            // Create new for offline
-            var newSubmission = new Submission
-            {
-                SubmissionId = Guid.NewGuid(),
-                AssignmentId = assignmentId,
-                StudentId = request.StudentId,
-                Grade = request.Grade,
-                Status = "Graded",
-                SubmittedAt = DateTime.UtcNow
-            };
-            await _submissionRepository.AddAsync(newSubmission);
-            return newSubmission.SubmissionId;
-        }
-
         public async Task<GradebookResponseDto> GetClassGradebookAsync(Guid classId)
         {
             await RequireTeacherAccessAsync(classId);

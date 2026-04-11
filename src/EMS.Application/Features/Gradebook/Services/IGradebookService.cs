@@ -14,11 +14,6 @@ namespace EMS.Application.Features.Gradebook.Services
         Task BulkUpdateCategoriesAsync(Guid classId, BulkUpdateGradeCategoryDto request);
         Task DeleteGradeCategoryAsync(Guid classId, Guid categoryId);
 
-        // Grade Submissions
-        Task GradeSubmissionAsync(Guid classId, Guid submissionId, GradeSubmissionDto request);
-        Task GiveFeedbackAsync(Guid classId, Guid submissionId, FeedbackSubmissionDto request);
-        Task<Guid> OfflineGradeAsync(Guid classId, Guid assignmentId, OfflineGradeDto request);
-
         // Class Gradebook matrix
         Task<GradebookResponseDto> GetClassGradebookAsync(Guid classId);
 

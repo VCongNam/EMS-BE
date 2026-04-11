@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace EMS.Application.Features.Gradebook.DTOs
+namespace EMS.Application.Features.Assignments.DTOs
 {
     public class OfflineGradeDto
     {

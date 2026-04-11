@@ -15,6 +15,7 @@ namespace EMS.Application.Features.Assignments.Services
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ISubmissionRepository _submissionRepository;
         private readonly ISupabaseStorageService _storageService;
+        private readonly IClassRepository _classRepository;
         private readonly ICurrentUserService _currentUserService;
 
         // Giới hạn file: 10MB (theo cấu hình Supabase bucket)
@@ -37,11 +38,13 @@ namespace EMS.Application.Features.Assignments.Services
             IAssignmentRepository assignmentRepository,
             ISubmissionRepository submissionRepository,
             ISupabaseStorageService storageService,
+            IClassRepository classRepository,
             ICurrentUserService currentUserService)
         {
             _assignmentRepository = assignmentRepository;
             _submissionRepository = submissionRepository;
             _storageService = storageService;
+            _classRepository = classRepository;
             _currentUserService = currentUserService;
         }
 
@@ -235,6 +238,14 @@ namespace EMS.Application.Features.Assignments.Services
         //        throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
 
 
+        }
+
+        //private void ValidateFile(string fileName, long fileSize, string contentType)
+        //{
+        //    if (fileSize > MaxFileSize)
+        //        throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
+
+
         //    if (contentType.StartsWith("image/")) return;
 
         //    if (!AllowedMimeTypes.Contains(contentType))
@@ -249,16 +260,85 @@ namespace EMS.Application.Features.Assignments.Services
 
             var allowedExtensions = new[]
             {
-        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp",
-        ".pdf",
-        ".doc", ".docx",
-        ".xls", ".xlsx",
-        ".ppt", ".pptx",
-        ".zip", ".rar"
-    };
+                ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp",
+                ".pdf",
+                ".doc", ".docx",
+                ".xls", ".xlsx",
+                ".ppt", ".pptx",
+                ".zip", ".rar"
+            };
 
             if (!allowedExtensions.Contains(ext))
                 throw new Exception($"File '{ext}' is not allowed.");
+        }
+
+        private async Task RequireTeacherAccessAsync(Guid classId)
+        {
+            var classroom = await _classRepository.GetByIdAsync(classId);
+            if (classroom == null) throw new Exception("Class not found.");
+            if (classroom.TeacherId != _currentUserService.UserId) throw new Exception("You do not have access to this operation.");
+        }
+
+        public async Task GradeSubmissionAsync(Guid classId, Guid submissionId, GradeSubmissionDto request)
+        {
+            await RequireTeacherAccessAsync(classId);
+
+            var submission = await _submissionRepository.GetByIdAsync(submissionId);
+            if (submission == null) throw new Exception("Submission not found.");
+
+            submission.Grade = request.Grade;
+            submission.Status = "Graded";
+            await _submissionRepository.UpdateAsync(submission);
+        }
+
+        public async Task GiveFeedbackAsync(Guid classId, Guid submissionId, FeedbackSubmissionDto request)
+        {
+            await RequireTeacherAccessAsync(classId);
+
+            var submission = await _submissionRepository.GetByIdAsync(submissionId);
+            if (submission == null) throw new Exception("Submission not found.");
+
+            var feedback = new SubmissionFeedback
+            {
+                FeedbackId = Guid.NewGuid(),
+                SubmissionId = submission.SubmissionId,
+                AuthorId = _currentUserService.UserId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Content = request.Content
+            };
+
+            await _submissionRepository.AddFeedbackAsync(feedback);
+        }
+
+        public async Task<Guid> OfflineGradeAsync(Guid classId, Guid assignmentId, OfflineGradeDto request)
+        {
+            await RequireTeacherAccessAsync(classId);
+
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            if (assignment == null || assignment.ClassId != classId) throw new Exception("Assignment not found in this class.");
+
+            var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, request.StudentId);
+            if (existingSubmission != null)
+            {
+                existingSubmission.Grade = request.Grade;
+                existingSubmission.Status = "Graded";
+                await _submissionRepository.UpdateAsync(existingSubmission);
+                return existingSubmission.SubmissionId;
+            }
+
+            // Create new for offline
+            var newSubmission = new Submission
+            {
+                SubmissionId = Guid.NewGuid(),
+                AssignmentId = assignmentId,
+                StudentId = request.StudentId,
+                Grade = request.Grade,
+                Status = "Graded",
+                SubmittedAt = DateTime.UtcNow
+            };
+            await _submissionRepository.AddAsync(newSubmission);
+            return newSubmission.SubmissionId;
         }
     }
 }
