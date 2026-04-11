@@ -154,7 +154,7 @@ namespace EMS.Infrastructure.Repositories
             return await context.Invoices
                 .Include(i => i.Student).ThenInclude(s => s.Account)
                 .Include(i => i.Transactions.Where(t => t.Status == "Completed"))
-                .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year).ToListAsync();
+                .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true).ToListAsync();
         }
 
         // --- 4. HÀM CHO BACKGROUND WORKER ---
@@ -249,6 +249,13 @@ namespace EMS.Infrastructure.Repositories
             return await context.Invoices
                .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true)
                .ToListAsync();
+        }
+
+        public async Task<Invoice?> GetInvoicesWithClassAsync(Guid invoiceId)
+        {
+            return await context.Invoices
+                .Include(i => i.Class)
+                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.IsDeleted != true);
         }
 
 
