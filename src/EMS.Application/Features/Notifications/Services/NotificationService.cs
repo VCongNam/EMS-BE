@@ -1,6 +1,8 @@
 ﻿using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Notifications.DTOs;
+using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.AspNetCore.SignalR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,11 +15,13 @@ namespace EMS.Application.Features.Notifications.Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ICurrentUserService _currentUser;
+        private readonly ISignalRService _signalRService;
 
-        public NotificationService(INotificationRepository notificationRepository, ICurrentUserService currentUser)
+        public NotificationService(INotificationRepository notificationRepository, ICurrentUserService currentUser, ISignalRService signalRService)
         {
             _notificationRepository = notificationRepository;
             _currentUser = currentUser;
+            _signalRService = signalRService;
         }
 
         public async Task<List<NotificationDto>> GetNotificationsAsync()
@@ -27,7 +31,7 @@ namespace EMS.Application.Features.Notifications.Services
             var notification = await _notificationRepository.GetMyNotificationsAsync(accountId,studentId);
             if (notification == null)
             {
-                throw new Exception("Bạn chưa có thông báo nào");
+                return new List<NotificationDto>();
             }
             return notification.Select(n => new NotificationDto
             {
@@ -61,6 +65,74 @@ namespace EMS.Application.Features.Notifications.Services
             Guid accountId = _currentUser.UserId;
             Guid? studentId = _currentUser.StudentId;
             return await _notificationRepository.CountUnreadAsync(accountId, studentId);
+        }
+
+        public async Task SendNotificationAsync(Guid targetAccountId, Guid? studentId, string title, string content, string actionUrl, string type)
+        {
+            var notification = new Notification
+            {
+                NotificationId = Guid.NewGuid(),
+                AccountId = targetAccountId,
+                StudentId = studentId,
+                Title = title,
+                Content = content,
+                ActionUrl = actionUrl,
+                IsRead = false,
+                CreatedAt = DateTime.Now,
+                Type = type
+            };
+
+            await _notificationRepository.AddAsync(notification);
+
+
+            //SignalR
+            //int unreadCount = await _notificationRepository.CountUnreadAsync(targetAccountId, studentId);
+
+            //var notificationData = new
+            //{
+            //    notification.NotificationId,
+            //    notification.Title,
+            //    notification.Content,
+            //    notification.ActionUrl,
+            //    notification.StudentId,
+            //    notification.CreatedAt,
+            //    BadgeCount = unreadCount 
+            //};
+
+            //await _signalRService.SendNotificationToUser(targetAccountId, notificationData);
+        }
+
+        public async Task SendBulkNotificationWithStudentAsync(List<(Guid AccId, Guid StdId)> targets, string title, string content, string actionUrl, string type)
+        {
+            var notifications = new List<Notification>();
+            foreach (var target in targets)
+            {
+                notifications.Add(new Notification
+                {
+                    NotificationId = Guid.NewGuid(),
+                    AccountId = target.AccId,
+                    StudentId = target.StdId,
+                    Title = title,
+                    Content = content,
+                    ActionUrl = actionUrl,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            await _notificationRepository.AddRangeAsync(notifications);
+
+            //SignalR
+            //var uniqueAccountIds = targets.Select(t => t.AccId).Distinct();
+            //foreach (var accId in uniqueAccountIds)
+            //{
+            //    await _signalRService.SendNotificationToUser(accId, new
+            //    {
+            //        title,
+            //        content,
+            //        actionUrl,
+            //        RelevantStudentIds = targets.Where(t => t.AccId == accId).Select(t => t.StdId)
+            //    });
+            //}
         }
     }
 }

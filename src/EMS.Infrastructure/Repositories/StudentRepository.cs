@@ -31,10 +31,10 @@ namespace EMS.Infrastructure.Repositories
                 .FirstOrDefaultAsync(s => s.StudentId == studentId);
         }
 
-        public async Task<bool> IsStudentExistAsync(Guid accountId, string name, DateOnly dob)
+        public async Task<Student?> IsStudentExistAsync(Guid accountId, string name, DateOnly dob)
         {
             return await _context.Students.
-                AnyAsync(s => s.Account.AccountId == accountId && s.FullName.ToLower().Equals(name.ToLower()) && s.Dob == dob);
+                FirstOrDefaultAsync(s => s.Account.AccountId == accountId && s.FullName.ToLower().Equals(name.ToLower()) && s.Dob == dob);
         }
 
         public async Task UpdateAsync(Student student)

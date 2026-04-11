@@ -234,7 +234,7 @@ namespace EMS.Application.Features.Students.Services
                     targetAccountId: asignmentInfo.Class.TeacherId,
                     studentId: studentId,
                     title: "Bài nộp mới",
-                    content: $"Học sinh đã nộp bài tập: {asignmentInfo.Title}",
+                    content: $"Một học sinh lớp {asignmentInfo.Class.ClassName} đã nộp bài tập: {asignmentInfo.Title}",
                     actionUrl: $"/teacher/classes/{asignmentInfo.ClassId}/assignment/{asignmentInfo.AssignmentId}",
                     type: "Submission");
             }

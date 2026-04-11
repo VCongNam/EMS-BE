@@ -13,5 +13,7 @@ namespace EMS.Domain.Interfaces
         Task MarkAsReadAsync(Guid notificationId, Guid accountId, Guid? studentId);
         Task MarkAllAsReadAsync(Guid accountId, Guid? studentId);
         Task<int> CountUnreadAsync(Guid accountId, Guid? studentId);
+        Task AddAsync(Notification notification);
+        Task AddRangeAsync(IEnumerable<Notification> notifications);
     }
 }

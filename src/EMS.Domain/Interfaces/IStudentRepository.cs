@@ -9,7 +9,7 @@ namespace EMS.Domain.Interfaces
 {
     public interface IStudentRepository
     {
-        Task<bool> IsStudentExistAsync(Guid accountId, string name, DateOnly dob);
+        Task<Student?> IsStudentExistAsync(Guid accountId, string name, DateOnly dob);
         Task<Student?> GetByIdAsync(Guid studentId);
         Task AddAsync(Student student);
         Task UpdateAsync(Student student);

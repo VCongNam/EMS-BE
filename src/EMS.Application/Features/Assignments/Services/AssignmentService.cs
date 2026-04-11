@@ -1,7 +1,9 @@
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Assignments.DTOs;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,6 +18,8 @@ namespace EMS.Application.Features.Assignments.Services
         private readonly ISubmissionRepository _submissionRepository;
         private readonly ISupabaseStorageService _storageService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<AssignmentService> _logger;
 
         // Giới hạn file: 10MB (theo cấu hình Supabase bucket)
         private const long MaxFileSize = 10 * 1024 * 1024;
@@ -37,12 +41,16 @@ namespace EMS.Application.Features.Assignments.Services
             IAssignmentRepository assignmentRepository,
             ISubmissionRepository submissionRepository,
             ISupabaseStorageService storageService,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            ILogger<AssignmentService> logger)
         {
             _assignmentRepository = assignmentRepository;
             _submissionRepository = submissionRepository;
             _storageService = storageService;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         public async Task<Guid> CreateAssignmentAsync(CreateAssignmentDto request)
@@ -85,6 +93,26 @@ namespace EMS.Application.Features.Assignments.Services
                     };
                     await _assignmentRepository.AddAttachmentAsync(attachment);
                 }
+            }
+
+            //Notification
+            try
+            {
+                var studentAccountIds = await _assignmentRepository.GetStudentAndAccountIdsByClassIdAsync(request.ClassId);
+                if (studentAccountIds.Any())
+                {
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                            targets: studentAccountIds,
+                            title: "Bài tập mới",
+                            content: $"Giáo viên đã giao bài tập mới: {request.Title}. Hạn nộp: {request.DueDate}",
+                            actionUrl:$"/student/classes/{request.ClassId}/assignment/{assignment.AssignmentId}",
+                            type:"Assignment"
+                        );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo bài tập mới: {ex.Message}");
             }
 
             return assignment.AssignmentId;
@@ -140,6 +168,26 @@ namespace EMS.Application.Features.Assignments.Services
                     };
                     await _assignmentRepository.AddAttachmentAsync(attachment);
                 }
+            }
+
+            //Notification
+            try
+            {
+                var studentAccountIds = await _assignmentRepository.GetStudentAndAccountIdsByClassIdAsync(assignment.ClassId);
+                if (studentAccountIds.Any())
+                {
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                            targets: studentAccountIds,
+                            title: "Cập nhật bài tập",
+                            content: $"Giáo viên đã sửa bài tập: {request.Title}. Hạn nộp: {request.DueDate}",
+                            actionUrl: $"/student/classes/{assignment.ClassId}/assignment/{assignment.AssignmentId}",
+                            type: "Assignment"
+                        );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo bài tập mới: {ex.Message}");
             }
         }
 
