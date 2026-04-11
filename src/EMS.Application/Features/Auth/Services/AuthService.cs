@@ -262,14 +262,15 @@ namespace EMS.Application.Features.Auth.Services
                 Status = account.Status
             };
         }
-
-        // 3. Hàm Onboarding (Tự lấy AccountId từ CurrentUserService)
         public async Task<bool> VerifyOnboardingAsync(OnboardingRequest request)
         {
-            var accountId = currentUserService.UserId;
 
-            var account = await accountRepository.GetByIdAsync(accountId);
-            if (account == null || account.Status != "Unverified") throw new Exception("Yêu cầu không hợp lệ!");
+            var account = await accountRepository.GetByPhoneAsync(request.PhoneNumber);
+            if (account == null)
+                throw new Exception("Số điện thoại này chưa được đăng ký trong hệ thống.");
+
+            if (account.Status == "Active")
+                throw new Exception("Tài khoản đã được kích hoạt, không cần xác thực lại");
 
             if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, account.PasswordHash))
                 throw new Exception("Mật khẩu hiện tại không chính xác!");
@@ -282,20 +283,16 @@ namespace EMS.Application.Features.Auth.Services
         }
         public async Task<bool> ResendOtpAsync(ResendOtpRequest request)
         {
-            // 1. Tìm tài khoản theo Email
             var account = await accountRepository.GetByEmailAsync(request.Email);
 
             if (account == null)
                 throw new Exception("Email này chưa được đăng ký trong hệ thống.");
 
-            // 2. Nếu tài khoản đã Active thì không cho gửi lại mã kích hoạt
             if (account.Status == "Active")
                 throw new Exception("Tài khoản đã được kích hoạt, không cần gửi lại mã.");
 
-            // 3. Tạo mã OTP mới (Y hệt hàm Register)
             string plainOtp = otpService.GenerateOtp();
 
-            // 4. Gửi Email thông báo mã mới
             await emailService.SendEmailAsync(new EmailMessage
             {
                 To = request.Email,
