@@ -269,9 +269,6 @@ namespace EMS.Application.Features.Auth.Services
             if (account == null)
                 throw new Exception("Số điện thoại này chưa được đăng ký trong hệ thống.");
 
-            if (account.Status == "Active")
-                throw new Exception("Tài khoản đã được kích hoạt, không cần xác thực lại");
-
             if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, account.PasswordHash))
                 throw new Exception("Mật khẩu hiện tại không chính xác!");
 
@@ -287,9 +284,6 @@ namespace EMS.Application.Features.Auth.Services
 
             if (account == null)
                 throw new Exception("Email này chưa được đăng ký trong hệ thống.");
-
-            if (account.Status == "Active")
-                throw new Exception("Tài khoản đã được kích hoạt, không cần gửi lại mã.");
 
             string plainOtp = otpService.GenerateOtp();
 

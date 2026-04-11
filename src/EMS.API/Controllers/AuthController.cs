@@ -73,7 +73,7 @@ namespace EMS.API.Controllers
             }
         }
 
-        [Authorize]
+        [Authorize(Roles = "Student")]
         [HttpPost("select-profile")]
         public async Task<IActionResult> SelectProfile([FromBody] SelectProfileRequest request)
         {
