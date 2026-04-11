@@ -96,8 +96,8 @@ namespace EMS.API.Controllers.Students
             }
         }
 
-        [HttpGet("{classId}/myTransactions")]
-        public async Task<IActionResult> GetMyTransactions(Guid classId)
+        [HttpGet("myTransactions")]
+        public async Task<IActionResult> GetMyTransactions([FromQuery] Guid? classId)
         {
             try
             {
