@@ -272,31 +272,41 @@ namespace EMS.Application.Features.Assignments.Services
                 throw new Exception($"File '{ext}' is not allowed.");
         }
 
-        private async Task RequireTeacherAccessAsync(Guid classId)
+        private async Task RequireTeacherAccessByAssignmentAsync(Guid assignmentId)
         {
-            var classroom = await _classRepository.GetByIdAsync(classId);
+            // Tìm assignment
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            if (assignment == null) throw new Exception("Assignment not found.");
+
+            // Lấy class từ assignment đó
+            var classroom = await _classRepository.GetByIdAsync(assignment.ClassId);
             if (classroom == null) throw new Exception("Class not found.");
-            if (classroom.TeacherId != _currentUserService.UserId) throw new Exception("You do not have access to this operation.");
+
+            // Kiểm tra quyền
+            if (classroom.TeacherId != _currentUserService.UserId)
+                throw new UnauthorizedAccessException("You do not have access to grade this assignment.");
         }
 
-        public async Task GradeSubmissionAsync(Guid classId, Guid submissionId, GradeSubmissionDto request)
+        public async Task GradeSubmissionAsync(Guid submissionId, GradeSubmissionDto request)
         {
-            await RequireTeacherAccessAsync(classId);
-
             var submission = await _submissionRepository.GetByIdAsync(submissionId);
             if (submission == null) throw new Exception("Submission not found.");
+
+            // VÁ LỖI BẢO MẬT: Bắt buộc hệ thống tự tìm Class dựa trên dữ liệu thật trong DB
+            await RequireTeacherAccessByAssignmentAsync(submission.AssignmentId);
 
             submission.Grade = request.Grade;
             submission.Status = "Graded";
             await _submissionRepository.UpdateAsync(submission);
         }
 
-        public async Task GiveFeedbackAsync(Guid classId, Guid submissionId, FeedbackSubmissionDto request)
+        public async Task GiveFeedbackAsync(Guid submissionId, FeedbackSubmissionDto request)
         {
-            await RequireTeacherAccessAsync(classId);
-
             var submission = await _submissionRepository.GetByIdAsync(submissionId);
             if (submission == null) throw new Exception("Submission not found.");
+
+            // VÁ LỖI BẢO MẬT
+            await RequireTeacherAccessByAssignmentAsync(submission.AssignmentId);
 
             var feedback = new SubmissionFeedback
             {
@@ -304,21 +314,20 @@ namespace EMS.Application.Features.Assignments.Services
                 SubmissionId = submission.SubmissionId,
                 AuthorId = _currentUserService.UserId,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
                 Content = request.Content
             };
 
             await _submissionRepository.AddFeedbackAsync(feedback);
         }
 
-        public async Task<Guid> OfflineGradeAsync(Guid classId, Guid assignmentId, OfflineGradeDto request)
+        public async Task<Guid> OfflineGradeAsync(Guid assignmentId, OfflineGradeDto request)
         {
-            await RequireTeacherAccessAsync(classId);
+            // VÁ LỖI BẢO MẬT: Không tin tưởng ClassId do frontend gửi lên nữa
+            await RequireTeacherAccessByAssignmentAsync(assignmentId);
 
-            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
-            if (assignment == null || assignment.ClassId != classId) throw new Exception("Assignment not found in this class.");
-
+            // Xử lý tạo mới hoặc cập nhật như cũ của bạn
             var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, request.StudentId);
+
             if (existingSubmission != null)
             {
                 existingSubmission.Grade = request.Grade;
@@ -327,7 +336,6 @@ namespace EMS.Application.Features.Assignments.Services
                 return existingSubmission.SubmissionId;
             }
 
-            // Create new for offline
             var newSubmission = new Submission
             {
                 SubmissionId = Guid.NewGuid(),
@@ -337,6 +345,7 @@ namespace EMS.Application.Features.Assignments.Services
                 Status = "Graded",
                 SubmittedAt = DateTime.UtcNow
             };
+
             await _submissionRepository.AddAsync(newSubmission);
             return newSubmission.SubmissionId;
         }

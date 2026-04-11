@@ -96,47 +96,37 @@ namespace EMS.API.Controllers
             }
         }
 
-        // Grading (moved from Gradebook)
-        [HttpPut("class/{classId}/submissions/{submissionId}/grade")]
-        public async Task<IActionResult> GradeSubmission(Guid classId, Guid submissionId, [FromBody] GradeSubmissionDto request)
+        [HttpPut("submissions/{submissionId}/grade")]
+        public async Task<IActionResult> GradeSubmission(Guid submissionId, [FromBody] GradeSubmissionDto request)
         {
             try
             {
-                await _assignmentService.GradeSubmissionAsync(classId, submissionId, request);
+                await _assignmentService.GradeSubmissionAsync(submissionId, request);
                 return Ok(new { Message = "Submission graded successfully" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
 
-        [HttpPost("class/{classId}/submissions/{submissionId}/feedback")]
-        public async Task<IActionResult> GiveFeedback(Guid classId, Guid submissionId, [FromBody] FeedbackSubmissionDto request)
+        [HttpPost("submissions/{submissionId}/feedback")]
+        public async Task<IActionResult> GiveFeedback(Guid submissionId, [FromBody] FeedbackSubmissionDto request)
         {
             try
             {
-                await _assignmentService.GiveFeedbackAsync(classId, submissionId, request);
+                await _assignmentService.GiveFeedbackAsync(submissionId, request);
                 return Ok(new { Message = "Feedback given successfully" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
 
-        [HttpPost("class/{classId}/offline-grade/{assignmentId}")]
-        public async Task<IActionResult> OfflineGrade(Guid classId, Guid assignmentId, [FromBody] OfflineGradeDto request)
+       [HttpPost("assignments/{assignmentId}/offline-grade")]
+        public async Task<IActionResult> OfflineGrade(Guid assignmentId, [FromBody] OfflineGradeDto request)
         {
             try
             {
-                var submissionId = await _assignmentService.OfflineGradeAsync(classId, assignmentId, request);
+                var submissionId = await _assignmentService.OfflineGradeAsync(assignmentId, request);
                 return Ok(new { SubmissionId = submissionId, Message = "Offline grade saved successfully" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
     }
 }
