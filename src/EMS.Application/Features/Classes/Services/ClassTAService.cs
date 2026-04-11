@@ -146,6 +146,40 @@ namespace EMS.Application.Features.Classes.Services
                 Bio = taEntity.Bio,
                 AvatarURL = taEntity.Ta.AvatarUrl,
             };
+
+        // 1. Lấy tất cả Task của TA đó từ tất cả các lớp họ tham gia
+        public async Task<IEnumerable<TaskDto>> GetTasksByTAIdAsync(Guid taId)
+        {
+            // Bạn cần viết thêm hàm này trong TARepository để query:
+            // Join từ ClassTA sang TeachingAssistantTask dựa trên TAID
+            var tasks = await _taRepository.GetTasksByTAIdAsync(taId);
+
+            return tasks.Select(t => new TaskDto
+            {
+                TATaskID = t.TataskId,
+                Title = t.Title,
+                DueDate = t.DueDate,
+                Status = t.Status ?? "N/A",
+                Type = t.Type ?? "N/A",
+                ClassID = t.ClassTa.ClassId,
+                ClassName = t.ClassTa.Class.ClassName
+            }).ToList();
+        }
+
+        // 2. Lấy danh sách lớp học mà TA này được phân công
+        public async Task<IEnumerable<AssignedClassDto>> GetClassesByTAIdAsync(Guid taId)
+        {
+            // Query bảng ClassTA (ClassTum) lọc theo TAID và Include bảng Class
+            var assignments = await _classRepository.GetClassesByTAIdAsync(taId);
+
+            return assignments.Select(a => new AssignedClassDto
+            {
+                ClassID = a.ClassId,
+                ClassName = a.Class.ClassName, // Giả sử bảng Class có trường ClassName
+                Permission = a.Permission,
+                SalaryPerSession = a.SalaryPerSession,
+                TeacherName = a.Class?.Teacher.TeacherNavigation.FullName
+            }).ToList();
         }
     }
 }
