@@ -95,5 +95,48 @@ namespace EMS.API.Controllers
                 return NotFound(new { Error = ex.Message });
             }
         }
+
+        // Grading (moved from Gradebook)
+        [HttpPut("class/{classId}/submissions/{submissionId}/grade")]
+        public async Task<IActionResult> GradeSubmission(Guid classId, Guid submissionId, [FromBody] GradeSubmissionDto request)
+        {
+            try
+            {
+                await _assignmentService.GradeSubmissionAsync(classId, submissionId, request);
+                return Ok(new { Message = "Submission graded successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("class/{classId}/submissions/{submissionId}/feedback")]
+        public async Task<IActionResult> GiveFeedback(Guid classId, Guid submissionId, [FromBody] FeedbackSubmissionDto request)
+        {
+            try
+            {
+                await _assignmentService.GiveFeedbackAsync(classId, submissionId, request);
+                return Ok(new { Message = "Feedback given successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("class/{classId}/offline-grade/{assignmentId}")]
+        public async Task<IActionResult> OfflineGrade(Guid classId, Guid assignmentId, [FromBody] OfflineGradeDto request)
+        {
+            try
+            {
+                var submissionId = await _assignmentService.OfflineGradeAsync(classId, assignmentId, request);
+                return Ok(new { SubmissionId = submissionId, Message = "Offline grade saved successfully" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }
