@@ -30,6 +30,7 @@ namespace EMS.Application.Features.Students.Services
         {
             Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             var (models, totalCount) = await _assignmentRepository.GetStudentAssignmentsAsync(classId, studentId, filter.Page, filter.Size);
+            if (models == null) throw new Exception("Lớp chưa có bài tập");
             var items = models.Select(m =>
             {
                 var a = m.Assignment;
