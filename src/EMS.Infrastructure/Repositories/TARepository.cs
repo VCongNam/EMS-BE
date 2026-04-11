@@ -50,6 +50,7 @@ namespace EMS.Infrastructure.Repositories
                 .Where(ct => ct.Class.TeacherId == teacherId)
                 .ToListAsync();
             return result;
+        }
         public async Task<IEnumerable<TeachingAssistantTask>> GetTasksByTAIdAsync(Guid taId)
         {
             return await _context.TeachingAssistantTasks

@@ -132,20 +132,21 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task<TAProfileDto?> FindTAByEmailAsync(string email)
         {
-            if(email == null) throw new ArgumentNullException("Hãy thêm email để tìm trợ giảng!");
+            if (email == null) throw new ArgumentNullException("Hãy thêm email để tìm trợ giảng!");
             var taEntity = await _taRepository.GetTAByEmailAsync(email);
             if (taEntity == null)
                 throw new Exception("Không có trợ giảng nào có email này!");
 
             return new TAProfileDto
             {
-                TAId = taEntity.Taid, 
+                TAId = taEntity.Taid,
                 FullName = taEntity.Ta.FullName,
                 Email = taEntity.Ta.Email,
                 PhoneNumber = taEntity.Ta.PhoneNumber,
                 Bio = taEntity.Bio,
                 AvatarURL = taEntity.Ta.AvatarUrl,
             };
+        }
 
         // 1. Lấy tất cả Task của TA đó từ tất cả các lớp họ tham gia
         public async Task<IEnumerable<TaskDto>> GetTasksByTAIdAsync(Guid taId)
