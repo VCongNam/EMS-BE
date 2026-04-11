@@ -183,7 +183,17 @@ namespace EMS.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        
+        public async Task<ClassEnrollment?> GetEnrollmentAsync(Guid classId, Guid studentId)
+        {
+            return await _context.ClassEnrollments
+                .FirstOrDefaultAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
+        }
+
+        public async Task UpdateEnrollmentAsync(ClassEnrollment enrollment)
+        {
+            _context.ClassEnrollments.Update(enrollment);
+            await _context.SaveChangesAsync();
+        }
 
     }
 }

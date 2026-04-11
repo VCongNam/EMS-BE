@@ -16,5 +16,6 @@ namespace EMS.Application.Features.Auth.Services
         Task<bool> ResetPasswordAsync(ResetPasswordRequest request);
         Task<AuthResponse> SelectProfileAsync(Guid studentId);
         Task<bool> VerifyOnboardingAsync(OnboardingRequest request);
+        Task<bool> ResendOtpAsync(ResendOtpRequest request);
     }
 }

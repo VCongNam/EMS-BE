@@ -145,21 +145,30 @@ namespace EMS.Application.Features.Auth.Services
         {
             Account? account;
 
-            // Tìm kiếm đích danh theo Role và Identifier (Email/SĐT)
+            // 1. Tìm tài khoản theo Identifier
             if (request.SelectedRole == "Student")
-            {
                 account = await accountRepository.GetByPhoneAsync(request.Identifier);
-            }
             else
-            {
                 account = await accountRepository.GetByEmailAsync(request.Identifier);
-            }
 
             if (account == null || account.Role.RoleName != request.SelectedRole)
-                throw new Exception("Thông tin đăng nhập không chính xác hoặc sai vai trò!");
+                throw new Exception("Thông tin đăng nhập không chính xác!");
 
+            // 2. Check mật khẩu
             if (!BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash))
                 throw new Exception("Mật khẩu không chính xác!");
+
+            // ============================================================
+            // 3. CHẶN CỨNG: CHƯA ACTIVE THÌ KHÔNG CẤP TOKEN (DÙNG CHO TẤT CẢ)
+            // ============================================================
+            if (account.Status == "Unverified")
+            {
+                // Quăng lỗi để Frontend bắt và chuyển hướng sang trang xác thực OTP
+                throw new Exception("Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực mã OTP!");
+            }
+
+            if (account.Status == "Banned")
+                throw new Exception("Tài khoản đã bị khóa!");
 
             // LUỒNG CHO HỌC SINH (Student)
             if (request.SelectedRole == "Student")
@@ -271,7 +280,40 @@ namespace EMS.Application.Features.Auth.Services
             await accountRepository.UpdateAsync(account);
             return true;
         }
+        public async Task<bool> ResendOtpAsync(ResendOtpRequest request)
+        {
+            // 1. Tìm tài khoản theo Email
+            var account = await accountRepository.GetByEmailAsync(request.Email);
 
+            if (account == null)
+                throw new Exception("Email này chưa được đăng ký trong hệ thống.");
+
+            // 2. Nếu tài khoản đã Active thì không cho gửi lại mã kích hoạt
+            if (account.Status == "Active")
+                throw new Exception("Tài khoản đã được kích hoạt, không cần gửi lại mã.");
+
+            // 3. Tạo mã OTP mới (Y hệt hàm Register)
+            string plainOtp = otpService.GenerateOtp();
+
+            // 4. Gửi Email thông báo mã mới
+            await emailService.SendEmailAsync(new EmailMessage
+            {
+                To = request.Email,
+                Subject = "EMS - Gửi lại mã xác thực OTP",
+                Body = $"Chào {account.FullName}, mã OTP mới của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
+            });
+
+            // 5. Mã hóa mã OTP và thiết lập thời gian hết hạn mới (Y hệt hàm Register)
+            string hashedOtp = otpService.HashOtp(plainOtp);
+
+            account.VerificationToken = hashedOtp;
+            account.VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+
+            // 6. Cập nhật vào Database
+            await accountRepository.UpdateAsync(account);
+
+            return true;
+        }
 
     }
 }

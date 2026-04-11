@@ -93,6 +93,19 @@ namespace EMS.API.Controllers
             await authService.VerifyOnboardingAsync(request);
             return Ok(new { Message = "Kích hoạt tài khoản thành công!" });
         }
-
+        [HttpPost("resend-otp")]
+        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request)
+        {
+            // .NET sẽ tự động check Validation của DTO ở đây
+            try
+            {
+                await authService.ResendOtpAsync(request);
+                return Ok(new { Message = "Mã OTP mới đã được gửi. Vui lòng kiểm tra hòm thư!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }
