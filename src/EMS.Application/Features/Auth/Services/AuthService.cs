@@ -125,7 +125,6 @@ namespace EMS.Application.Features.Auth.Services
             if (account == null) throw new Exception("Tài khoản không tồn tại!");
             if (account.Status == "Active") throw new Exception("Tài khoản đã được xác thực!");
 
-            // Sửa lỗi cảnh báo vàng CS8604 bằng cách kiểm tra null (VerificationToken ?? "")
             if (!otpService.VerifyOtp(request.OtpCode, account.VerificationToken ?? ""))
                 throw new Exception("Mã OTP không chính xác!");
 
@@ -140,12 +139,35 @@ namespace EMS.Application.Features.Auth.Services
             return true;
         }
 
-        // Đăng nhập
+        public async Task<bool> VerifyOnboardingAsync(OnboardingRequest request)
+        {
+
+            var account = await accountRepository.GetByPhoneAsync(request.PhoneNumber);
+            if (account == null)
+                throw new Exception("Số điện thoại này chưa được đăng ký trong hệ thống.");
+            if (account.Status == "Active")
+                throw new Exception("Tài khoản đã được xác thực!");
+            
+
+            
+            bool isOldPasswordValid = BCrypt.Net.BCrypt.Verify(request.OldPassword, account.PasswordHash);
+            if (!isOldPasswordValid) throw new Exception("Mật khẩu cũ không chính xác!");
+
+
+            account.Status = "Active";
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+            await accountRepository.UpdateAsync(account);
+            return true;
+        }
+
+
+
+
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
             Account? account;
 
-            // 1. Tìm tài khoản theo Identifier
             if (request.SelectedRole == "Student")
                 account = await accountRepository.GetByPhoneAsync(request.Identifier);
             else
@@ -154,23 +176,17 @@ namespace EMS.Application.Features.Auth.Services
             if (account == null || account.Role.RoleName != request.SelectedRole)
                 throw new Exception("Thông tin đăng nhập không chính xác!");
 
-            // 2. Check mật khẩu
             if (!BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash))
                 throw new Exception("Mật khẩu không chính xác!");
 
-            // ============================================================
-            // 3. CHẶN CỨNG: CHƯA ACTIVE THÌ KHÔNG CẤP TOKEN (DÙNG CHO TẤT CẢ)
-            // ============================================================
             if (account.Status == "Unverified")
             {
-                // Quăng lỗi để Frontend bắt và chuyển hướng sang trang xác thực OTP
                 throw new Exception("Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực mã OTP!");
             }
 
             if (account.Status == "Banned")
                 throw new Exception("Tài khoản đã bị khóa!");
 
-            // LUỒNG CHO HỌC SINH (Student)
             if (request.SelectedRole == "Student")
             {
                 return new AuthResponse
@@ -188,7 +204,6 @@ namespace EMS.Application.Features.Auth.Services
                 };
             }
 
-            // LUỒNG CHO ADMIN, TEACHER, TA (Vào thẳng)
             var mainToken = jwtTokenGenerator.GenerateToken(account, account.Role.RoleName);
             return new AuthResponse
             {
@@ -200,8 +215,6 @@ namespace EMS.Application.Features.Auth.Services
                 RequiresProfileSelection = false
             };
         }
-
-        // Quên mật khẩu 
         public async Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
@@ -209,7 +222,6 @@ namespace EMS.Application.Features.Auth.Services
 
             string plainOtp = otpService.GenerateOtp();
 
-            // ĐÃ SỬA: Gọi SendEmailAsync thay vì QueueEmailAsync
             await emailService.SendEmailAsync(new EmailMessage
             {
                 To = request.Email,
@@ -243,7 +255,6 @@ namespace EMS.Application.Features.Auth.Services
             return true;
         }
 
-        // 2. Hàm Chọn Profile (Tự lấy AccountId từ CurrentUserService)
         public async Task<AuthResponse> SelectProfileAsync(Guid studentId)
         {
             var accountId = currentUserService.UserId;
@@ -262,25 +273,12 @@ namespace EMS.Application.Features.Auth.Services
                 Status = account.Status
             };
         }
-        public async Task<bool> VerifyOnboardingAsync(OnboardingRequest request)
-        {
 
-            var account = await accountRepository.GetByPhoneAsync(request.PhoneNumber);
-            if (account == null)
-                throw new Exception("Số điện thoại này chưa được đăng ký trong hệ thống.");
-
-            if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, account.PasswordHash))
-                throw new Exception("Mật khẩu hiện tại không chính xác!");
-
-            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            account.Status = "Active";
-
-            await accountRepository.UpdateAsync(account);
-            return true;
-        }
         public async Task<bool> ResendOtpAsync(ResendOtpRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
+            if (account.Status == "Active")
+                throw new Exception("Tài khoản đã được xác thực!");
 
             if (account == null)
                 throw new Exception("Email này chưa được đăng ký trong hệ thống.");
@@ -294,13 +292,11 @@ namespace EMS.Application.Features.Auth.Services
                 Body = $"Chào {account.FullName}, mã OTP mới của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
             });
 
-            // 5. Mã hóa mã OTP và thiết lập thời gian hết hạn mới (Y hệt hàm Register)
             string hashedOtp = otpService.HashOtp(plainOtp);
 
             account.VerificationToken = hashedOtp;
             account.VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
 
-            // 6. Cập nhật vào Database
             await accountRepository.UpdateAsync(account);
 
             return true;
