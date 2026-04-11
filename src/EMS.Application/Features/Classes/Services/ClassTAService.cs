@@ -18,10 +18,11 @@ namespace EMS.Application.Features.Classes.Services
         private readonly ICurrentUserService _currentUser;
         private readonly ITARepository _taRepository;
 
-        public ClassTAService(IClassRepository classRepository, ITARepository tARepository)
+        public ClassTAService(IClassRepository classRepository, ITARepository tARepository, ICurrentUserService currentUser)
         {
             _classRepository = classRepository;
             _taRepository = tARepository;
+            _currentUser = currentUser;
         }
         public async Task<Guid> AssignTAAsync(Guid classId, AssignTADto request)
         {
