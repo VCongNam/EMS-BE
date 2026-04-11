@@ -222,7 +222,7 @@ namespace EMS.Application.Features.Gradebook.Services
         {
             var data = await GetClassGradebookAsync(classId);
 
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            ExcelPackage.License.SetNonCommercialPersonal("YourName");
             using var package = new ExcelPackage();
             var worksheet = package.Workbook.Worksheets.Add("Gradebook");
 
