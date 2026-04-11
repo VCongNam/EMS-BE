@@ -16,6 +16,7 @@ namespace EMS.Application.Features.Classes.DTOs
         public string? PhoneNumber { get; set; }
         public string Permission { get; set; }
         public decimal? SalaryPerSession { get; set; }
+        public Guid ClassTAId { get; set; }
     }
 
     public class TAProfileDto
