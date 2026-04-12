@@ -1,5 +1,7 @@
-﻿using EMS.Application.Common.Helpers;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using EMS.Application.Common.Helpers;
 using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Students.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
@@ -18,36 +20,59 @@ namespace EMS.Application.Features.Students.Services
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ISupabaseStorageService _supabaseStorageService;
         private readonly ISubmissionRepository _submissionRepository;
-        public StudentAssignmentService(ICurrentUserService currentUser, IAssignmentRepository assignmentRepository, ISupabaseStorageService supabaseStorageService, ISubmissionRepository submissionRepository)
+        private readonly INotificationService _notificationService;
+        public StudentAssignmentService(
+            ICurrentUserService currentUser, 
+            IAssignmentRepository assignmentRepository, 
+            ISupabaseStorageService supabaseStorageService, 
+            ISubmissionRepository submissionRepository,
+            INotificationService notificationService)
         {
             _currentUser = currentUser;
             _assignmentRepository = assignmentRepository;
             _supabaseStorageService = supabaseStorageService;
             _submissionRepository = submissionRepository;
+            _notificationService = notificationService;
         }
 
         public async Task<PagedResult<AssignmentItemDto>> GetClassAssignmentsAsync(Guid classId, AssignmentFilter filter)
         {
             Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
-            var (models, totalCount) = await _assignmentRepository.GetStudentAssignmentsAsync(classId, studentId, filter.Page, filter.Size);
-            if (models == null) throw new Exception("Lớp chưa có bài tập");
-            var items = models.Select(m =>
+            if(classId == null)
             {
-                var a = m.Assignment;
-                var s = m.Submission;
-                string status = "Chưa nộp";
-                if (s != null)
+                throw new Exception("ClassId không được để trống");
+            }
+            var (assignments, totalCount) = await _assignmentRepository
+                .GetStudentAssignmentsAsync(classId, studentId, filter.Page, filter.Size);
+            var now = DateTime.UtcNow;
+
+            var items = assignments.Select(a =>
+            {
+                var s = a.Submissions.FirstOrDefault();
+
+                bool isSubmitted = s?.SubmittedAt != null;
+
+                string status;
+                if (isSubmitted)
                 {
-                    status = s.Grade.HasValue ? "Đã chấm" : "Đã Nộp";
+                    status = s!.Grade.HasValue ? "Đã chấm" : "Đã nộp";
                 }
-                else if (a.DueDate < DateTime.UtcNow) {
+                else if (a.DueDate < now)
+                {
                     status = "Quá hạn";
                 }
+                else
+                {
+                    status = "Chưa nộp";
+                }
+
                 return new AssignmentItemDto
                 {
                     AssignmentID = a.AssignmentId,
                     Title = a.Title,
                     DueDate = a.DueDate,
+                    IsSubmitted = isSubmitted,
+                    SubmittedAt = s?.SubmittedAt,
                     StudentStatus = status
                 };
             }).ToList();
@@ -199,6 +224,19 @@ namespace EMS.Application.Features.Students.Services
 
                 var deleteTasks = oldFileUrls.Select(url => _supabaseStorageService.DeleteFileByUrlAsync(url));
                 await Task.WhenAll(deleteTasks);
+            }
+
+            //Notification
+            var asignmentInfo = await _assignmentRepository.GetWithClassByIdAsync(assignmentId);
+            if (asignmentInfo != null)
+            {
+                await _notificationService.SendNotificationAsync(
+                    targetAccountId: asignmentInfo.Class.TeacherId,
+                    studentId: studentId,
+                    title: "Bài nộp mới",
+                    content: $"Một học sinh lớp {asignmentInfo.Class.ClassName} đã nộp bài tập: {asignmentInfo.Title}",
+                    actionUrl: $"/teacher/classes/{asignmentInfo.ClassId}/assignment/{asignmentInfo.AssignmentId}",
+                    type: "Submission");
             }
 
             return true;

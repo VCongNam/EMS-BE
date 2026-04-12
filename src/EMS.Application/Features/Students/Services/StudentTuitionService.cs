@@ -1,9 +1,10 @@
 ﻿using EMS.Application.Common.DTOs;
 using EMS.Application.Common.Helpers;
 using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Students.DTOs;
-using EMS.Domain.Interfaces;
 using EMS.Domain.Entities;
+using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,12 +19,14 @@ namespace EMS.Application.Features.Students.Services
         private readonly ICurrentUserService _currentUserService;
         private readonly IVietQRService _vietQRService;
         private readonly ISupabaseStorageService _supabaseStorageService;
-        public StudentTuitionService(ITuitionFeeRepository tuitionRepository, ICurrentUserService currentUserService, IVietQRService vietQRService, ISupabaseStorageService supabaseStorageService)
+        private readonly INotificationService _notificationService;
+        public StudentTuitionService(ITuitionFeeRepository tuitionRepository, ICurrentUserService currentUserService, IVietQRService vietQRService, ISupabaseStorageService supabaseStorageService, INotificationService notificationService)
         {
             _tuitionRepository = tuitionRepository;
             _currentUserService = currentUserService;
             _vietQRService = vietQRService;
             _supabaseStorageService = supabaseStorageService;
+            _notificationService = notificationService;
         }
 
         public async Task<PagedResult<TuitionDto>> GetMyTuitionAsync(TuitionFilter filter)
@@ -191,6 +194,18 @@ namespace EMS.Application.Features.Students.Services
 
             await _tuitionRepository.AddTransactionAsync(transaction);
 
+            //Notification
+            var invoiceInfo = await _tuitionRepository.GetInvoicesWithClassAsync(invoiceId);
+            if (invoiceInfo != null)
+            {
+                await _notificationService.SendNotificationAsync(
+                    targetAccountId: invoiceInfo.Class.TeacherId,
+                    studentId: studentId,
+                    title: "Giao dịch học phí mới",
+                    content: $"Một học sinh lớp {invoiceInfo.Class.ClassName} đã nộp học phí tháng {invoiceInfo.PeriodMonth}/{invoiceInfo.PeriodYear}",
+                    actionUrl: $"/tuition/reports/{invoiceInfo.ClassId}",
+                    type: "Invoice");
+            }
             return true;
         }
 

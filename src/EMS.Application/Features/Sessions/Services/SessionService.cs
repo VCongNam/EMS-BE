@@ -1,11 +1,14 @@
+using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Assignments.Services;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Sessions.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using EMS.Application.Common.Interfaces;
 
 namespace EMS.Application.Features.Sessions.Services
 {
@@ -14,15 +17,20 @@ namespace EMS.Application.Features.Sessions.Services
         private readonly ISessionRepository _sessionRepository;
         private readonly IClassRepository _classRepository;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<AssignmentService> _logger;
 
         public SessionService(
             ISessionRepository sessionRepository, 
             IClassRepository classRepository, 
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            ILogger<AssignmentService> logger)
         {
             _sessionRepository = sessionRepository;
             _classRepository = classRepository;
             _currentUserService = currentUserService;
+            _logger = logger;
         }
 
         private async Task CheckSessionConflictAsync(Guid teacherId, DateOnly date, TimeOnly? startTime, TimeOnly? endTime, Guid? excludeSessionId = null)
@@ -121,6 +129,27 @@ namespace EMS.Application.Features.Sessions.Services
 
             await _sessionRepository.AddSessionAsync(session);
 
+            //Notification
+            try
+            {
+                var targets = await _notificationService.GetAllClassTargetsAsync(session.ClassId);
+                if (targets.Any())
+                {
+                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"hh\:mm") : "chưa định rõ";
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                        targets: targets,
+                        title: "Lịch học mới",
+                        content: $"Buổi học '{session.Title}' đã được lên lịch vào ngày {session.Date:dd/MM/yyyy} lúc {timeStr}.",
+                        actionUrl: $"/schedule",
+                        type: "Schedule"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo tạo Session: {ex.Message}");
+            }
+
             return new SessionDto
             {
                 SessionId = session.SessionId,
@@ -163,6 +192,27 @@ namespace EMS.Application.Features.Sessions.Services
             session.UpdatedAt = DateTime.UtcNow;
 
             await _sessionRepository.UpdateSessionAsync(session);
+
+            //Notification
+            try
+            {
+                var targets = await _notificationService.GetAllClassTargetsAsync(session.ClassId);
+                if (targets.Any())
+                {
+                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"hh\:mm") : "chưa định rõ";
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                        targets: targets,
+                        title: "Thay đổi lịch học",
+                        content: $"Buổi học '{session.Title}' đã cập nhật lại thời gian: {timeStr} ngày {session.Date:dd/MM/yyyy}.",
+                        actionUrl: $"/schedule",
+                        type: "Schedule"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo cập nhật Session: {ex.Message}");
+            }
 
             return new SessionDto
             {

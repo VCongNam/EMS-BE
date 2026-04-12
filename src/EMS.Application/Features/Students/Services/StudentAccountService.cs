@@ -36,6 +36,8 @@ namespace EMS.Application.Features.Students.Services
                 var accountEntity = new Account
                 {
                     AccountId = accountIdToUse,
+                    Email = $"user_{request.PhoneNumber}@ems.internal",
+                    FullName = $"Account{request.PhoneNumber}",
                     RoleId = studentRole.RoleId,
                     PasswordHash = hashedPassword,
                     PhoneNumber = request.PhoneNumber,
@@ -49,10 +51,10 @@ namespace EMS.Application.Features.Students.Services
                 accountIdToUse = isAccountExisted.AccountId;
             }
 
-            var isDuplicate = await _studentRepository.IsStudentExistAsync(accountIdToUse, request.FullName, DateOnly.FromDateTime(request.DOB));
-            if (isDuplicate)
+            var existingStudent = await _studentRepository.IsStudentExistAsync(accountIdToUse, request.FullName, DateOnly.FromDateTime(request.DOB));
+            if (existingStudent != null)
             {
-                throw new Exception("Hồ sơ học sinh đã tồn tại");
+                return existingStudent.StudentId;
             }
             Guid newStudentId = Guid.NewGuid();
             var studentProfile = new Student
@@ -102,12 +104,17 @@ namespace EMS.Application.Features.Students.Services
                     var createStudentDto = new CreateStudentDto
                     {
                         FullName = studentName,
-                        Password = "123456", // hash
+                        Password = "123456",
                         DOB = birthDate,
                         Address = address,
                         PhoneNumber = phone,
                     };
-                    await CreateStudentAsync(createStudentDto);
+                    Guid newStudentId = await CreateStudentAsync(createStudentDto);
+                    result.SuccessList.Add(new StudentImportSuccessDto
+                    {
+                        StudentId = newStudentId,
+                        FullName = studentName
+                    });
                     result.SuccessCount++;
                 } catch (Exception ex)
                 {

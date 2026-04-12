@@ -1,5 +1,7 @@
+using CloudinaryDotNet;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Classes.DTOs;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using System;
@@ -15,12 +17,14 @@ namespace EMS.Application.Features.Classes.Services
         private readonly IClassRepository _classRepository;
         private readonly ISessionRepository _sessionRepository;
         private readonly ICurrentUserService _currentUser;
+        private readonly INotificationService _notificationService;
 
-        public ClassService(IClassRepository classRepository, ISessionRepository sessionRepository, ICurrentUserService currentUser)
+        public ClassService(IClassRepository classRepository, ISessionRepository sessionRepository, ICurrentUserService currentUser, INotificationService notificationService)
         {
             _classRepository = classRepository;
             _sessionRepository = sessionRepository;
             _currentUser = currentUser;
+            _notificationService = notificationService;
         }
 
         public async Task<Guid> CreateClassAsync(CreateClassDto request)
@@ -138,6 +142,21 @@ namespace EMS.Application.Features.Classes.Services
                 CreatedAt = DateTime.UtcNow
             };
             await _classRepository.AddEnrollmentAsync(newEnrollment);
+
+            //Notification
+            var classEntity = await _classRepository.GetByIdAsync(classId);
+            var accountId = await _notificationService.GetAccountIdByStudentIdAsync(request.StudentID);
+            if (classEntity != null && accountId != null)
+            {
+                await _notificationService.SendNotificationAsync(
+                targetAccountId: (Guid)accountId,
+                studentId: request.StudentID,
+                title: "Chào mừng đến lớp học mới",
+                content: $"Bạn đã được giáo viên thêm vào lớp {classEntity.ClassName}",
+                actionUrl: $"/student/classes/{classId}",
+                type: "Class"
+                );
+            }
             return true;
         }
         public async Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync()

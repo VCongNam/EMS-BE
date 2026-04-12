@@ -11,8 +11,14 @@ namespace EMS.Application.Features.Students.DTOs
         public int TotalRows { get; set; }
         public int SuccessCount { get; set; }
         public int FailedCount { get; set; }
-        public List<CreateStudentDto> SuccessList { get; set; } = new List<CreateStudentDto>();
-        public List<ImportErrorDto> ErrorList { get; set; } = new List<ImportErrorDto>();
+        public List<StudentImportSuccessDto> SuccessList { get; set; } = new();      
+        public List<ImportErrorDto> ErrorList { get; set; } = new();
+    }
+
+    public class StudentImportSuccessDto
+    {
+        public Guid StudentId { get; set; }
+        public string FullName { get; set; }
     }
 
     public class ImportErrorDto

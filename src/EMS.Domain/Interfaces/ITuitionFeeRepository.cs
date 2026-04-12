@@ -35,6 +35,7 @@ namespace EMS.Domain.Interfaces
         Task<decimal> GetTotalPaidAmountAsync(Guid invoiceId);
         Task<bool> UpdateTransactionStatusAsync(Transaction transaction, Invoice? invoice);
         Task<IEnumerable<Invoice>> GetClassInvoicesAsync(Guid classId, int month, int year);
+        Task<Invoice?> GetInvoicesWithClassAsync(Guid invoiceId);
 
         // --- HÀM DÀNH RIÊNG CHO BACKGROUND SERVICE (Hệ thống tự động) ---
         Task<IEnumerable<Class>> GetAllClassesWithStudentsAsync();

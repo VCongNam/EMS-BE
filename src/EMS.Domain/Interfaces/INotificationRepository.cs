@@ -10,5 +10,16 @@ namespace EMS.Domain.Interfaces
     public interface INotificationRepository
     {
         Task<List<Notification>> GetMyNotificationsAsync(Guid accountId, Guid? studentId);
+        Task MarkAsReadAsync(Guid notificationId, Guid accountId, Guid? studentId);
+        Task MarkAllAsReadAsync(Guid accountId, Guid? studentId);
+        Task<int> CountUnreadAsync(Guid accountId, Guid? studentId);
+        Task AddAsync(Notification notification);
+        Task AddRangeAsync(IEnumerable<Notification> notifications);
+        Task<Guid?> GetAccountIdByStudentId(Guid studentId);
+        Task<List<(Guid AccId, Guid? StdId)>> GetStudentsInClassAsync(Guid classId);
+        Task<List<Guid>> GetTutorsInClassAsync(Guid classId);
+        Task<List<(Guid AccId, Guid? StdId)>> GetAllParticipantsInClassAsync(Guid classId);
+
+
     }
 }

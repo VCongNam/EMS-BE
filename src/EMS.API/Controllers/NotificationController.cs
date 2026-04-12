@@ -30,5 +30,19 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
+
+        [HttpPatch("mark-as-read/{notificationId}")]
+        public async Task<IActionResult> MarkAsRead(Guid notificationId)
+        {
+            await _notificationService.MaskAsReadAsync(notificationId);
+            return NoContent();
+        }
+
+        [HttpPatch("mark-all-as-read")]
+        public async Task<IActionResult> MarkAllAsRead()
+        {
+            await _notificationService.MaskAllAsReadAsync();
+            return NoContent();
+        }
     }
 }
