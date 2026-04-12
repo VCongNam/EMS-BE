@@ -118,6 +118,54 @@ namespace EMS.Infrastructure.Repositories
             await context.SaveChangesAsync();
         }
 
+        public async Task<bool> AddInvoicesWithEnrollmentsAsync(IEnumerable<Invoice> invoices, IEnumerable<ClassEnrollment> enrollments, Guid classId, int periodMonth, int periodYear)
+        {
+            using var dbTrans = await context.Database.BeginTransactionAsync();
+            try
+            {
+                // Re-check existence inside transaction to avoid race
+                var exists = await context.Invoices.AnyAsync(i => i.ClassId == classId && i.PeriodMonth == periodMonth && i.PeriodYear == periodYear);
+                if (exists)
+                {
+                    await dbTrans.RollbackAsync();
+                    return false;
+                }
+
+                if (invoices != null && invoices.Any())
+                {
+                    await context.Invoices.AddRangeAsync(invoices);
+                    await context.SaveChangesAsync();
+                }
+
+                if (enrollments != null && enrollments.Any())
+                {
+                    context.ClassEnrollments.UpdateRange(enrollments);
+                    await context.SaveChangesAsync();
+                }
+
+                await dbTrans.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await dbTrans.RollbackAsync();
+                return false;
+            }
+        }
+
+        public async Task<Dictionary<Guid,int>> GetAttendanceCountsForClassPeriodAsync(Guid classId, DateTime startDate, DateTime endDate)
+        {
+            // Group attendance by student for the class period
+            var query = context.Attendances
+                .Include(a => a.Session)
+                .Where(a => a.Session.ClassId == classId && a.Session.Date >= DateOnly.FromDateTime(startDate) && a.Session.Date <= DateOnly.FromDateTime(endDate) && a.Status == "Present")
+                .GroupBy(a => a.StudentId)
+                .Select(g => new { StudentId = g.Key, Count = g.Count() });
+
+            var list = await query.ToListAsync();
+            return list.ToDictionary(x => x.StudentId, x => x.Count);
+        }
+
         public async Task<Transaction?> GetTransactionWithInvoiceAsync(Guid transactionId)
         {
             return await context.Transactions
@@ -254,6 +302,39 @@ namespace EMS.Infrastructure.Repositories
             return await context.Invoices
                .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true)
                .ToListAsync();
+        }
+
+        public async Task<(List<Invoice> Items, int TotalCount)> GetInvoicesByClassAndPeriodPagedAsync(Guid classId, int month, int year, int page, int size, string? status = null, Guid? studentId = null)
+        {
+            if (page < 1) page = 1;
+            if (size < 1) size = 20;
+
+            var query = context.Invoices
+                .AsNoTracking()
+                .Include(i => i.Student).ThenInclude(s => s.Account)
+                .Include(i => i.Transactions)
+                .Include(i => i.Class)
+                .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                query = query.Where(i => i.Status != null && i.Status.ToLower() == status.ToLower());
+            }
+
+            if (studentId.HasValue)
+            {
+                query = query.Where(i => i.StudentId == studentId.Value);
+            }
+
+            var total = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(i => i.DueDate)
+                .Skip((page - 1) * size)
+                .Take(size)
+                .ToListAsync();
+
+            return (items, total);
         }
 
         public async Task<Invoice?> GetInvoicesWithClassAsync(Guid invoiceId)

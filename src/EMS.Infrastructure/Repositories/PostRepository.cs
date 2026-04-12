@@ -44,6 +44,8 @@ namespace EMS.Infrastructure.Repositories
                 .Include(m => m.PostAttachments)
                 .Include(m => m.Comments.Where(c => c.IsDeleted != true))
                     .ThenInclude(c => c.Author)
+                .Include(m => m.Comments.Where(c => c.IsDeleted != true))
+                    .ThenInclude(c => c.Student)
                 .FirstOrDefaultAsync(m => m.PostId == postId && m.IsDeleted != true);
         }
 
@@ -55,6 +57,8 @@ namespace EMS.Infrastructure.Repositories
                 .Include(m => m.PostAttachments)
                 .Include(m => m.Comments.Where(c => c.IsDeleted != true))
                     .ThenInclude(c => c.Author) // BỔ SUNG DÒNG NÀY ĐỂ LẤY TÊN NGƯỜI BÌNH LUẬN
+                .Include(m => m.Comments.Where(c => c.IsDeleted != true))
+                    .ThenInclude(c => c.Student)
                 .Where(m => m.ClassId == classId && m.IsDeleted != true)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync();
