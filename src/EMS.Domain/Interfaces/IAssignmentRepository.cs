@@ -23,6 +23,5 @@ namespace EMS.Domain.Interfaces
         Task AddAttachmentAsync(AssignmentAttachment attachment);
         Task<AssignmentAttachment?> GetAttachmentByIdAsync(Guid attachmentId);
         Task RemoveAttachmentAsync(AssignmentAttachment attachment);
-        Task<List<(Guid AccId, Guid StdId)>> GetStudentAndAccountIdsByClassIdAsync(Guid classId);
     }
 }

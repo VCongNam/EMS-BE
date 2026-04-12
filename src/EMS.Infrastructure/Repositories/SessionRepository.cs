@@ -164,5 +164,21 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
             return dbResult.Select(x => (x.Session, x.Attendance)).ToList();
         }
+
+        public async Task<List<Session>> GetUpcomingSessionsAsync(DateTime fromTime, DateTime toTime)
+        {
+            var startDate = DateOnly.FromDateTime(fromTime);
+            var startTime = TimeOnly.FromDateTime(fromTime);
+            var endTime = TimeOnly.FromDateTime(toTime);
+
+            return await _context.Sessions
+                .Include(s => s.Class)
+                .Where(s => s.Date == startDate &&
+                            s.StartTime >= startTime &&
+                            s.StartTime <= endTime &&
+                            s.Status == "Scheduled" &&
+                            !s.IsDeleted != true)
+                .ToListAsync();
+        }
     }
 }

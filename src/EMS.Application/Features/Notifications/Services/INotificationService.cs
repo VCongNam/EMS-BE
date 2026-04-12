@@ -19,6 +19,6 @@ namespace EMS.Application.Features.Notifications.Services
         Task<List<(Guid AccId, Guid? StdId)>> GetStudentTargetsAsync(Guid classId);
         Task<List<Guid>> GetTutorTargetsAsync(Guid classId);
         Task<List<(Guid AccId, Guid? StdId)>> GetAllClassTargetsAsync(Guid classId);
-
+        Task<(Guid taAccountId, string className)> GetTAAccountInfoByClassTaidAsync(Guid classTAID);
     }
 }

@@ -237,6 +237,9 @@ namespace EMS.Application.Features.Sessions.Services
             }
 
             await _sessionRepository.DeleteSessionAsync(session);
+
+            //Notification: Báo nghỉ học cho student
+
         }
 
         public async Task<IEnumerable<AttendanceResponseDto>> GetAttendanceListAsync(Guid sessionId)
@@ -331,6 +334,34 @@ namespace EMS.Application.Features.Sessions.Services
 
             if (newAttendances.Any())
                 await _sessionRepository.AddAttendancesAsync(newAttendances);
+
+            //Notification
+            try
+            {
+                var studentsInClass = await _sessionRepository.GetStudentsForSessionAsync(sessionId);
+
+                foreach (var req in requests)
+                {
+                    var studentInfo = studentsInClass.FirstOrDefault(s => s.StudentId == req.StudentId);
+                    if (studentInfo != null)
+                    {
+                        string statusVietnamese = req.Status == "Present" ? "Có mặt" : ((bool)req.IsExcused ? "Vắng có phép" : "Vắng không phép");
+
+                        await _notificationService.SendNotificationAsync(
+                            targetAccountId: studentInfo.Student.AccountId,
+                            studentId: req.StudentId,
+                            title: "Thông báo điểm danh",
+                            content: $"Bạn đã được điểm danh: {statusVietnamese} trong buổi học '{session.Title}' ngày {session.Date:dd/MM/yyyy}.",
+                            actionUrl: $"/schedule",
+                            type: "Attendance"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo điểm danh bulk: {ex.Message}");
+            }
         }
 
         public async Task UpdateAttendanceAsync(Guid attendanceId, UpdateAttendanceDto request)
@@ -347,6 +378,25 @@ namespace EMS.Application.Features.Sessions.Services
             attendance.UpdatedAt = DateTime.UtcNow;
 
             await _sessionRepository.UpdateAttendanceAsync(attendance);
+
+            //Notification
+            try
+            {
+                string statusVietnamese = request.Status == "Present" ? "Có mặt" : ((bool)request.IsExcused ? "Vắng có phép" : "Vắng không phép");
+
+                await _notificationService.SendNotificationAsync(
+                    targetAccountId: attendance.Student.AccountId,
+                    studentId: attendance.StudentId,
+                    title: "Cập nhật điểm danh",
+                    content: $"Trạng thái điểm danh của buổi học '{attendance.Session.Title}' ngày {attendance.Session.Date:dd/MM/yyyy} đã được cập nhật thành: {statusVietnamese}.",
+                    actionUrl: $"/schedule",
+                    type: "Attendance"
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo cập nhật điểm danh: {ex.Message}");
+            }
         }
     }
 }

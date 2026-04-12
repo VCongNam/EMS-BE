@@ -162,6 +162,37 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             await tuitionFeeRepository.AddInvoicesAsync(invoices);
 
+            //Notification
+            try
+            {
+                var targetStudents = await _notificationService.GetStudentTargetsAsync(classId);
+
+                foreach (var invoice in invoices)
+                {
+                    var target = targetStudents.FirstOrDefault(t => t.StdId == invoice.StudentId);
+
+                    if (target != default)
+                    {
+                        string billingType = classObj.BillingMethod == "Prepaid" ? "thu trước" : "thu sau";
+                        string content = $"Hệ thống đã phát hành hóa đơn học phí tháng {invoice.PeriodMonth}/{invoice.PeriodYear} " +
+                                         $"(Hình thức {billingType}). Số tiền: {invoice.Amount:N0}đ. Hạn nộp: {invoice.DueDate:dd/MM/yyyy}.";
+
+                        await _notificationService.SendNotificationAsync(
+                            targetAccountId: target.AccId,
+                            studentId: invoice.StudentId,
+                            title: "Thông báo học phí",
+                            content: content,
+                            actionUrl: $"/student/invoices/{invoice.InvoiceId}", 
+                            type: "Invoice"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo phát hành hóa đơn: {ex.Message}");
+            }
+
             if (classObj.BillingMethod == "Prepaid")
             {
                 await tuitionFeeRepository.UpdateClassEnrollmentsAsync(students);

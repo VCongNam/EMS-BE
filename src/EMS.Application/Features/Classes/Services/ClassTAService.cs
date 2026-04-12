@@ -1,8 +1,11 @@
 ﻿using DocumentFormat.OpenXml.Spreadsheet;
 using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Classes.DTOs;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,11 +20,15 @@ namespace EMS.Application.Features.Classes.Services
         private readonly IClassRepository _classRepository;
         private readonly ICurrentUserService _currentUser;
         private readonly ITARepository _taRepository;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<AssignmentService> _logger;
 
-        public ClassTAService(IClassRepository classRepository, ITARepository tARepository)
+        public ClassTAService(IClassRepository classRepository, ITARepository tARepository, INotificationService notificationService, ILogger<AssignmentService> logger)
         {
             _classRepository = classRepository;
             _taRepository = tARepository;
+            _notificationService = notificationService;
+            _logger = logger;
         }
         public async Task<Guid> AssignTAAsync(Guid classId, AssignTADto request)
         {
@@ -42,6 +49,30 @@ namespace EMS.Application.Features.Classes.Services
             };
 
             await _classRepository.AddClassTAAsync(newClassTA);
+
+            //Notification: 
+            try
+            {
+                // 1. Lấy thông tin chi tiết (Cần tên lớp và AccountId của TA)
+                var classObj = await _classRepository.GetByIdAsync(classId);
+
+                if (classObj != null)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        targetAccountId: request.TAID,
+                        studentId: null,
+                        title: "Phân công lớp mới",
+                        content: $"Bạn đã được phân công làm trợ giảng cho lớp '{classObj.ClassName}'.",
+                        actionUrl: $"/tutor/classes/{classId}",
+                        type: "Class"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo cho trợ giảng: {ex.Message}");
+            }
+
             return newClassTA.ClassTaid;
         }
 
@@ -93,6 +124,29 @@ namespace EMS.Application.Features.Classes.Services
             };
 
             await _taRepository.CreateTaskAsync(newTask);
+
+            //Notification
+            try
+            {
+                var (taAccountId, className) = await _notificationService.GetTAAccountInfoByClassTaidAsync(request.ClassTAID);
+
+                if (taAccountId != Guid.Empty)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        targetAccountId: taAccountId,
+                        studentId: null,
+                        title: "Nhiệm vụ mới",
+                        content: $"Bạn vừa được giao nhiệm vụ: '{request.Title}' cho lớp {className}. Hạn hoàn thành: {request.DueDate:dd/MM/yyyy}.",
+                        actionUrl: $" /ta/tasks/{newTask.TataskId}", 
+                        type: "Task"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo nhiệm vụ cho TA: {ex.Message}");
+            }
+
             return newTask.TataskId;
         }
 
