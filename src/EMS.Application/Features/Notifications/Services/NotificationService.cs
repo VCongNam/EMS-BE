@@ -41,5 +41,26 @@ namespace EMS.Application.Features.Notifications.Services
                 StudentId = n.StudentId,
             }).ToList();
         }
+
+        public async Task MaskAllAsReadAsync()
+        {
+            Guid accountId = _currentUser.UserId;
+            Guid? studentId = _currentUser.StudentId;
+            await _notificationRepository.MarkAllAsReadAsync(accountId, studentId);
+        }
+
+        public async Task MaskAsReadAsync(Guid notificationId)
+        {
+            Guid accountId = _currentUser.UserId;
+            Guid? studentId = _currentUser.StudentId;
+            await _notificationRepository.MarkAsReadAsync(notificationId, accountId, studentId);
+        }
+
+        public async Task<int> CountUnreadAsync()
+        {
+            Guid accountId = _currentUser.UserId;
+            Guid? studentId = _currentUser.StudentId;
+            return await _notificationRepository.CountUnreadAsync(accountId, studentId);
+        }
     }
 }

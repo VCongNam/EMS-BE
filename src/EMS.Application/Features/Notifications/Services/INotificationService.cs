@@ -10,5 +10,8 @@ namespace EMS.Application.Features.Notifications.Services
     public interface INotificationService
     {
         Task<List<NotificationDto>> GetNotificationsAsync();
+        Task MaskAsReadAsync(Guid notificationId);
+        Task MaskAllAsReadAsync();
+        Task<int> CountUnreadAsync();
     }
 }

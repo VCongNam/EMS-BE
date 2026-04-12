@@ -35,6 +35,12 @@ namespace EMS.Infrastructure.Repositories
             return await _context.Assignments
                 .FirstOrDefaultAsync(a => a.AssignmentId == assignmentId && a.IsDeleted != true);
         }
+        public async Task<Assignment?> GetWithClassByIdAsync(Guid assignmentId)
+        {
+            return await _context.Assignments
+                .Include(a => a.Class)
+                .FirstOrDefaultAsync(a => a.AssignmentId == assignmentId && a.IsDeleted != true);
+        }
 
         public async Task<Assignment?> GetByIdWithDetailsAsync(Guid assignmentId)
         {
@@ -70,30 +76,22 @@ namespace EMS.Infrastructure.Repositories
             return count;
         }
 
-        public async Task<(List<(Assignment Assignment, Submission? Submission)> Items, int TotalCount)> GetStudentAssignmentsAsync(
+        public async Task<(IEnumerable<Assignment> Items, int TotalCount)> GetStudentAssignmentsAsync(
             Guid classId, Guid studentId, int page, int size)
         {
             var query = _context.Assignments
-                .Where(a => a.ClassId == classId)
+                .Where(a => a.ClassId == classId && a.IsDeleted == false)
                 .AsNoTracking();
 
             int totalCount = await query.CountAsync();
 
-            var dbResult = await query
-                .OrderByDescending(x => x.CreatedAt)
+            var items = await query
+                .Include(a => a.Submissions
+                    .Where(s => s.StudentId == studentId))
+                .OrderByDescending(a => a.CreatedAt)
                 .Skip((page - 1) * size)
                 .Take(size)
-                .Select(a => new
-                {
-                    Assignment = a,
-                    Submission = _context.Submissions.FirstOrDefault(s =>
-                        s.AssignmentId == a.AssignmentId &&
-                        s.StudentId == studentId)
-                })
                 .ToListAsync();
-            var items = dbResult
-                .Select(x => (x.Assignment, x.Submission))
-                .ToList();
             return (items, totalCount);
         }
 
@@ -134,5 +132,18 @@ namespace EMS.Infrastructure.Repositories
         }
 
 
+        public async Task<List<(Guid AccId, Guid StdId)>> GetStudentAndAccountIdsByClassIdAsync(Guid classId)
+        {
+            var data = await _context.ClassEnrollments
+                .Where(cs => cs.ClassId == classId)
+                .Select(cs => new
+                {
+                    AccId = cs.Student.AccountId,
+                    StdId = cs.StudentId
+                })
+                .ToListAsync();
+
+            return data.Select(x => (x.AccId, x.StdId)).ToList();
+        }
     }
 }

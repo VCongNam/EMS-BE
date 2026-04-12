@@ -25,6 +25,7 @@ namespace EMS.API.Controllers.Students
             try
             {
                 var result = await _tuitionService.GetMyTuitionAsync(filter);
+                if (result == null) throw new Exception("Bạn chưa có khoản học phí nào.");
                 return Ok(new
                 {
                     Message = "Lấy danh sách học phí thành công",
@@ -43,6 +44,7 @@ namespace EMS.API.Controllers.Students
             try
             {
                 var result = await _tuitionService.GetTuitionInvoiceDetailAsync(invoiceId);
+                if (result == null) throw new Exception("Không tìm thấy hóa đơn");
                 return Ok(new
                 {
                     Message = "Lấy chi tiết hóa đơn thành công",
