@@ -275,33 +275,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                                      + await tuitionFeeRepository.CountInvoicesByStatusForTeacherAsync("Partial", teacherId)
             };
         }
-
-        public async Task<bool> ReviewTransactionAsync(Guid transactionId, ReviewTransactionDto request)
-        {
-            var transaction = await tuitionFeeRepository.GetTransactionWithInvoiceAsync(transactionId);
-            if (transaction == null) throw new KeyNotFoundException("Giao dịch không tồn tại.");
-            if (transaction.Status != "Pending") throw new Exception("Giao dịch này đã được xử lý trước đó.");
-            Invoice? invoiceToUpdate = null;
-
-            if (request.IsApproved)
-            {
-                transaction.Status = "Approved";
-
-                if (transaction.Invoice != null)
-                {
-                    invoiceToUpdate = transaction.Invoice;
-                    invoiceToUpdate.Status = "Paid";
-                    invoiceToUpdate.UpdatedAt = DateTime.UtcNow;
-                }
-            }
-            else
-            {
-                transaction.Status = "Rejected";
-            }
-
-            transaction.UpdatedAt = DateTime.UtcNow;
-            return await tuitionFeeRepository.UpdateTransactionStatusAsync(transaction, invoiceToUpdate);
-        }
         public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId)
         {
             var invoice = await tuitionFeeRepository.GetInvoiceByIdAsync(invoiceId);

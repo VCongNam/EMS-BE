@@ -26,9 +26,6 @@ namespace EMS.Application.Features.TuitionFees.Services
 
         Task<OverallReportDto> GetOverallReportAsync(Guid teacherId);
 
-        Task<bool> ReviewTransactionAsync(Guid transactionId, ReviewTransactionDto request);
-
-
         // --- BỔ SUNG: DASHBOARD & GIA HẠN ---
         Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
         Task<IEnumerable<ClassFinancialSummaryDto>> GetClassFinancialSummariesAsync(Guid teacherId);
