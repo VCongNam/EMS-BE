@@ -120,7 +120,12 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Transaction?> GetTransactionWithInvoiceAsync(Guid transactionId)
         {
-            return await context.Transactions.Include(t => t.Invoice)
+            return await context.Transactions
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Student)
+                        .ThenInclude(s => s.Account)
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Class)
                 .FirstOrDefaultAsync(t => t.TransactionId == transactionId);
         }
 

@@ -220,7 +220,7 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             if (t == null || t.Status != "Pending")
             {
-                return;
+                throw new Exception("Giao dịch không tồn tại hoặc không ở trạng thái chờ xử lý.");
             }
 
             Invoice? inv = null;
@@ -229,16 +229,21 @@ namespace EMS.Application.Features.TuitionFees.Services
             {
                 t.Status = "Completed";
                 t.ApprovedBy = approverId;
+                t.PaidDate = t.PaidDate ?? DateTime.UtcNow;
+                t.UpdatedAt = DateTime.UtcNow;
+
                 inv = t.Invoice;
 
                 var totalPaid = await tuitionFeeRepository.GetTotalPaidAmountAsync(inv!.InvoiceId) + t.AmountPaid;
                 inv.Status = totalPaid >= inv.Amount ? "Paid" : "Partial";
+                inv.UpdatedAt = DateTime.UtcNow;
             }
             else
             {
                 t.Status = "Rejected";
                 t.ApprovedBy = approverId;
                 t.Note = note;
+                t.UpdatedAt = DateTime.UtcNow;
             }
 
             await tuitionFeeRepository.UpdateTransactionStatusAsync(t, inv);
@@ -252,20 +257,27 @@ namespace EMS.Application.Features.TuitionFees.Services
                 {
                     var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(t.Invoice.StudentId);
                     var studentId = t.Invoice.StudentId;
-                    var className = t.Invoice.Class.ClassName;
+                    var className = t.Invoice.Class?.ClassName ?? "Lớp học";
 
                     string content = isApproved
                         ? $"Giao dịch {t.AmountPaid:N0}đ cho lớp {className} {statusText}. Cảm ơn bạn!"
                         : $"Giao dịch {t.AmountPaid:N0}đ cho lớp {className} {statusText}. Lý do: {note ?? "Thông tin không khớp"}.";
 
-                    await _notificationService.SendNotificationAsync(
-                        targetAccountId: (Guid)targetAccountId,
-                        studentId: studentId,
-                        title: title,
-                        content: content,
-                        actionUrl: $"/student/invoices/{t.InvoiceId}",
-                        type: "Invoice"
-                    );
+                    if (targetAccountId.HasValue)
+                    {
+                        await _notificationService.SendNotificationAsync(
+                            targetAccountId: targetAccountId.Value,
+                            studentId: studentId,
+                            title: title,
+                            content: content,
+                            actionUrl: $"/student/invoices/{t.InvoiceId}",
+                            type: "Invoice"
+                        );
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Không tìm thấy accountId cho student {StudentId} khi gửi thông báo giao dịch.", studentId);
+                    }
                 }
             }
             catch (Exception ex)
