@@ -24,6 +24,17 @@ namespace EMS.Application.Features.TuitionFees.Services
 
         Task<ClassFinancialDetailDto> GetClassFinancialDetailAsync(Guid classId, int month, int year, Guid teacherId);
 
+        // List invoices for a specific class and period with paging and optional filters
+        Task<(IEnumerable<ClassInvoiceItemDto> Items, int TotalCount)> GetClassInvoicesForPeriodAsync(
+            Guid classId,
+            int month,
+            int year,
+            Guid teacherId,
+            int page,
+            int size,
+            string? status = null,
+            Guid? studentId = null);
+
         Task<OverallReportDto> GetOverallReportAsync(Guid teacherId);
 
         // --- BỔ SUNG: DASHBOARD & GIA HẠN ---
