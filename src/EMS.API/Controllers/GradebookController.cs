@@ -130,5 +130,25 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+
+        [HttpPut("class/{classId}/bulk-save")]
+        public async Task<IActionResult> BulkSaveGrades(Guid classId, [FromBody] BulkSaveGradesRequest request)
+        {
+            try
+            {
+                await _gradebookService.SaveBulkGradesAsync(classId, request);
+                return Ok(new { Message = "Gradebook saved successfully!" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+
+        }
     }
 }

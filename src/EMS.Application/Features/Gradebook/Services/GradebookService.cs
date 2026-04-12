@@ -326,5 +326,64 @@ namespace EMS.Application.Features.Gradebook.Services
 
             return document.GeneratePdf();
         }
+
+        public async Task SaveBulkGradesAsync(Guid classId, BulkSaveGradesRequest request)
+        {
+            await RequireTeacherAccessAsync(classId);
+
+            if (request.ChangedGrades == null || !request.ChangedGrades.Any())
+                return;
+
+            var assignmentIds = request.ChangedGrades.Select(g => g.AssignmentId).Distinct().ToList();
+
+            var existingSubmissions = await _submissionRepository.GetByAssignmentIdsAsync(assignmentIds);
+
+            var submissionsToInsert = new List<Submission>();
+            var submissionsToUpdate = new List<Submission>();
+
+            foreach (var cell in request.ChangedGrades)
+            {
+                var existingSub = existingSubmissions.FirstOrDefault(s =>
+                    s.AssignmentId == cell.AssignmentId && s.StudentId == cell.StudentId);
+
+                if (existingSub != null)
+                {
+                    if (existingSub.Grade != cell.Grade)
+                    {
+                        existingSub.Grade = cell.Grade;
+                        existingSub.Status = "Graded";
+                        submissionsToUpdate.Add(existingSub);
+                    }
+                }
+                else
+                {
+                    if (cell.Grade.HasValue)
+                    {
+                        var newSubmission = new Submission
+                        {
+                            SubmissionId = Guid.NewGuid(),
+                            AssignmentId = cell.AssignmentId,
+                            StudentId = cell.StudentId,
+                            Grade = cell.Grade,
+                            Status = "Graded",
+                            SubmittedAt = DateTime.UtcNow 
+                        };
+                        submissionsToInsert.Add(newSubmission);
+                    }
+                }
+            }
+
+         
+            if (submissionsToInsert.Any())
+            {
+                await _submissionRepository.AddRangeAsync(submissionsToInsert);
+            }
+
+            if (submissionsToUpdate.Any())
+            {
+                await _submissionRepository.UpdateRangeAsync(submissionsToUpdate);
+            }
+        }
+
     }
 }

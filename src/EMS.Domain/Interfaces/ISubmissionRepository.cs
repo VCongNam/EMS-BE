@@ -23,5 +23,9 @@ namespace EMS.Domain.Interfaces
         Task<SubmissionAttachment?> GetAttachmentByIdAsync(Guid attachmentId);
         Task RemoveAttachmentAsync(SubmissionAttachment attachment);
         Task AddAttachmentsAsync(IEnumerable<SubmissionAttachment> attachments);
+
+        Task<IEnumerable<Submission>> GetByAssignmentIdsAsync(List<Guid> assignmentIds);
+        Task AddRangeAsync(IEnumerable<Submission> submissions);
+        Task UpdateRangeAsync(IEnumerable<Submission> submissions);
     }
 }
