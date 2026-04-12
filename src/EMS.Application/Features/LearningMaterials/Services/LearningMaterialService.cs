@@ -1,7 +1,9 @@
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.LearningMaterials.DTOs;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +16,8 @@ namespace EMS.Application.Features.LearningMaterials.Services
         private readonly ILearningMaterialRepository _materialRepository;
         private readonly ISupabaseStorageService _storageService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<LearningMaterialService> _logger;
 
         // Giới hạn file: 10MB
         private const long MaxFileSize = 10 * 1024 * 1024;
@@ -34,11 +38,15 @@ namespace EMS.Application.Features.LearningMaterials.Services
         public LearningMaterialService(
             ILearningMaterialRepository materialRepository,
             ISupabaseStorageService storageService,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            ILogger<LearningMaterialService> logger)
         {
             _materialRepository = materialRepository;
             _storageService = storageService;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         public async Task<Guid> CreateLearningMaterialAsync(CreateLearningMaterialDto request)
@@ -81,6 +89,10 @@ namespace EMS.Application.Features.LearningMaterials.Services
                     await _materialRepository.AddAttachmentAsync(attachment);
                 }
             }
+
+            //Notification
+            await SendMaterialNotificationAsync(request.ClassId, "Tài liệu học tập mới",
+            $"Giáo viên đã đăng tài liệu mới: {request.Title}", materialId);
 
             return material.MaterialId;
         }
@@ -134,6 +146,33 @@ namespace EMS.Application.Features.LearningMaterials.Services
                     };
                     await _materialRepository.AddAttachmentAsync(attachment);
                 }
+            }
+
+            //Notification
+            await SendMaterialNotificationAsync(material.ClassId, "Cập nhật tài liệu",
+            $"Tài liệu '{material.Title}' đã được giáo viên cập nhật.", id);
+        }
+
+        private async Task SendMaterialNotificationAsync(Guid classId, string title, string content, Guid materialId)
+        {
+            try
+            {
+                var targets = await _notificationService.GetAllClassTargetsAsync(classId);
+
+                if (targets.Any())
+                {
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                        targets: targets,
+                        title: title,
+                        content: content,
+                        actionUrl: $"/student/classes/{classId}/materials",
+                        type: "Material"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo tài liệu: {ex.Message}");
             }
         }
 

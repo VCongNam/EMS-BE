@@ -51,10 +51,10 @@ namespace EMS.Application.Features.Students.Services
                 accountIdToUse = isAccountExisted.AccountId;
             }
 
-            var isDuplicate = await _studentRepository.IsStudentExistAsync(accountIdToUse, request.FullName, DateOnly.FromDateTime(request.DOB));
-            if (isDuplicate)
+            var existingStudent = await _studentRepository.IsStudentExistAsync(accountIdToUse, request.FullName, DateOnly.FromDateTime(request.DOB));
+            if (existingStudent != null)
             {
-                throw new Exception("Hồ sơ học sinh đã tồn tại");
+                return existingStudent.StudentId;
             }
             Guid newStudentId = Guid.NewGuid();
             var studentProfile = new Student

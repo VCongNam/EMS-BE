@@ -1,7 +1,9 @@
 ﻿using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +17,8 @@ namespace EMS.Application.Features.Posts.Services
         private readonly IPostRepository postRepository;
         private readonly ISupabaseStorageService storageService;
         private readonly ICurrentUserService currentUserService;
+        private readonly INotificationService _notificationService; 
+        private readonly ILogger<PostService> _logger; 
 
         private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
         private static readonly string[] AllowedMimeTypes =
@@ -29,11 +33,15 @@ namespace EMS.Application.Features.Posts.Services
         public PostService(
             IPostRepository postRepository,
             ISupabaseStorageService storageService,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            INotificationService notificationService, 
+            ILogger<PostService> logger)
         {
             this.postRepository = postRepository;
             this.storageService = storageService;
             this.currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         public async Task<Guid> CreatePostAsync(CreatePostDto request)
@@ -72,6 +80,10 @@ namespace EMS.Application.Features.Posts.Services
                     await postRepository.AddAttachmentAsync(attachment);
                 }
             }
+
+            //Notification
+            await SendPostNotificationAsync(request.ClassId, "Bài đăng mới",
+                $"Giáo viên đã đăng một bài viết mới: {request.Title}", postId);
 
             return postId;
         }
@@ -122,6 +134,33 @@ namespace EMS.Application.Features.Posts.Services
                     };
                     await postRepository.AddAttachmentAsync(attachment);
                 }
+            }
+
+            //Notification
+            await SendPostNotificationAsync(post.ClassId, "Bài đăng cập nhật",
+                $"Bài viết '{post.Title}' vừa được giáo viên cập nhật nội dung.", id);
+        }
+
+        private async Task SendPostNotificationAsync(Guid classId, string title, string content, Guid postId)
+        {
+            try
+            {
+                var targets = await _notificationService.GetAllClassTargetsAsync(classId);
+
+                if (targets.Any())
+                {
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                        targets: targets,
+                        title: title,
+                        content: content,
+                        actionUrl: $"/student/classes/{classId}",
+                        type: "Post"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo Post: {ex.Message}");
             }
         }
 

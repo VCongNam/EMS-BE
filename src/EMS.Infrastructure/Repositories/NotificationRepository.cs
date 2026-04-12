@@ -88,5 +88,46 @@ namespace EMS.Infrastructure.Repositories
             await _context.Notifications.AddRangeAsync(notifications);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<Guid?> GetAccountIdByStudentId(Guid studentId)
+        {
+            var s = await _context.Students.FirstOrDefaultAsync(s=> s.StudentId == studentId);
+            return s.AccountId;
+        }
+
+        public async Task<List<(Guid AccId, Guid? StdId)>> GetStudentsInClassAsync(Guid classId)
+        {
+            var data = await _context.ClassEnrollments
+                .Where(ce => ce.ClassId == classId)
+                .Select(ce => new
+                {
+                    ce.Student.AccountId,
+                    StudentId = (Guid?)ce.StudentId
+                })
+                .ToListAsync();
+
+            return data.Select(x => (x.AccountId, x.StudentId)).ToList();
+        }
+
+        public async Task<List<Guid>> GetTutorsInClassAsync(Guid classId)
+        {
+            return await _context.ClassTa
+                .Where(ct => ct.ClassId == classId)
+                .Select(ct => ct.Taid)
+                .ToListAsync();
+        }
+
+        public async Task<List<(Guid AccId, Guid? StdId)>> GetAllParticipantsInClassAsync(Guid classId)
+        {
+            var participants = new List<(Guid AccId, Guid? StdId)>();
+
+            var students = await GetStudentsInClassAsync(classId);
+            participants.AddRange(students.Select(s => (s.AccId, (Guid?)s.StdId)));
+
+            var tutors = await GetTutorsInClassAsync(classId);
+            participants.AddRange(tutors.Select(t => (t, (Guid?)null)));
+
+            return participants;
+        }
     }
 }

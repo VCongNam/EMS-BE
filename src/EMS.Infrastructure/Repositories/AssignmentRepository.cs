@@ -130,20 +130,5 @@ namespace EMS.Infrastructure.Repositories
             _context.AssignmentAttachments.Remove(attachment);
             await _context.SaveChangesAsync();
         }
-
-
-        public async Task<List<(Guid AccId, Guid StdId)>> GetStudentAndAccountIdsByClassIdAsync(Guid classId)
-        {
-            var data = await _context.ClassEnrollments
-                .Where(cs => cs.ClassId == classId)
-                .Select(cs => new
-                {
-                    AccId = cs.Student.AccountId,
-                    StdId = cs.StudentId
-                })
-                .ToListAsync();
-
-            return data.Select(x => (x.AccId, x.StdId)).ToList();
-        }
     }
 }
