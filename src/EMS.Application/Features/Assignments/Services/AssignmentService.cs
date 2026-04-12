@@ -17,6 +17,7 @@ namespace EMS.Application.Features.Assignments.Services
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ISubmissionRepository _submissionRepository;
         private readonly ISupabaseStorageService _storageService;
+        private readonly IClassRepository _classRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
         private readonly ILogger<AssignmentService> _logger;
@@ -41,6 +42,7 @@ namespace EMS.Application.Features.Assignments.Services
             IAssignmentRepository assignmentRepository,
             ISubmissionRepository submissionRepository,
             ISupabaseStorageService storageService,
+            IClassRepository classRepository,
             ICurrentUserService currentUserService,
             INotificationService notificationService,
             ILogger<AssignmentService> logger)
@@ -48,6 +50,7 @@ namespace EMS.Application.Features.Assignments.Services
             _assignmentRepository = assignmentRepository;
             _submissionRepository = submissionRepository;
             _storageService = storageService;
+            _classRepository = classRepository;
             _currentUserService = currentUserService;
             _notificationService = notificationService;
             _logger = logger;
@@ -277,17 +280,7 @@ namespace EMS.Application.Features.Assignments.Services
             return "Published";
         }
 
-        //private void ValidateFile(string fileName, long fileSize, string contentType)
-        //{
-        //    if (fileSize > MaxFileSize)
-        //        throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
-
-
-        //    if (contentType.StartsWith("image/")) return;
-
-        //    if (!AllowedMimeTypes.Contains(contentType))
-        //        throw new Exception($"File type '{contentType}' is not allowed.");
-        //}
+     
         private void ValidateFile(string fileName, long fileSize, string contentType)
         {
             if (fileSize > MaxFileSize)
@@ -297,16 +290,167 @@ namespace EMS.Application.Features.Assignments.Services
 
             var allowedExtensions = new[]
             {
-        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp",
-        ".pdf",
-        ".doc", ".docx",
-        ".xls", ".xlsx",
-        ".ppt", ".pptx",
-        ".zip", ".rar"
-    };
+                ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp",
+                ".pdf",
+                ".doc", ".docx",
+                ".xls", ".xlsx",
+                ".ppt", ".pptx",
+                ".zip", ".rar"
+            };
 
             if (!allowedExtensions.Contains(ext))
                 throw new Exception($"File '{ext}' is not allowed.");
+        }
+
+        private async Task RequireTeacherAccessByAssignmentAsync(Guid assignmentId)
+        {
+
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            if (assignment == null) throw new Exception("Assignment not found.");
+
+         
+            var classroom = await _classRepository.GetByIdAsync(assignment.ClassId);
+            if (classroom == null) throw new Exception("Class not found.");
+
+            // Kiểm tra quyền
+            if (classroom.TeacherId != _currentUserService.UserId)
+                throw new UnauthorizedAccessException("You do not have access to grade this assignment.");
+        }
+
+        public async Task GradeSubmissionAsync(Guid submissionId, GradeSubmissionDto request)
+        {
+            var submission = await _submissionRepository.GetByIdAsync(submissionId);
+            if (submission == null) throw new Exception("Submission not found.");
+
+        
+            await RequireTeacherAccessByAssignmentAsync(submission.AssignmentId);
+
+            submission.Grade = request.Grade;
+            submission.Status = "Graded";
+            await _submissionRepository.UpdateAsync(submission);
+        }
+
+        public async Task GiveFeedbackAsync(Guid submissionId, FeedbackSubmissionDto request)
+        {
+            var submission = await _submissionRepository.GetByIdAsync(submissionId);
+            if (submission == null) throw new Exception("Submission not found.");
+
+            // VÁ LỖI BẢO MẬT
+            await RequireTeacherAccessByAssignmentAsync(submission.AssignmentId);
+
+            var feedback = new SubmissionFeedback
+            {
+                FeedbackId = Guid.NewGuid(),
+                SubmissionId = submission.SubmissionId,
+                AuthorId = _currentUserService.UserId,
+                CreatedAt = DateTime.UtcNow,
+                Content = request.Content
+            };
+
+            await _submissionRepository.AddFeedbackAsync(feedback);
+        }
+
+        public async Task<Guid> OfflineGradeAsync(Guid assignmentId, OfflineGradeDto request)
+        {
+            // VÁ LỖI BẢO MẬT: Không tin tưởng ClassId do frontend gửi lên nữa
+            await RequireTeacherAccessByAssignmentAsync(assignmentId);
+
+            // Xử lý tạo mới hoặc cập nhật như cũ của bạn
+            var existingSubmission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, request.StudentId);
+
+            if (existingSubmission != null)
+            {
+                existingSubmission.Grade = request.Grade;
+                existingSubmission.Status = "Graded";
+                await _submissionRepository.UpdateAsync(existingSubmission);
+                return existingSubmission.SubmissionId;
+            }
+
+            var newSubmission = new Submission
+            {
+                SubmissionId = Guid.NewGuid(),
+                AssignmentId = assignmentId,
+                StudentId = request.StudentId,
+                Grade = request.Grade,
+                Status = "Graded",
+                SubmittedAt = DateTime.UtcNow
+            };
+
+            await _submissionRepository.AddAsync(newSubmission);
+            return newSubmission.SubmissionId;
+        }
+
+        public async Task<AssignmentSubmissionsListDto> GetSubmissionsForAssignmentAsync(Guid assignmentId)
+        {
+            await RequireTeacherAccessByAssignmentAsync(assignmentId);
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+
+            var studentsInClass = await _classRepository.GetStudentsByClassIdAsync(assignment.ClassId);
+
+            var submissions = await _submissionRepository.GetSubmissionsByAssignmentIdAsync(assignmentId);
+
+            var response = new AssignmentSubmissionsListDto
+            {
+                AssignmentId = assignment.AssignmentId,
+                Title = assignment.Title,
+                DueDate = assignment.DueDate,
+                MaxScore = 10,
+                IsOffline = (bool)assignment.Isoffline
+            };
+
+            var currentTime = DateTime.UtcNow;
+
+            foreach (var student in studentsInClass)
+            {
+                var sub = submissions.FirstOrDefault(s => s.StudentId == student.StudentId);
+
+                var studentDto = new StudentSubmissionDto
+                {
+                    StudentId = student.StudentId,
+                    FullName = student.FullName,
+                    
+                };
+
+                if (sub != null)
+                {
+                    // NẾU ĐÃ NỘP BÀI
+                    studentDto.SubmissionId = sub.SubmissionId;
+                    studentDto.SubmittedAt = sub.SubmittedAt;
+                    studentDto.Grade = sub.Grade;
+
+                    // Xử lý status thông minh
+                   if (sub.SubmittedAt > assignment.DueDate)
+                    {
+                        studentDto.Status = "Late"; // Nộp muộn
+                    }
+                    else
+                    {
+                        studentDto.Status = "In Time"; // Đã nộp đúng hạn
+                    }
+                }
+                else
+                {
+             
+                    if ((bool)assignment.Isoffline)
+                    {
+                        studentDto.Status = "Not Graded"; 
+                    }
+                    else if (currentTime > assignment.DueDate)
+                    {
+                        studentDto.Status = "Missing";
+                    }
+                    else
+                    {
+                        studentDto.Status = "Not Submitted"; 
+                    }
+                }
+
+                response.Students.Add(studentDto);
+            }
+
+            response.Students = response.Students.OrderBy(s => s.FullName).ToList();
+
+            return response;
         }
     }
 }

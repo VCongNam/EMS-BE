@@ -316,5 +316,87 @@ namespace EMS.Application.Features.Classes.Services
 
             return result;
         }
+
+        public async Task<bool> RemoveStudentFromClassAsync(Guid classId, Guid studentId)
+        {
+            // Lấy thông tin người đang thực hiện thao tác
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+
+            // 1. Kiểm tra tồn tại và trạng thái lớp học
+            var classroom = await _classRepository.GetByIdAsync(classId);
+            if (classroom == null)
+            {
+                throw new Exception($"Không tìm thấy lớp học với ID {classId}.");
+            }
+
+            if (classroom.Status == "Archived" || classroom.Status == "Completed")
+            {
+                throw new Exception("Không thể thay đổi danh sách học sinh của lớp đã kết thúc hoặc lưu trữ.");
+            }
+
+            // 2. Phân quyền (Authorization): Chỉ Admin hoặc đúng Giáo viên chủ nhiệm mới được đuổi
+            if (currentUserRole != "Teacher" && classroom.TeacherId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền đuổi học sinh khỏi lớp này. Chỉ Giáo viên phụ trách mới được phép thao tác.");
+            }
+
+            // 3. Lấy thông tin ghi danh
+            var enrollment = await _classRepository.GetEnrollmentAsync(classId, studentId);
+            if (enrollment == null)
+            {
+                throw new Exception("Học sinh này không có mặt trong danh sách lớp.");
+            }
+
+            if (enrollment.Status == "Dropped")
+            {
+                throw new Exception("Học sinh này đã được rút khỏi lớp từ trước.");
+            }
+
+            // 4. Thực thi (Soft Update) - Giữ nguyên lịch sử học phí và điểm danh cũ
+            enrollment.Status = "Dropped";
+            enrollment.DroppedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            enrollment.UpdatedAt = DateTime.UtcNow;
+
+            await _classRepository.UpdateEnrollmentAsync(enrollment);
+
+            return true;
+        }
+        public async Task<bool> RestoreStudentInClassAsync(Guid classId, Guid studentId)
+        {
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+
+            // 1. Kiểm tra tồn tại và trạng thái lớp học
+            var classroom = await _classRepository.GetByIdAsync(classId);
+            if (classroom == null) throw new Exception("Lớp học không tồn tại.");
+
+            if (classroom.Status == "Archived" || classroom.Status == "Completed")
+                throw new Exception("Không thể khôi phục học sinh vào lớp đã kết thúc hoặc lưu trữ.");
+
+            // 2. Phân quyền
+            if (currentUserRole != "Admin" && classroom.TeacherId != currentUserId)
+                throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
+
+            // 3. Lấy thông tin ghi danh
+            var enrollment = await _classRepository.GetEnrollmentAsync(classId, studentId);
+            if (enrollment == null)
+                throw new Exception("Học sinh này chưa từng được ghi danh vào lớp.");
+
+            if (enrollment.Status == "Active")
+                throw new Exception("Học sinh này vẫn đang học bình thường trong lớp.");
+
+            // 4. Thực thi: Đổi Status và Xóa ngày Dropped
+            enrollment.Status = "Active";
+            enrollment.DroppedDate = null; // Quan trọng: Xóa ngày rút lớp
+            enrollment.UpdatedAt = DateTime.UtcNow;
+
+            await _classRepository.UpdateEnrollmentAsync(enrollment);
+
+            // Mở rộng sau này: Ghi log "Restore Student", Khôi phục Hóa đơn (nếu cần)...
+
+            return true;
+        }
+
     }
 }

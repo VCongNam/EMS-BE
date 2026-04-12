@@ -20,11 +20,9 @@ using EMS.Infrastructure.Configuration;
 using EMS.Infrastructure.Data;
 using EMS.Infrastructure.Repositories;
 using EMS.Infrastructure.Services; 
-using EMS.Infrastructure.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -60,6 +58,8 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialRepository>();
 builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
 builder.Services.AddScoped<ITuitionFeeRepository, TuitionFeeRepository>();
+// Progress report service and repository
+builder.Services.AddScoped<EMS.Application.Features.ProgressReports.Services.IProgressReportService, EMS.Application.Features.ProgressReports.Services.ProgressReportService>();
 builder.Services.AddScoped<IGradeCategoryRepository, GradeCategoryRepository>();
 builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -155,8 +155,13 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+        // Reduce default clock skew to avoid tokens being accepted slightly after expiry
+        ClockSkew = TimeSpan.Zero
     };
+    // In development, allow HTTP metadata endpoints; in production ensure HTTPS
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
 });
 
 
@@ -199,6 +204,23 @@ builder.Services.AddSwaggerGen(c =>
 
 
 var app = builder.Build();
+
+// Diagnostic check: verify DI registrations for progress report service/repository
+using (var startupScope = app.Services.CreateScope())
+{
+    var sp = startupScope.ServiceProvider;
+    var prSvc = sp.GetService<EMS.Application.Features.ProgressReports.Services.IProgressReportService>();
+    var prRepo = sp.GetService<EMS.Domain.Interfaces.IProgressReportRepository>();
+    if (prSvc == null)
+        System.Console.WriteLine("DI CHECK: IProgressReportService NOT registered");
+    else
+        System.Console.WriteLine("DI CHECK: IProgressReportService registered");
+
+    if (prRepo == null)
+        System.Console.WriteLine("DI CHECK: IProgressReportRepository NOT registered");
+    else
+        System.Console.WriteLine("DI CHECK: IProgressReportRepository registered");
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

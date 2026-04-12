@@ -183,7 +183,36 @@ namespace EMS.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        
+        public async Task<ClassEnrollment?> GetEnrollmentAsync(Guid classId, Guid studentId)
+        {
+            return await _context.ClassEnrollments
+                .FirstOrDefaultAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
+        }
 
+        public async Task UpdateEnrollmentAsync(ClassEnrollment enrollment)
+        {
+            _context.ClassEnrollments.Update(enrollment);
+            await _context.SaveChangesAsync();
+        }
+        public async Task<IEnumerable<ClassTum>> GetClassesByTAIdAsync(Guid taId)
+        {
+            return await _context.ClassTa
+                .Include(c => c.Class) // Quan trọng: Phải Include bảng Class để lấy tên lớp
+                .Where(c => c.Taid == taId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Student>> GetStudentsByClassIdAsync(Guid classId)
+        {
+            var students = await _context.ClassEnrollments
+                .AsNoTracking()
+                .Where(cm => cm.ClassId == classId
+                          && cm.Status == "Active")   
+                .Include(cm => cm.Student)          
+                .Select(cm => cm.Student)             
+                .ToListAsync();
+
+            return students;
+        }
     }
 }

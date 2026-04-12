@@ -29,8 +29,13 @@ namespace EMS.Infrastructure.Services
             // 1. Khởi tạo danh sách Claims cơ bản
             var claims = new List<Claim>
             {
+                // Standard and framework-friendly claims
                 new Claim(JwtRegisteredClaimNames.Sub, account.AccountId.ToString()),
+                // Also add ClaimTypes.NameIdentifier so CurrentUserService can read UserId reliably
+                new Claim(ClaimTypes.NameIdentifier, account.AccountId.ToString()),
+                // Add both registered email claim and ClaimTypes.Email for compatibility
                 new Claim(JwtRegisteredClaimNames.Email, account.Email ?? ""),
+                new Claim(ClaimTypes.Email, account.Email ?? string.Empty),
                 new Claim("FullName", account.FullName),
                 new Claim(ClaimTypes.Role, roleName),
                 

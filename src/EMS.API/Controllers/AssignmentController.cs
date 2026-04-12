@@ -81,18 +81,56 @@ namespace EMS.API.Controllers
             return Ok(assignments);
         }
 
-        // Xem danh sách submissions của 1 assignment
-        [HttpGet("{id}/submissions")]
-        public async Task<IActionResult> GetAssignmentSubmissions(Guid id)
+   
+
+        [HttpPut("submissions/{submissionId}/grade")]
+        public async Task<IActionResult> GradeSubmission(Guid submissionId, [FromBody] GradeSubmissionDto request)
         {
             try
             {
-                var result = await _assignmentService.GetAssignmentSubmissionsAsync(id);
+                await _assignmentService.GradeSubmissionAsync(submissionId, request);
+                return Ok(new { Message = "Submission graded successfully" });
+            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
+
+        [HttpPost("submissions/{submissionId}/feedback")]
+        public async Task<IActionResult> GiveFeedback(Guid submissionId, [FromBody] FeedbackSubmissionDto request)
+        {
+            try
+            {
+                await _assignmentService.GiveFeedbackAsync(submissionId, request);
+                return Ok(new { Message = "Feedback given successfully" });
+            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
+
+       [HttpPost("assignments/{assignmentId}/offline-grade")]
+        public async Task<IActionResult> OfflineGrade(Guid assignmentId, [FromBody] OfflineGradeDto request)
+        {
+            try
+            {
+                var submissionId = await _assignmentService.OfflineGradeAsync(assignmentId, request);
+                return Ok(new { SubmissionId = submissionId, Message = "Offline grade saved successfully" });
+            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
+
+        [HttpGet("{assignmentId}/submissions")]
+        public async Task<IActionResult> GetAssignmentSubmissions(Guid assignmentId)
+        {
+            try
+            {
+                var result = await _assignmentService.GetSubmissionsForAssignmentAsync(assignmentId);
                 return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message); 
             }
             catch (Exception ex)
             {
-                return NotFound(new { Error = ex.Message });
+                return BadRequest(new { Error = ex.Message }); 
             }
         }
     }

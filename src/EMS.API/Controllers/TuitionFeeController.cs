@@ -104,6 +104,7 @@ namespace EMS.API.Controllers
 
             return Ok(new { Message = "Đã phát hành hóa đơn cho kỳ này thành công." });
 
+
         }
 
 
@@ -154,6 +155,38 @@ namespace EMS.API.Controllers
 
         }
 
+        /// <summary>
+        /// Lấy danh sách hóa đơn của một lớp trong kỳ với paging và filter
+        /// </summary>
+        [HttpGet("class/{classId}/invoices")]
+        public async Task<IActionResult> GetClassInvoices(Guid classId,
+            [FromQuery] int? month,
+            [FromQuery] int? year,
+            [FromQuery] int page = 1,
+            [FromQuery] int size = 20,
+            [FromQuery] string? status = null,
+            [FromQuery] Guid? studentId = null)
+        {
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                int m = month ?? DateTime.UtcNow.Month;
+                int y = year ?? DateTime.UtcNow.Year;
+
+                var (items, total) = await tuitionFeeService.GetClassInvoicesForPeriodAsync(classId, m, y, teacherId, page, size, status, studentId);
+
+                return Ok(new { Items = items, TotalCount = total, Page = page, Size = size });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
 
 
         /// <summary>
@@ -168,11 +201,21 @@ namespace EMS.API.Controllers
 
         {
 
-            await tuitionFeeService.ReviewTransactionAsync(id, dto.IsApproved, currentUserService.UserId, dto.Note);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-
-
-            return Ok(new { Message = "Đã xử lý giao dịch thành công." });
+            try
+            {
+                await tuitionFeeService.ReviewTransactionAsync(id, dto.IsApproved, currentUserService.UserId, dto.Note);
+                return Ok(new { Message = "Đã xử lý giao dịch thành công." });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
 
         }
 
@@ -190,13 +233,20 @@ namespace EMS.API.Controllers
 
         {
 
-            var teacherId = currentUserService.UserId;
-
-            var result = await tuitionFeeService.GetClassFinancialDetailAsync(classId, month, year, teacherId);
-
-
-
-            return Ok(result);
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                var result = await tuitionFeeService.GetClassFinancialDetailAsync(classId, month, year, teacherId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
 
         }
 
@@ -214,48 +264,19 @@ namespace EMS.API.Controllers
 
         {
 
-            var teacherId = currentUserService.UserId;
-
-            var result = await tuitionFeeService.GetOverallReportAsync(teacherId);
-
-
-
-            return Ok(result);
-
-        }
-
-
-
-        [HttpPost("{transactionId}/review")]
-
-        public async Task<IActionResult> ReviewTransaction(Guid transactionId, [FromBody] ReviewTransactionDto request)
-
-        {
-
             try
-
             {
-
-                var result = await tuitionFeeService.ReviewTransactionAsync(transactionId, request);
-
-
-
-                if (result)
-
-                    return Ok(new { Message = request.IsApproved ? "Đã duyệt học phí." : " Đã từ chối minh chứng." });
-
-
-
-                return BadRequest(new { Message = "Có lỗi xảy ra trong quá trình xử lý." });
-
+                var teacherId = currentUserService.UserId;
+                var result = await tuitionFeeService.GetOverallReportAsync(teacherId);
+                return Ok(result);
             }
-
-            catch (Exception ex)
-
+            catch (UnauthorizedAccessException)
             {
-
-                return BadRequest(new { Error = ex.Message });
-
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
             }
 
         }
@@ -268,11 +289,20 @@ namespace EMS.API.Controllers
 
         {
 
-            var teacherId = currentUserService.UserId;
-
-            var result = await tuitionFeeService.GetClassFinancialSummariesAsync(teacherId);
-
-            return Ok(result);
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                var result = await tuitionFeeService.GetClassFinancialSummariesAsync(teacherId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
 
         }
 
@@ -284,11 +314,20 @@ namespace EMS.API.Controllers
 
         {
 
-            var teacherId = currentUserService.UserId;
-
-            var result = await tuitionFeeService.GetDashboardAnalyticsAsync(teacherId);
-
-            return Ok(result);
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                var result = await tuitionFeeService.GetDashboardAnalyticsAsync(teacherId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
 
         }
 
@@ -300,11 +339,22 @@ namespace EMS.API.Controllers
 
         {
 
-            var teacherId = currentUserService.UserId;
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            await tuitionFeeService.ExtendInvoiceDueDateAsync(invoiceId, dto.AdditionalDays, teacherId);
-
-            return Ok(new { Message = $"Đã gia hạn hóa đơn thêm {dto.AdditionalDays} ngày." });
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                await tuitionFeeService.ExtendInvoiceDueDateAsync(invoiceId, dto.AdditionalDays, teacherId);
+                return Ok(new { Message = $"Đã gia hạn hóa đơn thêm {dto.AdditionalDays} ngày." });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
 
         }
 
@@ -320,15 +370,22 @@ namespace EMS.API.Controllers
 
         {
 
-            var teacherId = currentUserService.UserId;
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-
-
-            await tuitionFeeService.ExtendClassInvoicesDueDateAsync(classId, dto, teacherId);
-
-
-
-            return Ok(new { Message = $"Đã gia hạn thành công thêm {dto.AdditionalDays} ngày cho các hóa đơn đang nợ của lớp." });
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                await tuitionFeeService.ExtendClassInvoicesDueDateAsync(classId, dto, teacherId);
+                return Ok(new { Message = $"Đã gia hạn thành công thêm {dto.AdditionalDays} ngày cho các hóa đơn đang nợ của lớp." });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
 
         }
 

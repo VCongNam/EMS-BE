@@ -93,6 +93,7 @@ namespace EMS.Application.Features.Classes.Services
                 Email = cta.Ta.Ta.Email,
                 Permission = cta.Permission,
                 SalaryPerSession = cta.SalaryPerSession,
+                ClassTAId = cta.ClassTaid
             }).ToList();
         }
 
@@ -178,26 +179,59 @@ namespace EMS.Application.Features.Classes.Services
                 FullName = ct.Ta.Ta.FullName,
                 Email = ct.Ta.Ta.Email,
                 PhoneNumber = ct.Ta.Ta.PhoneNumber,
+                ClassTaId = ct.ClassTaid
             }).ToList();
             return result;
         }
 
         public async Task<TAProfileDto?> FindTAByEmailAsync(string email)
         {
-            if(email == null) throw new ArgumentNullException("Hãy thêm email để tìm trợ giảng!");
+            if (email == null) throw new ArgumentNullException("Hãy thêm email để tìm trợ giảng!");
             var taEntity = await _taRepository.GetTAByEmailAsync(email);
             if (taEntity == null)
                 throw new Exception("Không có trợ giảng nào có email này!");
 
             return new TAProfileDto
             {
-                TAId = taEntity.Taid, 
+                TAId = taEntity.Taid,
                 FullName = taEntity.Ta.FullName,
                 Email = taEntity.Ta.Email,
                 PhoneNumber = taEntity.Ta.PhoneNumber,
                 Bio = taEntity.Bio,
                 AvatarURL = taEntity.Ta.AvatarUrl,
             };
+        }
+
+        // 1. Lấy tất cả Task của TA đó từ tất cả các lớp họ tham gia
+        public async Task<IEnumerable<TaskDto>> GetTasksByTAIdAsync(Guid taId)
+        {
+            // Bạn cần viết thêm hàm này trong TARepository để query:
+            // Join từ ClassTA sang TeachingAssistantTask dựa trên TAID
+            var tasks = await _taRepository.GetTasksByTAIdAsync(taId);
+
+            return tasks.Select(t => new TaskDto
+            {
+                TATaskID = t.TataskId,
+                Title = t.Title,
+                DueDate = t.DueDate,
+                Status = t.Status ?? "N/A",
+                Type = t.Type ?? "N/A"
+            }).ToList();
+        }
+
+        // 2. Lấy danh sách lớp học mà TA này được phân công
+        public async Task<IEnumerable<AssignedClassDto>> GetClassesByTAIdAsync(Guid taId)
+        {
+            // Query bảng ClassTA (ClassTum) lọc theo TAID và Include bảng Class
+            var assignments = await _classRepository.GetClassesByTAIdAsync(taId);
+
+            return assignments.Select(a => new AssignedClassDto
+            {
+                ClassID = a.ClassId,
+                ClassName = a.Class.ClassName, // Giả sử bảng Class có trường ClassName
+                Permission = a.Permission,
+                SalaryPerSession = a.SalaryPerSession
+            }).ToList();
         }
     }
 }

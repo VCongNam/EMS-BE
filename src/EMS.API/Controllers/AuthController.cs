@@ -73,26 +73,36 @@ namespace EMS.API.Controllers
             }
         }
 
-        [Authorize]
+        [Authorize(Roles = "Student")]
         [HttpPost("select-profile")]
         public async Task<IActionResult> SelectProfile([FromBody] SelectProfileRequest request)
         {
-            // Token validation logic vẫn để ở Controller là chuẩn (thuộc về lớp vận chuyển)
             var tokenType = User.FindFirst("TokenType")?.Value;
             if (tokenType != "Temp") return BadRequest(new { Message = "Token không hợp lệ." });
 
-            // Chỉ việc gọi Service, không cần truyền ID
             return Ok(await authService.SelectProfileAsync(request.StudentId));
         }
 
-        [Authorize(Roles = "Student")]
         [HttpPost("verify-onboarding")]
         public async Task<IActionResult> VerifyOnboarding([FromBody] OnboardingRequest request)
         {
-            // Gọi Service, ID tự được xử lý bên dưới
             await authService.VerifyOnboardingAsync(request);
             return Ok(new { Message = "Kích hoạt tài khoản thành công!" });
         }
 
+        [HttpPost("resend-otp")]
+        public async Task<IActionResult> ResendOtp([FromBody] ResendOtpRequest request)
+        {
+            // .NET sẽ tự động check Validation của DTO ở đây
+            try
+            {
+                await authService.ResendOtpAsync(request);
+                return Ok(new { Message = "Mã OTP mới đã được gửi. Vui lòng kiểm tra hòm thư!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }

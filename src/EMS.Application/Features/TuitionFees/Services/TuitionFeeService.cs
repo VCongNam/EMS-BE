@@ -27,6 +27,64 @@ namespace EMS.Application.Features.TuitionFees.Services
             _logger = logger;
         }
 
+        public async Task<(IEnumerable<ClassInvoiceItemDto> Items, int TotalCount)> GetClassInvoicesForPeriodAsync(
+            Guid classId,
+            int month,
+            int year,
+            Guid teacherId,
+            int page,
+            int size,
+            string? status = null,
+            Guid? studentId = null)
+        {
+            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
+                throw new UnauthorizedAccessException("Bạn không có quyền xem hóa đơn của lớp này.");
+
+            var (items, total) = await tuitionFeeRepository.GetInvoicesByClassAndPeriodPagedAsync(classId, month, year, page, size, status, studentId);
+
+            var pageItems = items.Select(i => new ClassInvoiceItemDto
+            {
+                InvoiceId = i.InvoiceId,
+                StudentId = i.StudentId,
+                StudentName = i.Student?.FullName ?? "Unknown",
+                SessionCount = i.SessionCount ?? 0,
+                TotalAmount = i.Amount,
+                PaidAmount = i.Transactions?.Sum(t => t.AmountPaid) ?? 0m,
+                Status = i.Status ?? "",
+                DueDate = i.DueDate,
+                ProofImageUrl = i.Transactions?.OrderByDescending(t => t.CreatedAt).FirstOrDefault()?.ProofImageUrl
+            }).ToList();
+
+            return (pageItems, total);
+        }
+
+        public async Task<(IEnumerable<ClassInvoiceItemDto> Items, int TotalCount)> GetClassInvoicesForPeriodAsync(Guid classId, int month, int year, Guid teacherId, int page, int size)
+        {
+            // Security: only teacher owner
+            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền xem hóa đơn của lớp này.");
+            }
+
+            var (invoices, total) = await tuitionFeeRepository.GetInvoicesByClassAndPeriodPagedAsync(classId, month, year, page, size, null, null);
+
+            var pageItems = invoices
+                .Select(i => new ClassInvoiceItemDto
+                {
+                    InvoiceId = i.InvoiceId,
+                    StudentId = i.StudentId,
+                    StudentName = i.Student?.FullName ?? "Unknown",
+                    SessionCount = i.SessionCount ?? 0,
+                    TotalAmount = i.Amount,
+                    PaidAmount = i.Transactions?.Where(t => t.Status == "Completed").Sum(t => t.AmountPaid) ?? 0m,
+                    Status = i.Status ?? "Pending",
+                    DueDate = i.DueDate,
+                    ProofImageUrl = i.Transactions?.OrderByDescending(t => t.CreatedAt).FirstOrDefault()?.ProofImageUrl
+                }).ToList();
+
+            return (pageItems, total);
+        }
+
         public async Task<IEnumerable<TuitionFeeConfigDto>> GetTuitionFeeConfigsAsync(Guid teacherId)
         {
             var currentMonth = DateTime.UtcNow.Month;
@@ -48,7 +106,8 @@ namespace EMS.Application.Features.TuitionFees.Services
                     IsInvoiceGeneratedThisMonth = isGenerated,
                     PricePerSession = c.TuitionFee,
                     BillingMethod = c.BillingMethod ?? "Postpaid",
-                    StudentCount = c.ClassEnrollments.Count
+                    StudentCount = c.ClassEnrollments.Count,
+                    PaymentDeadlineDays = c.PaymentDeadlineDays ?? 0
                 });
             }
 
@@ -87,6 +146,7 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             classObj.TuitionFee = req.TuitionFee;
             classObj.BillingMethod = req.BillingMethod;
+            classObj.PaymentDeadlineDays = req.PaymentDeadlineDays;
             classObj.UpdatedAt = DateTime.UtcNow;
 
             await tuitionFeeRepository.UpdateClassAsync(classObj);
@@ -111,17 +171,24 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new Exception("Lớp học không tồn tại.");
             }
 
-            var students = await tuitionFeeRepository.GetActiveStudentsInClassAsync(classId);
+            var students = (await tuitionFeeRepository.GetActiveStudentsInClassAsync(classId)).ToList();
             var invoices = new List<Invoice>();
             int scheduledSessions = await tuitionFeeRepository.CountScheduledSessionsAsync(classId, req.PeriodMonth, req.PeriodYear);
+
+            // Build start/end date for the period to compute attendance in batch
+            var periodStart = new DateTime(req.PeriodYear, req.PeriodMonth, 1, 0, 0, 0, DateTimeKind.Utc);
+            var periodEnd = new DateTime(req.PeriodYear, req.PeriodMonth, DateTime.DaysInMonth(req.PeriodYear, req.PeriodMonth), 23, 59, 59, DateTimeKind.Utc);
+
+            // Batch attendance counts to avoid per-student queries
+            var attendanceCounts = await tuitionFeeRepository.GetAttendanceCountsForClassPeriodAsync(classId, periodStart, periodEnd);
 
             foreach (var enrollment in students)
             {
                 decimal amountToPay = 0;
-                string description = "";
+                string description = string.Empty;
                 int sessionCount = 0;
 
-                if (classObj.BillingMethod == "Prepaid")
+                if (string.Equals(classObj.BillingMethod, "Prepaid", StringComparison.OrdinalIgnoreCase))
                 {
                     decimal baseFee = scheduledSessions * classObj.TuitionFee;
                     decimal discount = enrollment.CreditBalance ?? 0;
@@ -130,18 +197,18 @@ namespace EMS.Application.Features.TuitionFees.Services
                     sessionCount = scheduledSessions;
                     description = $"Học phí dự kiến {scheduledSessions} buổi. Cấn trừ {discount:N0}đ.";
 
+                    // mark credit to be reset; actual update will occur inside repository transaction
                     enrollment.CreditBalance = 0;
                 }
                 else
                 {
-                    int attended = await tuitionFeeRepository.CountStudentAttendanceAsync(enrollment.StudentId, classId, req.PeriodMonth, req.PeriodYear);
-
+                    attendanceCounts.TryGetValue(enrollment.StudentId, out int attended);
                     amountToPay = attended * classObj.TuitionFee;
                     sessionCount = attended;
                     description = $"Học phí thực tế {attended} buổi.";
                 }
 
-                if (amountToPay > 0 || classObj.BillingMethod == "Prepaid")
+                if (amountToPay > 0 || string.Equals(classObj.BillingMethod, "Prepaid", StringComparison.OrdinalIgnoreCase))
                 {
                     invoices.Add(new Invoice
                     {
@@ -192,10 +259,11 @@ namespace EMS.Application.Features.TuitionFees.Services
             {
                 _logger.LogError($"Lỗi gửi thông báo phát hành hóa đơn: {ex.Message}");
             }
-
-            if (classObj.BillingMethod == "Prepaid")
+            // Atomically persist invoices and enrollment updates to avoid race/partial updates
+            var persisted = await tuitionFeeRepository.AddInvoicesWithEnrollmentsAsync(invoices, students, classId, req.PeriodMonth, req.PeriodYear);
+            if (!persisted)
             {
-                await tuitionFeeRepository.UpdateClassEnrollmentsAsync(students);
+                throw new Exception("Phát hành hóa đơn thất bại hoặc đã có hóa đơn cho kỳ này (đã chốt bởi yêu cầu khác). Vui lòng kiểm tra lại.");
             }
         }
 
@@ -249,7 +317,7 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             if (t == null || t.Status != "Pending")
             {
-                return;
+                throw new Exception("Giao dịch không tồn tại hoặc không ở trạng thái chờ xử lý.");
             }
 
             Invoice? inv = null;
@@ -258,16 +326,21 @@ namespace EMS.Application.Features.TuitionFees.Services
             {
                 t.Status = "Completed";
                 t.ApprovedBy = approverId;
+                t.PaidDate = t.PaidDate ?? DateTime.UtcNow;
+                t.UpdatedAt = DateTime.UtcNow;
+
                 inv = t.Invoice;
 
                 var totalPaid = await tuitionFeeRepository.GetTotalPaidAmountAsync(inv!.InvoiceId) + t.AmountPaid;
                 inv.Status = totalPaid >= inv.Amount ? "Paid" : "Partial";
+                inv.UpdatedAt = DateTime.UtcNow;
             }
             else
             {
                 t.Status = "Rejected";
                 t.ApprovedBy = approverId;
                 t.Note = note;
+                t.UpdatedAt = DateTime.UtcNow;
             }
 
             await tuitionFeeRepository.UpdateTransactionStatusAsync(t, inv);
@@ -281,20 +354,27 @@ namespace EMS.Application.Features.TuitionFees.Services
                 {
                     var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(t.Invoice.StudentId);
                     var studentId = t.Invoice.StudentId;
-                    var className = t.Invoice.Class.ClassName;
+                    var className = t.Invoice.Class?.ClassName ?? "Lớp học";
 
                     string content = isApproved
                         ? $"Giao dịch {t.AmountPaid:N0}đ cho lớp {className} {statusText}. Cảm ơn bạn!"
                         : $"Giao dịch {t.AmountPaid:N0}đ cho lớp {className} {statusText}. Lý do: {note ?? "Thông tin không khớp"}.";
 
-                    await _notificationService.SendNotificationAsync(
-                        targetAccountId: (Guid)targetAccountId,
-                        studentId: studentId,
-                        title: title,
-                        content: content,
-                        actionUrl: $"/student/invoices/{t.InvoiceId}",
-                        type: "Invoice"
-                    );
+                    if (targetAccountId.HasValue)
+                    {
+                        await _notificationService.SendNotificationAsync(
+                            targetAccountId: targetAccountId.Value,
+                            studentId: studentId,
+                            title: title,
+                            content: content,
+                            actionUrl: $"/student/invoices/{t.InvoiceId}",
+                            type: "Invoice"
+                        );
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Không tìm thấy accountId cho student {StudentId} khi gửi thông báo giao dịch.", studentId);
+                    }
                 }
             }
             catch (Exception ex)
@@ -342,33 +422,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                 TotalPendingInvoices = await tuitionFeeRepository.CountInvoicesByStatusForTeacherAsync("Pending", teacherId)
                                      + await tuitionFeeRepository.CountInvoicesByStatusForTeacherAsync("Partial", teacherId)
             };
-        }
-
-        public async Task<bool> ReviewTransactionAsync(Guid transactionId, ReviewTransactionDto request)
-        {
-            var transaction = await tuitionFeeRepository.GetTransactionWithInvoiceAsync(transactionId);
-            if (transaction == null) throw new KeyNotFoundException("Giao dịch không tồn tại.");
-            if (transaction.Status != "Pending") throw new Exception("Giao dịch này đã được xử lý trước đó.");
-            Invoice? invoiceToUpdate = null;
-
-            if (request.IsApproved)
-            {
-                transaction.Status = "Approved";
-
-                if (transaction.Invoice != null)
-                {
-                    invoiceToUpdate = transaction.Invoice;
-                    invoiceToUpdate.Status = "Paid";
-                    invoiceToUpdate.UpdatedAt = DateTime.UtcNow;
-                }
-            }
-            else
-            {
-                transaction.Status = "Rejected";
-            }
-
-            transaction.UpdatedAt = DateTime.UtcNow;
-            return await tuitionFeeRepository.UpdateTransactionStatusAsync(transaction, invoiceToUpdate);
         }
         public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId)
         {

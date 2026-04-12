@@ -30,6 +30,11 @@ namespace EMS.Domain.Interfaces
         Task<bool> HasInvoicesForPeriodAsync(Guid classId, int month, int year);
 
         Task AddInvoicesAsync(IEnumerable<Invoice> invoices);
+        // Atomically add invoices and update enrollments in a single transaction.
+        Task<bool> AddInvoicesWithEnrollmentsAsync(IEnumerable<Invoice> invoices, IEnumerable<ClassEnrollment> enrollments, Guid classId, int periodMonth, int periodYear);
+
+        // Get attendance counts for all students in a class within a period (start/end date)
+        Task<Dictionary<Guid,int>> GetAttendanceCountsForClassPeriodAsync(Guid classId, DateTime startDate, DateTime endDate);
 
         Task<Transaction?> GetTransactionWithInvoiceAsync(Guid transactionId);
         Task<decimal> GetTotalPaidAmountAsync(Guid invoiceId);
@@ -43,6 +48,8 @@ namespace EMS.Domain.Interfaces
 
 
         Task<IEnumerable<Invoice>> GetInvoicesByClassAndPeriodAsync(Guid classId, int month, int year);
+        // Paged & filtered version to support server-side paging/filters
+        Task<(List<Invoice> Items, int TotalCount)> GetInvoicesByClassAndPeriodPagedAsync(Guid classId, int month, int year, int page, int size, string? status = null, Guid? studentId = null);
         Task UpdateInvoicesAsync(IEnumerable<Invoice> invoices);
         Task<(List<(Invoice Invoice, Transaction? LatestTransaction)> Items, int TotalCount)> GetStudentInvoicesAsync(
             Guid studentId, int page, int size, Guid? classId);
