@@ -19,7 +19,7 @@ namespace EMS.Domain.Interfaces
         Task<List<(Guid AccId, Guid? StdId)>> GetStudentsInClassAsync(Guid classId);
         Task<List<Guid>> GetTutorsInClassAsync(Guid classId);
         Task<List<(Guid AccId, Guid? StdId)>> GetAllParticipantsInClassAsync(Guid classId);
-
+        Task<(Guid AccountId, string ClassName)> GetTAAccountInfoByClassTaidAsync(Guid classTaid);
 
     }
 }

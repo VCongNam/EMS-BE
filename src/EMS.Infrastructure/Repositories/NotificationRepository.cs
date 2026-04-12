@@ -98,13 +98,13 @@ namespace EMS.Infrastructure.Repositories
         public async Task<List<(Guid AccId, Guid? StdId)>> GetStudentsInClassAsync(Guid classId)
         {
             var data = await _context.ClassEnrollments
-                .Where(ce => ce.ClassId == classId)
-                .Select(ce => new
-                {
-                    ce.Student.AccountId,
-                    StudentId = (Guid?)ce.StudentId
-                })
-                .ToListAsync();
+            .Where(ce => ce.ClassId == classId)
+            .Select(ce => new
+            {
+                ce.Student.AccountId,
+                StudentId = (Guid?)ce.StudentId 
+            })
+            .ToListAsync();
 
             return data.Select(x => (x.AccountId, x.StudentId)).ToList();
         }
@@ -124,10 +124,23 @@ namespace EMS.Infrastructure.Repositories
             var students = await GetStudentsInClassAsync(classId);
             participants.AddRange(students.Select(s => (s.AccId, (Guid?)s.StdId)));
 
-            var tutors = await GetTutorsInClassAsync(classId);
-            participants.AddRange(tutors.Select(t => (t, (Guid?)null)));
+            var tutorAccountIds = await GetTutorsInClassAsync(classId);
+            foreach (var accId in tutorAccountIds)
+            {
+                participants.Add((accId, null));
+            }
 
             return participants;
+        }
+
+        public async Task<(Guid AccountId, string ClassName)> GetTAAccountInfoByClassTaidAsync(Guid classTaid)
+        {
+            var info = await _context.ClassTa
+                .Where(ct => ct.ClassTaid == classTaid)
+                .Select(ct => new { ct.Taid, ct.Class.ClassName })
+                .FirstOrDefaultAsync();
+
+            return info != null ? (info.Taid, info.ClassName) : (Guid.Empty, string.Empty);
         }
     }
 }

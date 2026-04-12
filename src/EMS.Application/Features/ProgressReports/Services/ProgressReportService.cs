@@ -1,7 +1,9 @@
 ﻿using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.ProgressReports.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,11 +16,17 @@ namespace EMS.Application.Features.ProgressReports.Services
     {
         private readonly IProgressReportRepository reportRepository;
         private readonly ICurrentUserService currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<ProgressReportService> _logger;
 
-        public ProgressReportService(IProgressReportRepository reportRepository, ICurrentUserService currentUserService)
+        public ProgressReportService(IProgressReportRepository reportRepository, ICurrentUserService currentUserService,
+            INotificationService notificationService,
+    ILogger<ProgressReportService> logger)
         {
             this.reportRepository = reportRepository;
             this.currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         // --- CÁC HÀM PHỤ TRỢ TÍNH TOÁN (Sửa kiểu trả về thành decimal để khớp với Entity) ---
@@ -159,6 +167,28 @@ namespace EMS.Application.Features.ProgressReports.Services
             report.Status = "Published";
             report.UpdatedAt = DateTime.UtcNow;
             await reportRepository.UpdateAsync(report);
+
+            //Notification
+            try
+            {
+                if (report.Student != null)
+                {
+                    string monthYear = $"{report.PeriodMonth}/{report.PeriodYear}";
+
+                    await _notificationService.SendNotificationAsync(
+                        targetAccountId: report.Student.AccountId,
+                        studentId: report.StudentId,
+                        title: "Báo cáo học tập mới",
+                        content: $"Báo cáo kết quả học tập tháng {monthYear} của lớp {report.Class.ClassName} đã có. Phụ huynh và học sinh vui lòng vào xem chi tiết.",
+                        actionUrl: $"/student/reports/{report.ReportId}",
+                        type: "Report"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo Progress Report: {ex.Message}");
+            }
         }
 
         public async Task DeleteReportAsync(Guid id)

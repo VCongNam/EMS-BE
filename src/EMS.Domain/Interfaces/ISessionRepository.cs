@@ -29,5 +29,6 @@ namespace EMS.Domain.Interfaces
             DateTime fromDate,
             DateTime toDate,
             Guid? classId);
+        Task<List<Session>> GetUpcomingSessionsAsync(DateTime fromTime, DateTime toTime);
     }
 }

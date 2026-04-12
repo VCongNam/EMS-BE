@@ -1,4 +1,5 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using DocumentFormat.OpenXml.Office2016.Excel;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Notifications.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
@@ -109,7 +110,7 @@ namespace EMS.Application.Features.Notifications.Services
                 {
                     NotificationId = Guid.NewGuid(),
                     AccountId = target.AccId,
-                    StudentId = target.StdId,
+                    StudentId = (target.StdId == Guid.Empty) ? null : target.StdId,
                     Title = title,
                     Content = content,
                     ActionUrl = actionUrl,
@@ -152,6 +153,12 @@ namespace EMS.Application.Features.Notifications.Services
         public async Task<List<(Guid AccId, Guid? StdId)>> GetAllClassTargetsAsync(Guid classId)
         {
             return await _notificationRepository.GetAllParticipantsInClassAsync(classId);
+        }
+
+        public async Task<(Guid taAccountId, string className)> GetTAAccountInfoByClassTaidAsync(Guid classTAID)
+        {
+            var (taAccountId, className) = await _notificationRepository.GetTAAccountInfoByClassTaidAsync(classTAID);
+            return (taAccountId, className);
         }
     }
 }
