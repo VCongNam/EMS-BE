@@ -98,7 +98,7 @@ namespace EMS.Application.Features.Assignments.Services
             //Notification
             try
             {
-                var studentAccountIds = await _assignmentRepository.GetStudentAndAccountIdsByClassIdAsync(request.ClassId);
+                var studentAccountIds = await _notificationService.GetStudentTargetsAsync(request.ClassId);
                 if (studentAccountIds.Any())
                 {
                     await _notificationService.SendBulkNotificationWithStudentAsync(
@@ -173,7 +173,7 @@ namespace EMS.Application.Features.Assignments.Services
             //Notification
             try
             {
-                var studentAccountIds = await _assignmentRepository.GetStudentAndAccountIdsByClassIdAsync(assignment.ClassId);
+                var studentAccountIds = await _notificationService.GetStudentTargetsAsync(assignment.ClassId);
                 if (studentAccountIds.Any())
                 {
                     await _notificationService.SendBulkNotificationWithStudentAsync(

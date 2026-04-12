@@ -102,7 +102,7 @@ namespace EMS.Application.Features.Notifications.Services
             //await _signalRService.SendNotificationToUser(targetAccountId, notificationData);
         }
 
-        public async Task SendBulkNotificationWithStudentAsync(List<(Guid AccId, Guid StdId)> targets, string title, string content, string actionUrl, string type)
+        public async Task SendBulkNotificationWithStudentAsync(List<(Guid AccId, Guid? StdId)> targets, string title, string content, string actionUrl, string type)
         {
             var notifications = new List<Notification>();
             foreach (var target in targets)
@@ -116,7 +116,8 @@ namespace EMS.Application.Features.Notifications.Services
                     Content = content,
                     ActionUrl = actionUrl,
                     IsRead = false,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    Type = type
                 });
             }
             await _notificationRepository.AddRangeAsync(notifications);
@@ -133,6 +134,26 @@ namespace EMS.Application.Features.Notifications.Services
             //        RelevantStudentIds = targets.Where(t => t.AccId == accId).Select(t => t.StdId)
             //    });
             //}
+        }
+
+        public async Task<Guid?> GetAccountIdByStudentIdAsync(Guid studentId)
+        {
+            return await _notificationRepository.GetAccountIdByStudentId(studentId);
+        }
+
+        public async Task<List<(Guid AccId, Guid? StdId)>> GetStudentTargetsAsync(Guid classId)
+        {
+            return await _notificationRepository.GetStudentsInClassAsync(classId);
+        }
+
+        public async Task<List<Guid>> GetTutorTargetsAsync(Guid classId)
+        {
+            return await _notificationRepository.GetTutorsInClassAsync(classId);
+        }
+
+        public async Task<List<(Guid AccId, Guid? StdId)>> GetAllClassTargetsAsync(Guid classId)
+        {
+            return await _notificationRepository.GetAllParticipantsInClassAsync(classId);
         }
     }
 }
