@@ -232,25 +232,7 @@ namespace EMS.Application.Features.Assignments.Services
             return "Published";
         }
 
-        //private void ValidateFile(string fileName, long fileSize, string contentType)
-        //{
-        //    if (fileSize > MaxFileSize)
-        //        throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
-
-
-        
-
-        //private void ValidateFile(string fileName, long fileSize, string contentType)
-        //{
-        //    if (fileSize > MaxFileSize)
-        //        throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
-
-
-        //    if (contentType.StartsWith("image/")) return;
-
-        //    if (!AllowedMimeTypes.Contains(contentType))
-        //        throw new Exception($"File type '{contentType}' is not allowed.");
-        //}
+     
         private void ValidateFile(string fileName, long fileSize, string contentType)
         {
             if (fileSize > MaxFileSize)
@@ -274,11 +256,11 @@ namespace EMS.Application.Features.Assignments.Services
 
         private async Task RequireTeacherAccessByAssignmentAsync(Guid assignmentId)
         {
-            // Tìm assignment
+
             var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
             if (assignment == null) throw new Exception("Assignment not found.");
 
-            // Lấy class từ assignment đó
+         
             var classroom = await _classRepository.GetByIdAsync(assignment.ClassId);
             if (classroom == null) throw new Exception("Class not found.");
 
@@ -292,7 +274,7 @@ namespace EMS.Application.Features.Assignments.Services
             var submission = await _submissionRepository.GetByIdAsync(submissionId);
             if (submission == null) throw new Exception("Submission not found.");
 
-            // VÁ LỖI BẢO MẬT: Bắt buộc hệ thống tự tìm Class dựa trên dữ liệu thật trong DB
+        
             await RequireTeacherAccessByAssignmentAsync(submission.AssignmentId);
 
             submission.Grade = request.Grade;
@@ -348,6 +330,79 @@ namespace EMS.Application.Features.Assignments.Services
 
             await _submissionRepository.AddAsync(newSubmission);
             return newSubmission.SubmissionId;
+        }
+
+        public async Task<AssignmentSubmissionsListDto> GetSubmissionsForAssignmentAsync(Guid assignmentId)
+        {
+            await RequireTeacherAccessByAssignmentAsync(assignmentId);
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+
+            var studentsInClass = await _classRepository.GetStudentsByClassIdAsync(assignment.ClassId);
+
+            var submissions = await _submissionRepository.GetSubmissionsByAssignmentIdAsync(assignmentId);
+
+            var response = new AssignmentSubmissionsListDto
+            {
+                AssignmentId = assignment.AssignmentId,
+                Title = assignment.Title,
+                DueDate = assignment.DueDate,
+                MaxScore = 10,
+                IsOffline = (bool)assignment.Isoffline
+            };
+
+            var currentTime = DateTime.UtcNow;
+
+            foreach (var student in studentsInClass)
+            {
+                var sub = submissions.FirstOrDefault(s => s.StudentId == student.StudentId);
+
+                var studentDto = new StudentSubmissionDto
+                {
+                    StudentId = student.StudentId,
+                    FullName = student.FullName,
+                    
+                };
+
+                if (sub != null)
+                {
+                    // NẾU ĐÃ NỘP BÀI
+                    studentDto.SubmissionId = sub.SubmissionId;
+                    studentDto.SubmittedAt = sub.SubmittedAt;
+                    studentDto.Grade = sub.Grade;
+
+                    // Xử lý status thông minh
+                   if (sub.SubmittedAt > assignment.DueDate)
+                    {
+                        studentDto.Status = "Late"; // Nộp muộn
+                    }
+                    else
+                    {
+                        studentDto.Status = "In Time"; // Đã nộp đúng hạn
+                    }
+                }
+                else
+                {
+             
+                    if ((bool)assignment.Isoffline)
+                    {
+                        studentDto.Status = "Not Graded"; 
+                    }
+                    else if (currentTime > assignment.DueDate)
+                    {
+                        studentDto.Status = "Missing";
+                    }
+                    else
+                    {
+                        studentDto.Status = "Not Submitted"; 
+                    }
+                }
+
+                response.Students.Add(studentDto);
+            }
+
+            response.Students = response.Students.OrderBy(s => s.FullName).ToList();
+
+            return response;
         }
     }
 }

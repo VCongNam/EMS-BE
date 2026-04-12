@@ -1,4 +1,4 @@
-using EMS.Domain.Entities;
+﻿using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -99,6 +99,25 @@ namespace EMS.Infrastructure.Repositories
         public async Task AddAttachmentsAsync(IEnumerable<SubmissionAttachment> attachments)
         {
             await _context.SubmissionAttachments.AddRangeAsync(attachments);
+        }
+
+        public async Task<IEnumerable<Submission>> GetByAssignmentIdsAsync(List<Guid> assignmentIds)
+        {
+            return await _context.Submissions
+                .Where(s => assignmentIds.Contains(s.AssignmentId))
+                .ToListAsync();
+        }
+
+        public async Task AddRangeAsync(IEnumerable<Submission> submissions)
+        {
+            await _context.Submissions.AddRangeAsync(submissions);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateRangeAsync(IEnumerable<Submission> submissions)
+        {
+            _context.Submissions.UpdateRange(submissions);
+            await _context.SaveChangesAsync();
         }
     }
 

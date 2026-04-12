@@ -81,20 +81,7 @@ namespace EMS.API.Controllers
             return Ok(assignments);
         }
 
-        // Xem danh sách submissions của 1 assignment
-        [HttpGet("{id}/submissions")]
-        public async Task<IActionResult> GetAssignmentSubmissions(Guid id)
-        {
-            try
-            {
-                var result = await _assignmentService.GetAssignmentSubmissionsAsync(id);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return NotFound(new { Error = ex.Message });
-            }
-        }
+   
 
         [HttpPut("submissions/{submissionId}/grade")]
         public async Task<IActionResult> GradeSubmission(Guid submissionId, [FromBody] GradeSubmissionDto request)
@@ -127,6 +114,24 @@ namespace EMS.API.Controllers
                 return Ok(new { SubmissionId = submissionId, Message = "Offline grade saved successfully" });
             }
             catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
+
+        [HttpGet("{assignmentId}/submissions")]
+        public async Task<IActionResult> GetAssignmentSubmissions(Guid assignmentId)
+        {
+            try
+            {
+                var result = await _assignmentService.GetSubmissionsForAssignmentAsync(assignmentId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message); 
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message }); 
+            }
         }
     }
 }

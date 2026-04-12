@@ -201,5 +201,18 @@ namespace EMS.Infrastructure.Repositories
                 .Where(c => c.Taid == taId)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Student>> GetStudentsByClassIdAsync(Guid classId)
+        {
+            var students = await _context.ClassEnrollments
+                .AsNoTracking()
+                .Where(cm => cm.ClassId == classId
+                          && cm.Status == "Active")   
+                .Include(cm => cm.Student)          
+                .Select(cm => cm.Student)             
+                .ToListAsync();
+
+            return students;
+        }
     }
 }
