@@ -205,7 +205,7 @@ namespace EMS.Application.Features.Posts.Services
                     CommentId = c.CommentId,
                     AuthorId = c.AuthorId,
                     // If comment has Student assigned use that student's name; otherwise use account full name
-                    AuthorName = c.Student?.FullName ?? c.Author?.FullName ?? null!,
+                    AuthorName = c.Author?.FullName ?? null!,
                     Content = c.Content,
                     CreatedAt = c.CreatedAt
                 }).OrderBy(c => c.CreatedAt).ToList()
@@ -240,7 +240,7 @@ namespace EMS.Application.Features.Posts.Services
                 {
                     CommentId = c.CommentId,
                     AuthorId = c.AuthorId,
-                    AuthorName = c.Student?.FullName ?? c.Author?.FullName ?? "Unknown",
+                    AuthorName = c.Author?.FullName ?? "Unknown",
                     Content = c.Content,
                     CreatedAt = c.CreatedAt
                 }).OrderBy(c => c.CreatedAt).ToList()
@@ -257,7 +257,6 @@ namespace EMS.Application.Features.Posts.Services
                 CommentId = Guid.NewGuid(),
                 PostId = postId,
                 AuthorId = currentUserService.UserId,
-                StudentId = currentUserService.StudentId,
                 Content = request.Content,
                 IsDeleted = false,
                 CreatedAt = DateTime.UtcNow
