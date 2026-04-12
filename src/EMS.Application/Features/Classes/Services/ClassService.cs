@@ -19,7 +19,7 @@ namespace EMS.Application.Features.Classes.Services
         private readonly ICurrentUserService _currentUser;
         private readonly INotificationService _notificationService;
 
-        public ClassService(IClassRepository classRepository, ISessionRepository sessionRepository, ICurrentUserService currentUser, NotificationService notificationService)
+        public ClassService(IClassRepository classRepository, ISessionRepository sessionRepository, ICurrentUserService currentUser, INotificationService notificationService)
         {
             _classRepository = classRepository;
             _sessionRepository = sessionRepository;

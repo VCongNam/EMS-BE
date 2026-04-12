@@ -15,13 +15,11 @@ namespace EMS.Application.Features.Notifications.Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ICurrentUserService _currentUser;
-        private readonly ISignalRService _signalRService;
 
-        public NotificationService(INotificationRepository notificationRepository, ICurrentUserService currentUser, ISignalRService signalRService)
+        public NotificationService(INotificationRepository notificationRepository, ICurrentUserService currentUser)
         {
             _notificationRepository = notificationRepository;
             _currentUser = currentUser;
-            _signalRService = signalRService;
         }
 
         public async Task<List<NotificationDto>> GetNotificationsAsync()

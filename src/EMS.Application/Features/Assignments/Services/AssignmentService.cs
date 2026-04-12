@@ -43,7 +43,6 @@ namespace EMS.Application.Features.Assignments.Services
             ISubmissionRepository submissionRepository,
             ISupabaseStorageService storageService,
             IClassRepository classRepository,
-            ICurrentUserService currentUserService)
             ICurrentUserService currentUserService,
             INotificationService notificationService,
             ILogger<AssignmentService> logger)
