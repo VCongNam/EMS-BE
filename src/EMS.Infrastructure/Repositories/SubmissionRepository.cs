@@ -54,7 +54,9 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Submission?> GetByIdAsync(Guid submissionId)
         {
-            return await _context.Submissions.FindAsync(submissionId);
+            return await _context.Submissions
+                .Include(s => s.Assignment).
+                FirstOrDefaultAsync(s => s.SubmissionId == submissionId);
         }
 
         public async Task<IEnumerable<Submission>> GetSubmissionsForClassAsync(Guid classId)
