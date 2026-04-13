@@ -67,7 +67,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<int> CountPendingAssignmentAsync(Guid classId, Guid studentId)
         {
             int count = await _context.Assignments
-                .Where(a => a.ClassId == classId
+                .Where(a => a.ClassId == classId && a.IsDeleted != true
                     && a.DueDate >= DateTime.UtcNow)
                 .Where(a => a.Submissions.Any(
                     s => s.AssignmentId == a.AssignmentId
@@ -99,7 +99,7 @@ namespace EMS.Infrastructure.Repositories
         {
             var dbResult = await _context.Assignments
                 .Include(a => a.AssignmentAttachments)
-                .Where(a =>a.AssignmentId == assignmentId)
+                .Where(a =>a.AssignmentId == assignmentId && a.IsDeleted != true)
                 .Select(a => new
                 {
                     Assignment = a,
