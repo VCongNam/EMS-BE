@@ -183,7 +183,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPut("{classId}/tas/{taId}/permission")]
-        //[Authorize]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> SetTAPermisson(Guid classId, Guid taId, [FromBody] UpdateTAPermissionDto request)
         {
             await _classTAService.UpdateTAPermissionAsync(classId, taId, request);
@@ -191,7 +191,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost("createTask")]
-        //[Authorize]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto request)
         {
             var task = await _classTAService.CreateTaskAsync(request);
@@ -199,7 +199,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("classta/{classTaId}")]
-        //[Authorize]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> GetAssignedTasks(Guid classTaId)
         {
             var tasks = await _classTAService.GetTasksAsync(classTaId);
@@ -273,6 +273,21 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{classId}/tas/{taId}/remove")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> RemoveTAFromClass(Guid classId, Guid taId)
+        {
+            try
+            {
+                await _classTAService.RemoveTAFromClassAsync(classId, taId);
+                return Ok(new { message = "Đã gỡ trợ giảng khỏi lớp thành công." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

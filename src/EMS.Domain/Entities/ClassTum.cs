@@ -19,6 +19,8 @@ public partial class ClassTum
 
     public DateTime? UpdatedAt { get; set; }
 
+    public string? Status { get; set; }
+
     public virtual Class Class { get; set; } = null!;
 
     public virtual TeachingAssistant Ta { get; set; } = null!;

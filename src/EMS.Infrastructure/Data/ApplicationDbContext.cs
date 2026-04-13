@@ -341,6 +341,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.SalaryPerSession)
                 .HasPrecision(12, 2)
                 .HasDefaultValueSql("0");
+            entity.Property(e => e.Status)
+                .HasDefaultValueSql("'Active'::character varying")
+                .HasColumnType("character varying");
             entity.Property(e => e.Taid).HasColumnName("TAID");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
@@ -505,9 +508,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.IsRead).HasDefaultValue(false);
-            entity.Property(e => e.StudentId)
-                .HasDefaultValueSql("gen_random_uuid()")
-                .HasColumnName("StudentID");
+            entity.Property(e => e.StudentId).HasColumnName("StudentID");
             entity.Property(e => e.Title).HasMaxLength(255);
             entity.Property(e => e.Type).HasColumnType("character varying");
 
