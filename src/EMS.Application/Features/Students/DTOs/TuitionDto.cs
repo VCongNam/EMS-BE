@@ -13,6 +13,7 @@ namespace EMS.Application.Features.Students.DTOs
         public string ClassName { get; set; }
         public string Period {  get; set; }
         public decimal Amount { get; set; }
+        public  int SessionCount { get; set; }
         public DateTime DueDate { get; set; }
         public string DisplayStatus { get; set; }
         public bool CanPay { get; set; }

@@ -20,8 +20,6 @@ namespace EMS.Application.Features.Students.DTOs
         public string StatusDisplay { get; set; }
         public bool CanPay { get; set; }
 
-        //chi tiết các buổi đã học
-        public List<BilledSessionDto> BilledSessions { get; set; } = new List<BilledSessionDto>();
     }
 
     public class BilledSessionDto
