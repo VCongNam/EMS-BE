@@ -202,16 +202,15 @@ namespace EMS.Application.Features.Classes.Services
             };
         }
 
-        // 1. Lấy tất cả Task của TA đó từ tất cả các lớp họ tham gia
         public async Task<IEnumerable<TaskDto>> GetTasksByTAIdAsync(Guid taId)
         {
-            // Bạn cần viết thêm hàm này trong TARepository để query:
-            // Join từ ClassTA sang TeachingAssistantTask dựa trên TAID
             var tasks = await _taRepository.GetTasksByTAIdAsync(taId);
 
             return tasks.Select(t => new TaskDto
             {
                 TATaskID = t.TataskId,
+                ClassID = t.ClassTa.ClassId,
+                ClassName = t.ClassTa.Class.ClassName, // Gán tên lớp vào đây
                 Title = t.Title,
                 DueDate = t.DueDate,
                 Status = t.Status ?? "N/A",
