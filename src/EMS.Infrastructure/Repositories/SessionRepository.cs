@@ -139,9 +139,12 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<List<(Session Session, Attendance? Attendance)>> GetStudentSchedulesAsync( Guid studentId, DateTime fromDate, DateTime toDate, Guid? classId)
         {
+            var fromDateOnly = DateOnly.FromDateTime(fromDate);
+            var toDateOnly = DateOnly.FromDateTime(toDate);
+
             var query = _context.Sessions
                 .Include(s => s.Class)
-                .Where(s => s.Date >= DateOnly.FromDateTime(fromDate) && s.Date <= DateOnly.FromDateTime(toDate))
+                .Where(s => s.Date >= fromDateOnly && s.Date <= toDateOnly)
                 .AsNoTracking();
 
             if (classId.HasValue)
@@ -150,7 +153,7 @@ namespace EMS.Infrastructure.Repositories
             }
 
             query = query.Where(s =>_context.ClassEnrollments.Any(ce =>
-                ce.ClassId == classId && ce.StudentId == studentId));
+                ce.ClassId == s.ClassId && ce.StudentId == studentId));
 
             var dbResult = await query
                 .OrderBy(s => s.Date) 

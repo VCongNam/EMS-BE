@@ -367,7 +367,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                             studentId: studentId,
                             title: title,
                             content: content,
-                            actionUrl: $"/student/invoices/{t.InvoiceId}",
+                            actionUrl: $"/student/classes/${t.Invoice.ClassId}/tuition",
                             type: "Invoice"
                         );
                     }

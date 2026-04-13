@@ -328,6 +328,27 @@ namespace EMS.Application.Features.Assignments.Services
             submission.Grade = request.Grade;
             submission.Status = "Graded";
             await _submissionRepository.UpdateAsync(submission);
+
+            //Notification
+            try
+            {
+                var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(submission.StudentId);
+                if(targetAccountId != null)
+                {
+                    await _notificationService.SendNotificationAsync(
+                            targetAccountId: (Guid)targetAccountId,
+                            studentId: submission.StudentId,
+                            title: "Bài tập đã được cho điểm",
+                            content: $"Giáo viên đã chấm bài tập: {submission.Assignment.Title} của bạn.",
+                            actionUrl: $"/student/classes/{submission.Assignment.ClassId}/assignment/{submission.Assignment.AssignmentId}",
+                            type: "Assignment"
+                        );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo bài tập mới: {ex.Message}");
+            }
         }
 
         public async Task GiveFeedbackAsync(Guid submissionId, FeedbackSubmissionDto request)
