@@ -29,6 +29,11 @@ namespace EMS.Application.Features.Students.Services
             {
                 throw new ArgumentException("Ngày bắt đầu phải trước ngày kết thúc!");
             }
+
+            var now = DateTime.UtcNow.AddHours(7);
+            var nowDate = DateOnly.FromDateTime(now);
+            var nowTime = TimeOnly.FromDateTime(now);
+
             var tuples = await _sessionRepository.GetStudentSchedulesAsync(
                 studentId, filter.FromDate, filter.ToDate, filter.ClassID);
             var result = tuples.Select(t =>
@@ -37,25 +42,46 @@ namespace EMS.Application.Features.Students.Services
                 var attendance = t.Attendance;
 
                 string status;
-                if(session.Date > DateOnly.FromDateTime(DateTime.UtcNow))
+                if (session.Date > nowDate)
                 {
                     status = "Sắp diễn ra";
-                } else
+                }
+                else if (session.Date < nowDate)
                 {
-                    if(attendance != null)
+                    status = "Đã kết thúc";
+                }
+                else 
+                {
+                    if (nowTime < session.StartTime)
                     {
-                        status = attendance.Status switch
-                        {
-                            "Present" => "Có mặt",
-                            "Absent" => "Vắng mặt",
-                            "Excused" => "Vắng có phép",
-                            _ => "Không xác định"
-                        };
-                    } 
+                        status = "Sắp diễn ra";
+                    }
+                    else if (nowTime >= session.StartTime && nowTime <= session.EndTime)
+                    {
+                        status = "Đang diễn ra"; 
+                    }
                     else
                     {
-                        status = "Chưa điểm danh";
+                        status = "Đã kết thúc";
                     }
+                }
+
+                string attendanceStatus;
+                if (attendance != null)
+                {
+                    attendanceStatus = attendance.Status switch
+                    {
+                        "Present" => "Có mặt",
+                        "Absent" => "Vắng mặt",
+                        "Excused" => "Vắng có phép",
+                        _ => "Chưa điểm danh"
+                    };
+                }
+                else
+                {
+                    attendanceStatus = (status == "Đang diễn ra" || status == "Sắp diễn ra")
+                                       ? "N/A"
+                                       : "Chưa điểm danh";
                 }
                 return new StudentScheduleDto
                 {
@@ -67,6 +93,7 @@ namespace EMS.Application.Features.Students.Services
                     StartTime = session.StartTime,
                     EndTime = session.EndTime,
                     Status = status,
+                    AttendanceStatus = attendanceStatus
                 };
             }).ToList();
 

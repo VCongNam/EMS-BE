@@ -30,6 +30,7 @@ namespace EMS.Application.Features.Sessions.Services
             _sessionRepository = sessionRepository;
             _classRepository = classRepository;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -135,7 +136,7 @@ namespace EMS.Application.Features.Sessions.Services
                 var targets = await _notificationService.GetAllClassTargetsAsync(session.ClassId);
                 if (targets.Any())
                 {
-                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"hh\:mm") : "chưa định rõ";
+                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"HH\:mm") : "chưa định rõ";
                     await _notificationService.SendBulkNotificationWithStudentAsync(
                         targets: targets,
                         title: "Lịch học mới",
@@ -199,11 +200,13 @@ namespace EMS.Application.Features.Sessions.Services
                 var targets = await _notificationService.GetAllClassTargetsAsync(session.ClassId);
                 if (targets.Any())
                 {
-                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"hh\:mm") : "chưa định rõ";
+                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"HH\:mm") : "chưa định rõ";
+                    string dateStr = request.Date.ToString("dd/MM/yyyy");
+                    string titleStr = request.Title ?? session.Title;
                     await _notificationService.SendBulkNotificationWithStudentAsync(
                         targets: targets,
                         title: "Thay đổi lịch học",
-                        content: $"Buổi học '{session.Title}' đã cập nhật lại thời gian: {timeStr} ngày {session.Date:dd/MM/yyyy}.",
+                        content: $"Buổi học '{titleStr}' đã cập nhật lại thời gian: {timeStr} ngày {dateStr}.",
                         actionUrl: $"/schedule",
                         type: "Schedule"
                     );
