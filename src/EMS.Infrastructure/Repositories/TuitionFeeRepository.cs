@@ -288,7 +288,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<bool> HasPendingTransactionAsync(Guid invoiceId)
         {
             return await context.Transactions
-                .AnyAsync(t => t.InvoiceId == invoiceId && t.Status == "Pending");
+                .AnyAsync(t => t.InvoiceId == invoiceId && t.Status == "Pending" || t.Status == "Rejected");
         }
 
         public async Task AddTransactionAsync(Transaction transaction)
@@ -424,5 +424,7 @@ namespace EMS.Infrastructure.Repositories
                          && t.Invoice.IsDeleted == false)
                 .FirstOrDefaultAsync();
         }
+
+
     }
 }

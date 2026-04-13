@@ -115,18 +115,10 @@ namespace EMS.Application.Features.Students.Services
                 Period = $"Tháng {invoice.PeriodMonth}/{invoice.PeriodYear}",
                 DueDate = invoice.DueDate,
                 UnitPrice = invoice.Class?.TuitionFee ?? 0,
-                TotalSessions = attendances.Count,
-
+                TotalSessions = (int)invoice.SessionCount,
                 TotalAmount = invoice.Amount,
                 StatusDisplay = statusDisplay,
                 CanPay = canPay,
-
-                BilledSessions = attendances.Select(a => new BilledSessionDto
-                {
-                    Date = (DateOnly)(a.Session?.Date),
-                    Title = a.Session?.Title ?? "Buổi học",
-                    AttendanceStatus = a.Status == "Present" ? "Có mặt" : (a.IsExcused == true ? "Vắng có phép" : "Vắng không phép")
-                }).ToList()
             };
         }
 
