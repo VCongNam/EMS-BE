@@ -21,5 +21,8 @@ namespace EMS.Application.Features.Gradebook.Services
         Task<byte[]> ExportClassGradebookToExcelAsync(Guid classId);
         Task<byte[]> ExportClassGradebookToPdfAsync(Guid classId);
         Task SaveBulkGradesAsync(Guid classId, BulkSaveGradesRequest request);
+
+        //Student
+        Task<StudentGradeBookDto> GetStudentGradeReportAsync(Guid classId);
     }
 }

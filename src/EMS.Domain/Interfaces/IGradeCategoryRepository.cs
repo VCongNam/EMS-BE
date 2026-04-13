@@ -13,5 +13,6 @@ namespace EMS.Domain.Interfaces
         Task<GradeCategory?> GetByIdAsync(Guid gradeCategoryId);
         Task<IEnumerable<GradeCategory>> GetByClassIdAsync(Guid classId);
         Task UpdateWeightsAsync(IEnumerable<GradeCategory> categories);
+        Task<List<GradeCategory>> GetStudentGradeDetailsAsync(Guid classId, Guid studentId);
     }
 }

@@ -16,6 +16,8 @@ namespace EMS.Application.Features.Students.DTOs
         public TimeOnly? EndTime { get; set; }
         public string? MeetingLink { get; set; } 
         public string Status { get; set; }
+
+        public string AttendanceStatus { get; set; }
     }
 
     public class ScheduleFilter

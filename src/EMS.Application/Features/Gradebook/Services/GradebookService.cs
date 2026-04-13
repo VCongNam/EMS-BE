@@ -385,5 +385,70 @@ namespace EMS.Application.Features.Gradebook.Services
             }
         }
 
+        public async Task<StudentGradeBookDto> GetStudentGradeReportAsync(Guid classId)
+        {
+            Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
+            var categories = await _gradeCategoryRepository.GetStudentGradeDetailsAsync(classId, studentId);
+            var reportDto = new StudentGradeBookDto
+            {
+                ClassId = classId,
+                StudentId = studentId,
+                CurrentAverageScore = 0
+            };
+            decimal totalWeightedScore = 0;
+            decimal totalValidWeight = 0;
+
+            foreach (var category in categories)
+            {
+                var categoryDto = new CategoryGradeDto
+                {
+                    CategoryName = category.Name,
+                    Weight = category.Weight
+                };
+
+                var validScores = new List<decimal>();
+
+                foreach (var assignment in category.Assignments)
+                {
+                    // Tìm bài nộp của học sinh
+                    var submission = assignment.Submissions.FirstOrDefault();
+
+                    var assignmentDto = new AssignmentGradeItemDto
+                    {
+                        AssignmentId = assignment.AssignmentId,
+                        Title = assignment.Title,
+                        Score = submission?.Grade,
+
+                        CommentFeedback = submission != null && submission.SubmissionFeedbacks.Any()
+                            ? string.Join("; ", submission.SubmissionFeedbacks.OrderByDescending(f => f.CreatedAt).Select(f => f.Content))
+                            : "Chưa có nhận xét"
+                    };
+
+                    categoryDto.Assignments.Add(assignmentDto);
+
+                    if (submission != null && submission.Status == "Graded" && submission.Grade.HasValue)
+                    {
+                        validScores.Add(submission.Grade.Value);
+                    }
+                }
+                if (validScores.Any())
+                {
+                    categoryDto.CategoryScore = validScores.Average();
+
+                    totalWeightedScore += categoryDto.CategoryScore.Value * category.Weight;
+                    totalValidWeight += category.Weight;
+                }
+
+                reportDto.GradeReportTable.Add(categoryDto);
+            }
+
+            // Tính điểm trung bình hiện tại (Overall GPA)
+            if (totalValidWeight > 0)
+            {
+                reportDto.CurrentAverageScore = Math.Round(totalWeightedScore / totalValidWeight, 2);
+            }
+            return reportDto;
+        }
+
     }
 }
