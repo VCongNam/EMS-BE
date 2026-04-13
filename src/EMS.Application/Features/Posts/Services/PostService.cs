@@ -3,6 +3,7 @@ using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -186,7 +187,7 @@ namespace EMS.Application.Features.Posts.Services
             {
                 PostId = post.PostId,
                 ClassId = post.ClassId,
-                AuthorName = post.Author?.FullName ?? null!,
+                AuthorName = post.Author?.FullName ?? "Unknown",
                 Title = post.Title ?? null!,
                 Content = post.Content,
                 CreatedAt = post.CreatedAt,
@@ -204,8 +205,9 @@ namespace EMS.Application.Features.Posts.Services
                 {
                     CommentId = c.CommentId,
                     AuthorId = c.AuthorId,
-                    // If comment has Student assigned use that student's name; otherwise use account full name
-                    AuthorName = c.Author?.FullName ?? null!,
+
+                    AuthorName = c.Author?.FullName ?? "Người dùng ẩn danh",
+
                     Content = c.Content,
                     CreatedAt = c.CreatedAt
                 }).OrderBy(c => c.CreatedAt).ToList()
@@ -224,7 +226,6 @@ namespace EMS.Application.Features.Posts.Services
                 AuthorName = p.Author?.FullName ?? "Unknown",
                 CreatedAt = p.CreatedAt,
 
-                // MAP DANH SÁCH FILE ĐÍNH KÈM
                 Attachments = p.PostAttachments.Select(a => new PostAttachmentDto
                 {
                     AttachmentId = a.AttachmentId,
@@ -235,12 +236,13 @@ namespace EMS.Application.Features.Posts.Services
                     CreatedAt = a.CreatedAt
                 }).ToList(),
 
-                // MAP DANH SÁCH BÌNH LUẬN
                 Comments = p.Comments.Select(c => new CommentResponseDto
                 {
                     CommentId = c.CommentId,
                     AuthorId = c.AuthorId,
-                    AuthorName = c.Author?.FullName ?? "Unknown",
+
+                    AuthorName = c.Author?.FullName ?? "Người dùng ẩn danh",
+
                     Content = c.Content,
                     CreatedAt = c.CreatedAt
                 }).OrderBy(c => c.CreatedAt).ToList()
@@ -249,17 +251,24 @@ namespace EMS.Application.Features.Posts.Services
 
         public async Task<Guid> CreateCommentAsync(Guid postId, CreateCommentDto request)
         {
+            if (string.IsNullOrWhiteSpace(request.Content))
+                throw new Exception("Nội dung bình luận không được để trống.");
+
             var post = await postRepository.GetByIdAsync(postId);
-            if (post == null) throw new Exception("Post not found.");
+            if (post == null) throw new Exception("Không tìm thấy bài viết.");
+
+            Guid authorId = currentUserService.Role == "Student"
+                ? (currentUserService.StudentId ?? throw new Exception("Không tìm thấy ID học sinh đang được chọn."))
+                : currentUserService.UserId;
 
             var comment = new Comment
             {
                 CommentId = Guid.NewGuid(),
                 PostId = postId,
-                AuthorId = currentUserService.UserId,
                 Content = request.Content,
                 IsDeleted = false,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                AuthorId = authorId
             };
 
             await postRepository.AddCommentAsync(comment);
@@ -269,10 +278,15 @@ namespace EMS.Application.Features.Posts.Services
         public async Task DeleteCommentAsync(Guid commentId)
         {
             var comment = await postRepository.GetCommentByIdAsync(commentId);
-            if (comment == null) throw new Exception("Comment not found.");
+            if (comment == null) throw new Exception("Không tìm thấy bình luận.");
 
-            if (comment.AuthorId != currentUserService.UserId)
-                throw new Exception("You do not have permission to delete this comment.");
+            // Xác định ID đang thao tác hiện tại
+            Guid currentActingId = currentUserService.Role == "Student"
+                ? (currentUserService.StudentId ?? currentUserService.UserId)
+                : currentUserService.UserId;
+
+            if (comment.AuthorId != currentActingId)
+                throw new Exception("Bạn không có quyền xóa bình luận này.");
 
             comment.IsDeleted = true;
             comment.UpdatedAt = DateTime.UtcNow;
