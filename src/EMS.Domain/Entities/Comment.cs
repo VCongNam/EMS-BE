@@ -11,8 +11,6 @@ public partial class Comment
 
     public Guid AuthorId { get; set; }
 
-        public Guid? StudentId { get; set; }
-
     public string Content { get; set; } = null!;
 
     public bool? IsDeleted { get; set; }
@@ -22,8 +20,6 @@ public partial class Comment
     public DateTime? UpdatedAt { get; set; }
 
     public virtual Account Author { get; set; } = null!;
-
-    public virtual Student? Student { get; set; }
 
     public virtual Post Post { get; set; } = null!;
 }
