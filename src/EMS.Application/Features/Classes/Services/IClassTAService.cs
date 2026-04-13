@@ -21,5 +21,7 @@ namespace EMS.Application.Features.Classes.Services
         Task<IEnumerable<TaskDto>> GetTasksByTAIdAsync(Guid taId); // Lấy tất cả task của 1 TA từ mọi lớp
         Task<IEnumerable<AssignedClassDto>> GetClassesByTAIdAsync(Guid taId); // Lấy danh sách lớp TA đó tham gia
 
+        Task<bool> RemoveTAFromClassAsync(Guid classId, Guid taId);
+
     }
 }

@@ -32,23 +32,42 @@ namespace EMS.Application.Features.Classes.Services
         }
         public async Task<Guid> AssignTAAsync(Guid classId, AssignTADto request)
         {
-            bool isAssigned = await _classRepository.IsTAAssignedAsync(classId, request.TAID);
-            if (isAssigned)
+            var existingClassTA = await _classRepository.GetClassTAAsync(classId, request.TAID);
+            Guid newClassTaId;
+            if (existingClassTA != null)
             {
-                throw new Exception("Trợ giảng đã được phân công vào lớp này rồi!");
+                if (existingClassTA.Status == "Removed" || existingClassTA.Status == "Deactive")
+                {
+                    existingClassTA.Status = "Active";
+                    existingClassTA.Permission = request.Permission;
+                    existingClassTA.SalaryPerSession = request.SalaryPerSession;
+                    existingClassTA.UpdatedAt = DateTime.UtcNow;
+
+                    await _classRepository.UpdateClassTAAsync(existingClassTA);
+                    newClassTaId = existingClassTA.ClassTaid;
+                }
+                else
+                {
+                    throw new Exception("Trợ giảng đã được phân công vào lớp này và đang hoạt động!");
+                }
             }
-
-            var newClassTA = new ClassTum
+            else
             {
-                ClassTaid = Guid.NewGuid(),
-                ClassId = classId,
-                Taid = request.TAID,
-                Permission = request.Permission,
-                SalaryPerSession = request.SalaryPerSession,
-                CreatedAt = DateTime.Now,
-            };
+                // Tạo mới hoàn toàn
+                var newClassTA = new ClassTum
+                {
+                    ClassTaid = Guid.NewGuid(),
+                    ClassId = classId,
+                    Taid = request.TAID,
+                    Permission = request.Permission,
+                    SalaryPerSession = request.SalaryPerSession,
+                    Status = "Active",
+                    CreatedAt = DateTime.UtcNow,
+                };
 
-            await _classRepository.AddClassTAAsync(newClassTA);
+                await _classRepository.AddClassTAAsync(newClassTA);
+                newClassTaId = newClassTA.ClassTaid;
+            }
 
             //Notification: 
             try
@@ -73,7 +92,7 @@ namespace EMS.Application.Features.Classes.Services
                 _logger.LogError($"Lỗi gửi thông báo cho trợ giảng: {ex.Message}");
             }
 
-            return newClassTA.ClassTaid;
+            return newClassTaId;
         }
 
         
@@ -100,13 +119,13 @@ namespace EMS.Application.Features.Classes.Services
         public async Task UpdateTAPermissionAsync(Guid classId, Guid taId, UpdateTAPermissionDto request)
         {
             var classTa = await _classRepository.GetClassTAAsync(classId, taId);
-            if(classTa == null)
+            if (classTa == null || classTa.Status == "Removed" || classTa.Status == "Deactive")
             {
-                throw new Exception("Không tìm thấy trợ giảng này trong lớp.");
+                throw new Exception("Không tìm thấy trợ giảng này trong lớp (hoặc đã bị gỡ).");
             }
 
             classTa.Permission = request.Permission;
-            classTa.UpdatedAt = DateTime.Now;
+            classTa.UpdatedAt = DateTime.UtcNow;
 
             await _classRepository.UpdateClassTAAsync(classTa);
         }
@@ -232,6 +251,41 @@ namespace EMS.Application.Features.Classes.Services
                 Permission = a.Permission,
                 SalaryPerSession = a.SalaryPerSession
             }).ToList();
+        }
+
+        public async Task<bool> RemoveTAFromClassAsync(Guid classId, Guid taId)
+        {
+            var classTA = await _classRepository.GetClassTAAsync(classId, taId);
+            if (classTA == null)
+            {
+                throw new Exception("Không tìm thấy trợ giảng trong lớp học này.");
+            }
+            if (classTA.Status == "Deactive")
+            {
+                throw new Exception("Trợ giảng này đã không còn trong lớp.");
+            }
+            classTA.Status = "Deactive";
+            classTA.UpdatedAt = DateTime.UtcNow;
+            await _classRepository.UpdateClassTAAsync(classTA);
+            try
+            {
+                var classObj = await _classRepository.GetByIdAsync(classId);
+                string className = classObj?.ClassName ?? "một lớp học";
+
+                await _notificationService.SendNotificationAsync(
+                    targetAccountId: taId,
+                    studentId: null,
+                    title: "Ngừng phân công",
+                    content: $"Bạn đã ngừng công việc trợ giảng tại lớp '{className}'.",
+                    actionUrl: "/assisted-classes", 
+                    type: "Class"
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo gỡ TA khỏi lớp: {ex.Message}");
+            }
+            return true;
         }
     }
 }

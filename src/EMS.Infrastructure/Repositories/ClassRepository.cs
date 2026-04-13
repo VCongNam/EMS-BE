@@ -157,12 +157,14 @@ namespace EMS.Infrastructure.Repositories
                     .ThenInclude(ta => ta.Ta) 
                 .Where(cta => cta.ClassId == classId)
                 .ToListAsync();
-
         }
 
         public async Task<bool> IsTAAssignedAsync(Guid classId, Guid taId)
         {
-            return await _context.ClassTa.AnyAsync(cta => cta.ClassId == classId && cta.Taid == taId);
+            return await _context.ClassTa.AnyAsync(cta => 
+                    cta.ClassId == classId &&
+                    cta.Taid == taId &&
+                    cta.Status != "Deactive");
         }
 
         public async Task<ClassTum> AddClassTAAsync(ClassTum classTa)
