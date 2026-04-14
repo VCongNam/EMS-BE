@@ -13,5 +13,6 @@ namespace EMS.Domain.Interfaces
         Task<Student?> GetByIdAsync(Guid studentId);
         Task AddAsync(Student student);
         Task UpdateAsync(Student student);
+        Task SaveChangesAsync();
     }
 }

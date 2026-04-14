@@ -70,6 +70,29 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        [HttpPost("{classId}/assignMultipleStudent")]
+        [Authorize(Roles ="Teacher")]
+        public async Task<IActionResult> AssignMultipleStudent(Guid classId, [FromBody] AssignMultipleStudentsDto request)
+        {
+            try
+            {
+                if (request.StudentIds == null || request.StudentIds.Count == 0)
+                {
+                    return BadRequest(new { message = "Danh sách học sinh không được để trống." });
+                }
+
+                var result = await _classService.AssignMultipleStudentsAsync(classId, request.StudentIds);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
         [HttpGet("teacher/dashboard")]
         [Authorize]
         public async Task<IActionResult> GetTeacherDashboard()
