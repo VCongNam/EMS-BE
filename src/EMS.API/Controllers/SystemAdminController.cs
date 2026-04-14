@@ -72,19 +72,5 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
-
-        [HttpGet("logs")]
-        public async Task<IActionResult> GetSystemLogs([FromQuery] int limit = 50)
-        {
-            try
-            {
-                var logs = await adminService.GetSuspiciousActivitiesAsync(limit);
-                return Ok(logs);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
     }
 }

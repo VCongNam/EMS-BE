@@ -13,6 +13,5 @@ namespace EMS.Application.Features.SystemAdmin.Services
         Task<IEnumerable<AccountSummaryDto>> GetAllAccountsAsync(string? role, string? status);
         Task<AccountDetailDto> GetAccountDetailAsync(Guid accountId);
         Task ChangeAccountStatusAsync(Guid accountId, ChangeAccountStatusDto request);
-        Task<IEnumerable<SystemLogDto>> GetSuspiciousActivitiesAsync(int limit = 50);
     }
 }

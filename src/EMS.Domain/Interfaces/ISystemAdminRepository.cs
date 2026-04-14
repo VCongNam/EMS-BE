@@ -18,6 +18,5 @@ namespace EMS.Domain.Interfaces
         Task UpdateAccountAsync(Account account);
         Task<int> CountClassesByTeacherAsync(Guid teacherId);
 
-        Task<IEnumerable<SystemLog>> GetRecentSystemLogsAsync(int limit);
     }
 }

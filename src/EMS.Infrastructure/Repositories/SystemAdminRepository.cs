@@ -73,16 +73,5 @@ namespace EMS.Infrastructure.Repositories
             return await context.Classes
                 .CountAsync(c => c.TeacherId == teacherId && c.IsDeleted != true);
         }
-
-        public async Task<IEnumerable<SystemLog>> GetRecentSystemLogsAsync(int limit)
-        {
-            return await context.SystemLogs
-                .AsNoTracking()
-                .Include(log => log.Account)
-                    .ThenInclude(acc => acc.Role)
-                .OrderByDescending(log => log.CreatedAt)
-                .Take(limit)
-                .ToListAsync();
-        }
     }
 }

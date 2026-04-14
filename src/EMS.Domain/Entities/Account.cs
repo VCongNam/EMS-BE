@@ -51,7 +51,7 @@ public partial class Account
 
     public virtual ICollection<SubmissionFeedback> SubmissionFeedbacks { get; set; } = new List<SubmissionFeedback>();
 
-    public virtual ICollection<SystemLog> SystemLogs { get; set; } = new List<SystemLog>();
+    public virtual ICollection<SystemFeedback> SystemFeedbacks { get; set; } = new List<SystemFeedback>();
 
     public virtual Teacher? Teacher { get; set; }
 

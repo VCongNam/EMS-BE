@@ -136,24 +136,5 @@ namespace EMS.Application.Features.SystemAdmin.Services
             }
         }
 
-        public async Task<IEnumerable<SystemLogDto>> GetSuspiciousActivitiesAsync(int limit = 50)
-        {
-            var logs = await adminRepository.GetRecentSystemLogsAsync(limit);
-
-            return logs.Select(log => new SystemLogDto
-            {
-                LogId = log.LogId,
-                AccountId = log.AccountId,
-                Email = log.Account?.Email ?? "Hệ thống",
-                FullName = log.Account?.FullName ?? "Unknown",
-                RoleName = log.Account?.Role?.RoleName ?? "N/A",
-                ActionType = log.ActionType ?? "UNKNOWN",
-                TableName = log.TableName ?? "Unknown",
-                IpAddress = log.Ipaddress,
-                OldValues = log.OldValues?.ToString(),
-                NewValues = log.NewValues?.ToString(),
-                CreatedAt = log.CreatedAt
-            });
-        }
     }
 }
