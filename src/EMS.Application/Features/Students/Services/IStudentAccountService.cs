@@ -10,7 +10,9 @@ namespace EMS.Application.Features.Students.Services
 {
     public interface IStudentAccountService
     {
-        Task<Guid> CreateStudentAsync(CreateStudentDto request);
+        Task<(Guid StudentId, string? InitialPassword, bool IsNewAccount)> CreateStudentAsync(CreateStudentDto request);
         Task<ImportResultDto> ImportStudentsFromExcelAsync(IFormFile excelFile);
+
+        byte[] ExportImportResultToExcel(ImportResultDto result);
     }
 }
