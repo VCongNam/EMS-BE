@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EMS.Application.Features.SystemAdmin.Dtos
+namespace EMS.Application.Features.Feedbacks.Dtos
 {
-    public class ChangeAccountStatusDto
+    public class ProcessFeedbackDto
     {
         public string NewStatus { get; set; } = null!;
-        public string Reason { get; set; } = null!; // Lý do gửi qua email
+        public string? AdminReply { get; set; }
     }
 }

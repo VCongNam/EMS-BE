@@ -22,67 +22,72 @@ namespace EMS.Infrastructure.Repositories
         public async Task<int> CountAccountsByRoleAsync(string roleName)
         {
             return await context.Accounts
-                .Include(a => a.Role)
-                .CountAsync(a => a.Role.RoleName == roleName && a.IsDeleted != true);
+                .CountAsync(a => a.Role.RoleName == roleName && a.Status == "Active" && a.IsDeleted == false);
         }
 
-        public async Task<int> CountActiveClassesAsync()
+        public async Task<int> CountOngoingClassesAsync()
         {
             return await context.Classes
-                .CountAsync(c => c.Status == "Ongoing" && c.IsDeleted != true);
+                .CountAsync(c => c.IsDeleted == false);
         }
 
-        public async Task<int> CountNewRegistrationsThisMonthAsync()
-        {
-            var startOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-            return await context.Accounts
-                .CountAsync(a => a.CreatedAt >= startOfMonth && a.IsDeleted != true);
-        }
-
-        public async Task<IEnumerable<Account>> GetAllAccountsAsync(string? role, string? status)
-        {
-            var query = context.Accounts
-                .Include(a => a.Role)
-                .Where(a => a.IsDeleted != true)
-                .AsQueryable();
-
-            if (!string.IsNullOrEmpty(role))
-                query = query.Where(a => a.Role.RoleName == role);
-
-            if (!string.IsNullOrEmpty(status))
-                query = query.Where(a => a.Status == status);
-
-            return await query.OrderByDescending(a => a.CreatedAt).ToListAsync();
-        }
-
-        public async Task<Account?> GetAccountByIdAsync(Guid accountId)
+        public async Task<IEnumerable<Account>> GetAccountsInPeriodAsync(DateTime start, DateTime end)
         {
             return await context.Accounts
-                .Include(a => a.Role)
-                .FirstOrDefaultAsync(a => a.AccountId == accountId && a.IsDeleted != true);
-        }
-
-        public async Task UpdateAccountAsync(Account account)
-        {
-            context.Accounts.Update(account);
-            await context.SaveChangesAsync();
-        }
-
-        public async Task<int> CountClassesByTeacherAsync(Guid teacherId)
-        {
-            return await context.Classes
-                .CountAsync(c => c.TeacherId == teacherId && c.IsDeleted != true);
-        }
-
-        public async Task<IEnumerable<SystemLog>> GetRecentSystemLogsAsync(int limit)
-        {
-            return await context.SystemLogs
                 .AsNoTracking()
-                .Include(log => log.Account)
-                    .ThenInclude(acc => acc.Role)
-                .OrderByDescending(log => log.CreatedAt)
-                .Take(limit)
+                .Include(a => a.Role)
+                .Where(a => a.CreatedAt >= start && a.CreatedAt <= end && a.IsDeleted == false)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Post>> GetPostsInPeriodAsync(DateTime start, DateTime end)
+        {
+            return await context.Posts.AsNoTracking().Where(p => p.CreatedAt >= start && p.CreatedAt <= end && p.IsDeleted == false).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Assignment>> GetAssignmentsInPeriodAsync(DateTime start, DateTime end)
+        {
+            return await context.Assignments.AsNoTracking().Where(a => a.CreatedAt >= start && a.CreatedAt <= end && a.IsDeleted == false).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Session>> GetSessionsInPeriodAsync(DateTime start, DateTime end)
+        {
+            return await context.Sessions.AsNoTracking().Where(s => s.CreatedAt >= start && s.CreatedAt <= end && s.IsDeleted == false).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Teacher>> GetAllTeachersGridAsync(string? searchTerm, string? statusFilter)
+        {
+            var query = context.Teachers
+                .AsNoTracking()
+                .Include(t => t.TeacherNavigation) // Thông tin Account
+                .Include(t => t.Classes.Where(c => c.IsDeleted == false))
+                    .ThenInclude(c => c.ClassEnrollments)
+                .Where(t => t.TeacherNavigation.IsDeleted == false);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                string searchLower = searchTerm.ToLower();
+                query = query.Where(t =>
+                    (t.TeacherNavigation.FullName != null && t.TeacherNavigation.FullName.ToLower().Contains(searchLower)) ||
+                    (t.TeacherNavigation.PhoneNumber != null && t.TeacherNavigation.PhoneNumber.Contains(searchTerm)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                query = query.Where(t => t.TeacherNavigation.Status == statusFilter);
+            }
+
+            return await query.OrderByDescending(t => t.TeacherNavigation.CreatedAt).ToListAsync();
+        }
+
+        public async Task<Teacher?> GetTeacherByIdAsync(Guid teacherId)
+        {
+            return await context.Teachers
+                .AsNoTracking()
+                .Include(t => t.TeacherNavigation)
+                .Include(t => t.Classes.Where(c =>  c.IsDeleted == false))
+                    .ThenInclude(c => c.ClassEnrollments)
+                .FirstOrDefaultAsync(t => t.TeacherId == teacherId && t.TeacherNavigation.IsDeleted == false);
         }
     }
 }
