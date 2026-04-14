@@ -89,7 +89,7 @@ namespace EMS.Infrastructure.Repositories
             return await _context.ClassEnrollments
                .Include(ce => ce.Student)
                .ThenInclude(s => s.Account)
-               .Where(ce => ce.ClassId == classId && ce.Status == "Active")
+               .Where(ce => ce.ClassId == classId)
                .OrderByDescending(ce => ce.EnrolledDate)
                .ToListAsync();
         }
