@@ -23,12 +23,13 @@ namespace EMS.Application.Features.Classes.Services
         private readonly INotificationService _notificationService;
         private readonly ILogger<AssignmentService> _logger;
 
-        public ClassTAService(IClassRepository classRepository, ITARepository tARepository, INotificationService notificationService, ILogger<AssignmentService> logger)
+        public ClassTAService(IClassRepository classRepository, ITARepository tARepository, INotificationService notificationService, ILogger<AssignmentService> logger, ICurrentUserService currentUserService)
         {
             _classRepository = classRepository;
             _taRepository = tARepository;
             _notificationService = notificationService;
             _logger = logger;
+            _currentUser = currentUserService;
         }
         public async Task<Guid> AssignTAAsync(Guid classId, AssignTADto request)
         {
