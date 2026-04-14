@@ -68,6 +68,7 @@ namespace EMS.Application.Features.Assignments.Services
                 Description = request.Description,
                 DueDate = request.DueDate,
                 AllowLateSubmission = request.AllowLateSubmission,
+                Isgraded = request.Isgraded,
                 Status = "Published",
                 IsDeleted = false,
                 CreatedAt = DateTime.UtcNow
@@ -132,6 +133,7 @@ namespace EMS.Application.Features.Assignments.Services
             assignment.DueDate = request.DueDate;
             assignment.GradeCategoryId = request.GradeCategoryId;
             assignment.AllowLateSubmission = request.AllowLateSubmission;
+            assignment.Isgraded = request.Isgraded;
             assignment.UpdatedAt = DateTime.UtcNow;
 
             await _assignmentRepository.UpdateAsync(assignment);
@@ -223,6 +225,7 @@ namespace EMS.Application.Features.Assignments.Services
                 DueDate = assignment.DueDate,
                 Status = GetAssignmentStatus(assignment),
                 AllowLateSubmission = assignment.AllowLateSubmission,
+                Isgraded = assignment.Isgraded,
                 CreatedAt = assignment.CreatedAt,
                 UpdatedAt = assignment.UpdatedAt,
                 Attachments = assignment.AssignmentAttachments.Select(a => new AttachmentDto
@@ -246,7 +249,8 @@ namespace EMS.Application.Features.Assignments.Services
                 AssignmentId = a.AssignmentId,
                 Title = a.Title,
                 DueDate = a.DueDate,
-                Status = a.Status
+                Status = a.Status,
+                Isgraded = a.Isgraded
             });
         }
 
