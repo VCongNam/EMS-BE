@@ -1,5 +1,6 @@
 ﻿using EMS.Application.Features.TuitionFees.Dtos;
 using EMS.Domain.Entities;
+using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -48,9 +49,7 @@ namespace EMS.Application.Features.TuitionFees.Services
 
 
 
-        Task<IEnumerable<PostpaidStudentInvoiceDto>> GetPostpaidInvoicesAsync(Guid classId, int month, int year);
-        Task<IEnumerable<PrepaidStudentInvoiceDto>> GetPrepaidInvoicesAsync(Guid classId, int month, int year);
-        Task<ClassPeriodRevenueDto> GetClassRevenueReportAsync(Guid classId, int month, int year);
+        Task<IEnumerable<GlobalInvoiceRecordDto>> GetInvoicesListAsync(Guid? classId, int month, int year);
 
         Task<IEnumerable<ClassFeeConfigDto>> GetClassFeeConfigsAsync();
         Task UpdateClassFeeAsync(Guid classId, UpdateClassFeeConfigDto dto);
@@ -58,6 +57,9 @@ namespace EMS.Application.Features.TuitionFees.Services
         Task<ClassFeeConfigDto> GetClassFeeConfigAsync(Guid classId);
         Task ExtendInvoiceAsync(Guid invoiceId, ExtendInvoiceDto dto);
         Task ExtendClassInvoicesAsync(Guid classId, ExtendClassInvoicesDto dto);
-
+        Task<IEnumerable<Class>> GetClassesOverviewEntitiesAsync(Guid teacherId, int month, int year);
+        Task<IEnumerable<ClassTuitionReportDto>> GetClassesOverviewAsync(int month, int year);
+        // Hàm cho 3 Card tổng quan
+        Task<TuitionSummaryDto> GetTuitionSummaryAsync(Guid? classId, int month, int year);
     }
 }

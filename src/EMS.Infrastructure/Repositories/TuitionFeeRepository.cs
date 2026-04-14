@@ -429,90 +429,27 @@ namespace EMS.Infrastructure.Repositories
 
 
 
-        // 1. Dành cho THU SAU
-        public async Task<IEnumerable<(Guid StudentId, string StudentName, string? AvatarUrl, Guid? InvoiceId, int SessionCount, decimal TotalAmount, decimal PaidAmount, DateTime? DueDate, string Status)>>
-            GetPostpaidStudentInvoicesAsync(Guid classId, int month, int year)
+        public async Task<IEnumerable<Invoice>> GetInvoicesByFilterAsync(Guid teacherId, Guid? classId, int month, int year)
         {
-            var query = from ce in context.ClassEnrollments
-                        where ce.ClassId == classId && ce.Status == "Active"
-                        join s in context.Students on ce.StudentId equals s.StudentId
-                        join a in context.Accounts on s.AccountId equals a.AccountId
-                        join inv in context.Invoices.Where(i => i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true)
-                        on ce.StudentId equals inv.StudentId into invoiceGroup
-                        from invoice in invoiceGroup.DefaultIfEmpty()
+            var query = context.Invoices
+                .Include(i => i.Class)
+                .Include(i => i.Student)
+                    .ThenInclude(s => s.Account)
+                // Kéo theo các giao dịch để tính số tiền đã nộp
+                .Include(i => i.Transactions.Where(t => t.Status == "Successful" || t.Status == "Completed"))
+                .Where(i => i.Class.TeacherId == teacherId
+                         && i.PeriodMonth == month
+                         && i.PeriodYear == year
+                         && i.IsDeleted != true);
 
-                        select new
-                        {
-                            StudentId = s.StudentId,
-                            StudentName = s.FullName,
-                            AvatarUrl = a.AvatarUrl,
-                            InvoiceId = invoice != null ? (Guid?)invoice.InvoiceId : null,
-                            SessionCount = invoice != null ? (invoice.SessionCount ?? 0) : 0,
-                            TotalAmount = invoice != null ? invoice.Amount : 0m,
-                            PaidAmount = invoice != null
-                                ? invoice.Transactions.Where(t => t.Status == "Successful").Sum(t => t.AmountPaid) : 0m,
-                            DueDate = invoice != null ? (DateTime?)invoice.DueDate : null,
-                            Status = invoice != null ? invoice.Status : "Chưa phát hành"
-                        };
+            // Lọc theo ClassId nếu có truyền vào từ FE
+            if (classId.HasValue && classId != Guid.Empty)
+            {
+                query = query.Where(i => i.ClassId == classId.Value);
+            }
 
-            var result = await query.ToListAsync();
-            // Dùng cú pháp ( ) thay cho ValueTuple.Create
-            return result.Select(r => (
-                r.StudentId,
-                r.StudentName,
-                r.AvatarUrl,
-                r.InvoiceId,
-                r.SessionCount,
-                r.TotalAmount,
-                r.PaidAmount,
-                r.DueDate,
-                r.Status ?? "Chưa phát hành"
-            ));
+            return await query.ToListAsync();
         }
-
-        // 2. Dành cho THU TRƯỚC
-        public async Task<IEnumerable<(Guid StudentId, string StudentName, string? AvatarUrl, Guid? InvoiceId, int SessionCount, decimal CreditBalance, decimal TotalAmount, decimal PaidAmount, DateTime? DueDate, string Status)>>
-            GetPrepaidStudentInvoicesAsync(Guid classId, int month, int year)
-        {
-            var query = from ce in context.ClassEnrollments
-                        where ce.ClassId == classId && ce.Status == "Active"
-                        join s in context.Students on ce.StudentId equals s.StudentId
-                        join a in context.Accounts on s.AccountId equals a.AccountId
-                        join inv in context.Invoices.Where(i => i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true)
-                        on ce.StudentId equals inv.StudentId into invoiceGroup
-                        from invoice in invoiceGroup.DefaultIfEmpty()
-
-                        select new
-                        {
-                            StudentId = s.StudentId,
-                            StudentName = s.FullName,
-                            AvatarUrl = a.AvatarUrl,
-                            InvoiceId = invoice != null ? (Guid?)invoice.InvoiceId : null,
-                            SessionCount = invoice != null ? (invoice.SessionCount ?? 0) : 0,
-                            CreditBalance = ce.CreditBalance ?? 0m, // LẤY TIỀN CẤN TRỪ TỪ CLASS ENROLLMENT
-                            TotalAmount = invoice != null ? invoice.Amount : 0m,
-                            PaidAmount = invoice != null
-                                ? invoice.Transactions.Where(t => t.Status == "Successful").Sum(t => t.AmountPaid) : 0m,
-                            DueDate = invoice != null ? (DateTime?)invoice.DueDate : null,
-                            Status = invoice != null ? invoice.Status : "Chưa phát hành"
-                        };
-
-            var result = await query.ToListAsync();
-            // Dùng cú pháp ( ) thay cho ValueTuple.Create
-            return result.Select(r => (
-                r.StudentId,
-                r.StudentName,
-                r.AvatarUrl,
-                r.InvoiceId,
-                r.SessionCount,
-                r.CreditBalance,
-                r.TotalAmount,
-                r.PaidAmount,
-                r.DueDate,
-                r.Status ?? "Chưa phát hành"
-            ));
-        }
-
 
         public async Task<(decimal Expected, decimal Actual)> GetClassPeriodRevenueAsync(Guid classId, int month, int year)
         {
@@ -621,6 +558,39 @@ namespace EMS.Infrastructure.Repositories
 
             await context.SaveChangesAsync();
         }
+
+
+        
+       public async Task<IEnumerable<Class>> GetClassesWithDataAsync(Guid teacherId, int month, int year)
+        {
+            return await context.Classes
+                .Include(c => c.ClassEnrollments.Where(ce => ce.Status == "Active"))
+                .Include(c => c.Invoices.Where(i => i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true))
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, Guid? classId, int month, int year)
+        {
+            var query = context.Invoices
+                .Where(i => i.Class.TeacherId == teacherId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
+
+            if (classId.HasValue && classId != Guid.Empty)
+                query = query.Where(i => i.ClassId == classId.Value);
+
+            return await query.ToListAsync();
+        }
+
+
+
+        public Task<IEnumerable<(Guid ClassId, string ClassName, string BillingMethod, Guid StudentId, string StudentName, string? AvatarUrl, Guid? InvoiceId, int SessionCount, decimal CreditBalance, decimal TotalAmount, decimal PaidAmount, DateTime? DueDate, string Status)>> GetAllStudentsInvoicesByMonthAsync(Guid teacherId, int month, int year)
+        {
+            throw new NotImplementedException();
+        }
+
+
+
+
 
 
     }

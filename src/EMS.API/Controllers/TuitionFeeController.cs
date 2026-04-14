@@ -140,44 +140,25 @@ namespace EMS.API.Controllers
 
 
 
-        [HttpGet("class/{classId}/postpaid-invoices")]
-        public async Task<IActionResult> GetPostpaidInvoices(Guid classId, [FromQuery] int month, [FromQuery] int year)
+        /// <summary>
+        /// Lấy danh sách hóa đơn theo kỳ (Month/Year) và theo Lớp (tùy chọn)
+        /// </summary>
+        [HttpGet("invoices/report")]
+        public async Task<IActionResult> GetInvoicesReport([FromQuery] Guid? classId, [FromQuery] int month, [FromQuery] int year)
         {
             try
             {
-                // Gọi cực kỳ sạch sẽ, không cần bận tâm lấy UserId nữa
-                var result = await tuitionFeeService.GetPostpaidInvoicesAsync(classId, month, year);
+                var result = await tuitionFeeService.GetInvoicesListAsync(classId, month, year);
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException) { return Forbid(); }
-            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
-            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
+            catch (Exception ex)
+            {
+                // Log lỗi ở đây nếu cần
+                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải danh sách hóa đơn." });
+            }
         }
 
-        [HttpGet("class/{classId}/prepaid-invoices")]
-        public async Task<IActionResult> GetPrepaidInvoices(Guid classId, [FromQuery] int month, [FromQuery] int year)
-        {
-            try
-            {
-                var result = await tuitionFeeService.GetPrepaidInvoicesAsync(classId, month, year);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException) { return Forbid(); }
-            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
-            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
-        }
 
-        [HttpGet("class/{classId}/revenue-summary")]
-        public async Task<IActionResult> GetClassRevenueSummary(Guid classId, [FromQuery] int month, [FromQuery] int year)
-        {
-            try
-            {
-                var result = await tuitionFeeService.GetClassRevenueReportAsync(classId, month, year);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException) { return Forbid(); }
-            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
-        }
 
         /// <summary>
         /// Lấy danh sách cấu hình học phí của tất cả các lớp đang dạy
@@ -269,5 +250,50 @@ namespace EMS.API.Controllers
 
 
 
+
+        /// <summary>
+        /// Lấy thông tin tổng hợp doanh thu (Dự kiến, Thực thu, Công nợ) để hiển thị lên các Card Dashboard
+        /// </summary>
+        [HttpGet("invoices/summary")]
+        public async Task<IActionResult> GetSummary([FromQuery] Guid? classId, [FromQuery] int month, [FromQuery] int year)
+        {
+            try
+            {
+                // Gọi Service để tính toán các con số tổng hợp từ bảng Invoice
+                var result = await tuitionFeeService.GetTuitionSummaryAsync(classId, month, year);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                // Bạn có thể log ex.Message ở đây để debug
+                return StatusCode(500, new { Message = "Lỗi hệ thống khi tính toán doanh thu tổng hợp kỳ này." });
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách báo cáo tóm tắt các lớp học trong kỳ (Sĩ số, Đơn giá, Tỉ lệ thu học phí)
+        /// </summary>
+        [HttpGet("reports/classes-overview")]
+        public async Task<IActionResult> GetClassesOverview([FromQuery] int month, [FromQuery] int year)
+        {
+            try
+            {
+                // Gọi Service để lấy danh sách lớp kèm theo logic tính % thu hồi học phí
+                var result = await tuitionFeeService.GetClassesOverviewAsync(month, year);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải danh sách báo cáo tổng quan lớp học." });
+            }
+        }
     }
 }

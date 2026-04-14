@@ -92,18 +92,10 @@ namespace EMS.Domain.Interfaces
 
 
 
+        Task<IEnumerable<Invoice>> GetInvoicesByFilterAsync(Guid teacherId, Guid? classId, int month, int year);
 
 
-
-        Task<IEnumerable<(Guid StudentId, string StudentName, string? AvatarUrl, Guid? InvoiceId, int SessionCount, decimal TotalAmount, decimal PaidAmount, DateTime? DueDate, string Status)>>
-            GetPostpaidStudentInvoicesAsync(Guid classId, int month, int year);
-
-        // Hàm này có thêm trường CreditBalance
-        Task<IEnumerable<(Guid StudentId, string StudentName, string? AvatarUrl, Guid? InvoiceId, int SessionCount, decimal CreditBalance, decimal TotalAmount, decimal PaidAmount, DateTime? DueDate, string Status)>>
-            GetPrepaidStudentInvoicesAsync(Guid classId, int month, int year);
-
-
-        Task<(decimal Expected, decimal Actual)> GetClassPeriodRevenueAsync(Guid classId, int month, int year);
+       
 
         Task<IEnumerable<Class>> GetTeacherClassesConfigAsync(Guid teacherId);
         Task UpdateClassFeeConfigAsync(Guid classId, string billingMethod, decimal fee, int deadlineDays);
@@ -113,6 +105,12 @@ namespace EMS.Domain.Interfaces
 
         Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
         Task ExtendClassInvoicesDueDateAsync(Guid classId, int month, int year, int additionalDays);
+
+        // Lấy danh sách lớp kèm Enrollment và Invoice để tính toán
+        Task<IEnumerable<Class>> GetClassesWithDataAsync(Guid teacherId, int month, int year);
+
+        // Lấy danh sách Invoice trực tiếp để tính Summary
+        Task<IEnumerable<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, Guid? classId, int month, int year);
 
     }
 }

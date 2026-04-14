@@ -63,7 +63,6 @@ namespace EMS.Application.Features.TuitionFees.Services
 
 
 
-
         // --- Tab Cấu hình & Phát hành ---
         public async Task<IEnumerable<TuitionFeeConfigDto>> GetTuitionFeeConfigsAsync(Guid teacherId)
         {
@@ -320,75 +319,37 @@ namespace EMS.Application.Features.TuitionFees.Services
 
 
 
-
-        public async Task<IEnumerable<PostpaidStudentInvoiceDto>> GetPostpaidInvoicesAsync(Guid classId, int month, int year)
+        public async Task<IEnumerable<GlobalInvoiceRecordDto>> GetInvoicesListAsync(Guid? classId, int month, int year)
         {
-            // 3. Lấy trực tiếp ID người dùng đang đăng nhập từ token
             var teacherId = currentUserService.UserId;
 
-            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
-                throw new UnauthorizedAccessException("Bạn không có quyền xem dữ liệu của lớp này.");
+            // 1. Lấy thực thể Invoice từ Repository
+            var invoices = await tuitionFeeRepository.GetInvoicesByFilterAsync(teacherId, classId, month, year);
 
-            var c = await tuitionFeeRepository.GetClassByIdAsync(classId);
-            if (c?.BillingMethod != "Postpaid") throw new InvalidOperationException("Lớp này không phải lớp Thu Sau (Postpaid).");
-
-            var raw = await tuitionFeeRepository.GetPostpaidStudentInvoicesAsync(classId, month, year);
-            return raw.Select(x => new PostpaidStudentInvoiceDto
+            // 2. Map sang DTO
+            return invoices.Select(i => new GlobalInvoiceRecordDto
             {
-                StudentId = x.StudentId,
-                StudentName = x.StudentName,
-                AvatarUrl = x.AvatarUrl,
-                InvoiceId = x.InvoiceId,
-                AttendedSessions = x.SessionCount,
-                TotalAmount = x.TotalAmount,
-                PaidAmount = x.PaidAmount,
-                DueDate = x.DueDate,
-                Status = x.Status
+                InvoiceId = i.InvoiceId,
+                ClassId = i.ClassId,
+                ClassName = i.Class?.ClassName ?? "N/A",
+                BillingMethod = i.Class?.BillingMethod ?? "Postpaid",
+
+                StudentId = i.StudentId,
+                StudentName = i.Student?.FullName ?? "N/A",
+                AvatarUrl = i.Student?.Account?.AvatarUrl,
+
+                SessionCount = (int)i.SessionCount,
+                TotalAmount = i.Amount,
+                // Cộng tổng tiền từ các giao dịch đã Include ở Repo
+                PaidAmount = i.Transactions?.Sum(t => t.AmountPaid) ?? 0m,
+
+                DueDate = i.DueDate,
+                Status = i.Status,
+                PeriodMonth = i.PeriodMonth,
+                PeriodYear = i.PeriodYear
             }).ToList();
         }
 
-        public async Task<IEnumerable<PrepaidStudentInvoiceDto>> GetPrepaidInvoicesAsync(Guid classId, int month, int year)
-        {
-            var teacherId = currentUserService.UserId; // Lấy ID ở đây
-
-            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
-                throw new UnauthorizedAccessException("Bạn không có quyền xem dữ liệu của lớp này.");
-
-            var c = await tuitionFeeRepository.GetClassByIdAsync(classId);
-            if (c?.BillingMethod != "Prepaid") throw new InvalidOperationException("Lớp này không phải lớp Thu Trước (Prepaid).");
-
-            var raw = await tuitionFeeRepository.GetPrepaidStudentInvoicesAsync(classId, month, year);
-            return raw.Select(x => new PrepaidStudentInvoiceDto
-            {
-                StudentId = x.StudentId,
-                StudentName = x.StudentName,
-                AvatarUrl = x.AvatarUrl,
-                InvoiceId = x.InvoiceId,
-                ScheduledSessions = x.SessionCount,
-                CreditBalance = x.CreditBalance,
-                TotalAmount = x.TotalAmount,
-                PaidAmount = x.PaidAmount,
-                DueDate = x.DueDate,
-                Status = x.Status
-            }).ToList();
-        }
-
-        public async Task<ClassPeriodRevenueDto> GetClassRevenueReportAsync(Guid classId, int month, int year)
-        {
-            var teacherId = currentUserService.UserId; // Lấy ID ở đây
-
-            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
-                throw new UnauthorizedAccessException("Bạn không có quyền xem báo cáo của lớp này.");
-
-            var (expected, actual) = await tuitionFeeRepository.GetClassPeriodRevenueAsync(classId, month, year);
-
-            return new ClassPeriodRevenueDto
-            {
-                ExpectedRevenue = expected,
-                ActualRevenue = actual,
-                DebtAmount = Math.Max(0, expected - actual)
-            };
-        }
 
 
         public async Task<IEnumerable<ClassFeeConfigDto>> GetClassFeeConfigsAsync()
@@ -472,5 +433,48 @@ namespace EMS.Application.Features.TuitionFees.Services
             await tuitionFeeRepository.ExtendClassInvoicesDueDateAsync(classId, dto.PeriodMonth, dto.PeriodYear, dto.AdditionalDays);
         }
 
+
+        public async Task<TuitionSummaryDto> GetTuitionSummaryAsync(Guid? classId, int month, int year)
+        {
+            var teacherId = currentUserService.UserId;
+            var invoices = await tuitionFeeRepository.GetInvoicesByPeriodAsync(teacherId, classId, month, year);
+
+            var expected = invoices.Where(i => i.Status != "Cancelled").Sum(i => i.Amount);
+            var actual = invoices.Where(i => i.Status == "Paid").Sum(i => i.Amount);
+
+            return new TuitionSummaryDto
+            {
+                ExpectedRevenue = expected,
+                ActualRevenue = actual,
+                DebtAmount = expected - actual
+            };
+        }
+
+        public async Task<IEnumerable<ClassTuitionReportDto>> GetClassesOverviewAsync(int month, int year)
+        {
+            var teacherId = currentUserService.UserId;
+            var classes = await tuitionFeeRepository.GetClassesWithDataAsync(teacherId, month, year);
+
+            return classes.Select(c => {
+                var invs = c.Invoices.ToList();
+                var exp = invs.Where(i => i.Status != "Cancelled").Sum(i => i.Amount);
+                var act = invs.Where(i => i.Status == "Paid").Sum(i => i.Amount);
+
+                return new ClassTuitionReportDto
+                {
+                    ClassId = c.ClassId,
+                    ClassName = c.ClassName,
+                    BillingMethod = c.BillingMethod ?? "Postpaid",
+                    TuitionFee = c.TuitionFee,
+                    StudentCount = c.ClassEnrollments.Count,
+                    CollectionRate = exp > 0 ? (double)Math.Round((act / exp) * 100, 2) : 0
+                };
+            }).ToList();
+        }
+
+        public Task<IEnumerable<Class>> GetClassesOverviewEntitiesAsync(Guid teacherId, int month, int year)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
