@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -83,6 +84,21 @@ namespace EMS.Application.Features.Feedbacks.Services
                     logger.LogError($"Lỗi gửi thông báo Feedback: {ex.Message}");
                 }
             }
+        }
+        public async Task<IEnumerable<TeacherFeedbackHistoryDto>> GetTeacherHistoryAsync(Guid userId)
+        {
+            var data = await feedbackRepository.GetBySenderIdAsync(userId);
+
+            return data.Select(f => new TeacherFeedbackHistoryDto
+            {
+                FeedbackId = f.FeedbackId,
+                Title = f.Title,
+                Type = f.Type,
+                Status = f.Status,
+                AdminReply = f.AdminReply,
+                CreatedAt = (DateTime)f.CreatedAt,
+                UpdatedAt = f.UpdatedAt
+            }).ToList();
         }
     }
 }

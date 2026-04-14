@@ -44,6 +44,13 @@ namespace EMS.Infrastructure.Repositories
             context.Set<SystemFeedback>().Update(fb);
             await context.SaveChangesAsync();
         }
+        public async Task<IEnumerable<SystemFeedback>> GetBySenderIdAsync(Guid senderId)
+        {
+            return await context.Set<SystemFeedback>()
+                .Where(f => f.SenderId == senderId)
+                .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+        }
     }
 
 }

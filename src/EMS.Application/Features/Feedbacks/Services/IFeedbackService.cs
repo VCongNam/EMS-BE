@@ -12,5 +12,6 @@ namespace EMS.Application.Features.Feedbacks.Services
         Task CreateFeedbackAsync(Guid userId, CreateFeedbackDto dto);
         Task<IEnumerable<FeedbackSummaryDto>> GetAdminListAsync(string? type, string? status);
         Task ProcessFeedbackAsync(Guid feedbackId, ProcessFeedbackDto dto);
+        Task<IEnumerable<TeacherFeedbackHistoryDto>> GetTeacherHistoryAsync(Guid userId);
     }
 }

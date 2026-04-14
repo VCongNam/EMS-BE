@@ -13,5 +13,6 @@ namespace EMS.Domain.Interfaces
         Task<IEnumerable<SystemFeedback>> GetAllAsync(string? type, string? status);
         Task<SystemFeedback?> GetByIdAsync(Guid id);
         Task UpdateAsync(SystemFeedback feedback);
+        Task<IEnumerable<SystemFeedback>> GetBySenderIdAsync(Guid senderId);
     }
 }

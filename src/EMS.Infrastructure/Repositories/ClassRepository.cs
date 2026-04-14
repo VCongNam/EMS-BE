@@ -208,16 +208,16 @@ namespace EMS.Infrastructure.Repositories
         public async Task<IEnumerable<ClassTum>> GetClassesByTAIdAsync(Guid taId)
         {
             return await _context.ClassTa
-                .Include(c => c.Class)
+                .Where(ct => ct.Taid == taId && ct.Class.Status != "Archived")
+                .Include(ct => ct.Class)
                     .ThenInclude(cls => cls.Subject)
-                .Include(c => c.Class)
+                .Include(ct => ct.Class)
                     .ThenInclude(cls => cls.Teacher)
                         .ThenInclude(t => t.TeacherNavigation)
-                .Include(c => c.Class)
-                    .ThenInclude(cls => cls.ClassEnrollments) // Để đếm học sinh
-                .Include(c => c.Class)
-                    .ThenInclude(cls => cls.ClassSchedules)   // Để lấy lịch học
-                .Where(c => c.Taid == taId)
+                .Include(ct => ct.Class)
+                    .ThenInclude(cls => cls.ClassEnrollments)
+                .Include(ct => ct.Class)
+                    .ThenInclude(cls => cls.ClassSchedules)
                 .ToListAsync();
         }
 
