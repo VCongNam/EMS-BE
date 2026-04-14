@@ -77,11 +77,32 @@ namespace EMS.Infrastructure.Repositories
         }
 
         //Student Management
-        public async Task<ClassEnrollment> AddEnrollmentAsync(ClassEnrollment enrollment)
+        public async Task AddEnrollmentAsync(ClassEnrollment enrollment)
         {
             await _context.ClassEnrollments.AddAsync(enrollment);
+        }
+
+        public void UpdateEnrollment(ClassEnrollment enrollment)
+        {
+            _context.ClassEnrollments.Update(enrollment);
+        }
+
+        public async Task<List<ClassEnrollment>> GetEnrollmentsByStudentIdsAsync(Guid classId, List<Guid> studentIds)
+        {
+            return await _context.ClassEnrollments
+                .Where(ce => ce.ClassId == classId && studentIds.Contains(ce.StudentId))
+                .ToListAsync();
+        }
+
+        public async Task SaveChangesAsync()
+        {
             await _context.SaveChangesAsync();
-            return enrollment;
+        }
+
+        public async Task<int> GetActiveStudentCountAsync(Guid classId)
+        {
+            return await _context.ClassEnrollments
+                .CountAsync(ce => ce.ClassId == classId && ce.Status == "Active");
         }
 
         public async Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId)
@@ -200,11 +221,6 @@ namespace EMS.Infrastructure.Repositories
                 .FirstOrDefaultAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
         }
 
-        public async Task UpdateEnrollmentAsync(ClassEnrollment enrollment)
-        {
-            _context.ClassEnrollments.Update(enrollment);
-            await _context.SaveChangesAsync();
-        }
         public async Task<IEnumerable<ClassTum>> GetClassesByTAIdAsync(Guid taId)
         {
             return await _context.ClassTa
