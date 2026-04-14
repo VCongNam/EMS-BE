@@ -399,7 +399,7 @@ namespace EMS.Application.Features.Classes.Services
                 throw new Exception("Không thể khôi phục học sinh vào lớp đã kết thúc hoặc lưu trữ.");
 
             // 2. Phân quyền
-            if (currentUserRole != "Admin" && classroom.TeacherId != currentUserId)
+            if (currentUserRole != "Teacher" && classroom.TeacherId != currentUserId)
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
             // 3. Lấy thông tin ghi danh
@@ -420,6 +420,48 @@ namespace EMS.Application.Features.Classes.Services
             // Mở rộng sau này: Ghi log "Restore Student", Khôi phục Hóa đơn (nếu cần)...
 
             return true;
+        }
+
+        public async Task<IEnumerable<ClassStaffDto>> GetClassStaffOnlyAsync(Guid classId)
+        {
+            var classroom = await _classRepository.GetClassStaffAsync(classId);
+
+            if (classroom == null) throw new Exception("Không tìm thấy lớp học.");
+
+            var staffList = new List<ClassStaffDto>();
+
+            // 1. Lấy Giáo viên chủ nhiệm của lớp
+            if (classroom.Teacher?.TeacherNavigation != null)
+            {
+                staffList.Add(new ClassStaffDto
+                {
+                    UserId = classroom.TeacherId,
+                    FullName = classroom.Teacher.TeacherNavigation.FullName,
+                    Email = classroom.Teacher.TeacherNavigation.Email,
+                    AvatarUrl = classroom.Teacher.TeacherNavigation.AvatarUrl,
+                    Role = "Teacher"
+                });
+            }
+
+            // 2. Lấy TẤT CẢ Trợ giảng được assigned vào lớp này
+            // classroom.ClassTa chỉ chứa các TA của ClassId hiện tại nhờ câu Include ở Repository
+            if (classroom.ClassTa != null)
+            {
+                var assignedTAs = classroom.ClassTa
+                    .Where(cta => cta.Status == "Active") // Chỉ lấy những người đang Active trong lớp này
+                    .Select(cta => new ClassStaffDto
+                    {
+                        UserId = cta.Taid,
+                        FullName = cta.Ta.Ta.FullName,
+                        Email = cta.Ta.Ta.Email,
+                        AvatarUrl = cta.Ta.Ta.AvatarUrl,
+                        Role = "TA"
+                    });
+
+                staffList.AddRange(assignedTAs);
+            }
+
+            return staffList;
         }
 
     }
