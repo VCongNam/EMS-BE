@@ -25,8 +25,14 @@ namespace EMS.API.Controllers.Students
         {
             try
             {
-                var newStudentId = await _studentAccountService.CreateStudentAsync(request);
-                return StatusCode(201, new { Message = "Create student account successfully!", StudentId = newStudentId });
+                var result = await _studentAccountService.CreateStudentAsync(request);
+
+                return Ok(new
+                {
+                    message = "Create student account successfully!",
+                    studentId = result.StudentId,
+                    isNewAccount = result.IsNewAccount
+                });
             }
             catch (Exception ex)
             {
