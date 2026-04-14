@@ -206,21 +206,21 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Diagnostic check: verify DI registrations for progress report service/repository
-using (var startupScope = app.Services.CreateScope())
-{
-    var sp = startupScope.ServiceProvider;
-    var prSvc = sp.GetService<EMS.Application.Features.ProgressReports.Services.IProgressReportService>();
-    var prRepo = sp.GetService<EMS.Domain.Interfaces.IProgressReportRepository>();
-    if (prSvc == null)
-        System.Console.WriteLine("DI CHECK: IProgressReportService NOT registered");
-    else
-        System.Console.WriteLine("DI CHECK: IProgressReportService registered");
+//using (var startupScope = app.Services.CreateScope())
+//{
+//    var sp = startupScope.ServiceProvider;
+//    var prSvc = sp.GetService<EMS.Application.Features.ProgressReports.Services.IProgressReportService>();
+//    var prRepo = sp.GetService<EMS.Domain.Interfaces.IProgressReportRepository>();
+//    if (prSvc == null)
+//        System.Console.WriteLine("DI CHECK: IProgressReportService NOT registered");
+//    else
+//        System.Console.WriteLine("DI CHECK: IProgressReportService registered");
 
-    if (prRepo == null)
-        System.Console.WriteLine("DI CHECK: IProgressReportRepository NOT registered");
-    else
-        System.Console.WriteLine("DI CHECK: IProgressReportRepository registered");
-}
+//    if (prRepo == null)
+//        System.Console.WriteLine("DI CHECK: IProgressReportRepository NOT registered");
+//    else
+//        System.Console.WriteLine("DI CHECK: IProgressReportRepository registered");
+//}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
