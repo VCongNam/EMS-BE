@@ -12,8 +12,6 @@ namespace EMS.Domain.Interfaces
         Task AddAsync(Class classroom);
 
         Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId);
-        Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId);
-        Task<ClassEnrollment> AddEnrollmentAsync(ClassEnrollment enrollment);
         Task<IEnumerable<Class>> GetClassesByTeacherIdAsync(Guid teacherId);
         Task<Class?> GetByIdAsync(Guid classId);
         Task UpdateAsync(Class classroom);
@@ -29,16 +27,23 @@ namespace EMS.Domain.Interfaces
         Task<ClassTum> AddClassTAAsync(ClassTum classTa);
         Task<ClassTum> GetClassTAAsync(Guid classId, Guid taId);
         Task UpdateClassTAAsync(ClassTum classTa);
-        Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size);
-        Task<ClassEnrollment> GetClassSummaryAsync(Guid classId, Guid studentId);
-        Task<(List<Post> Items, int TotalCount)> GetClassPostAsync(Guid classId, int page, int size, DateTime? fromDate, DateTime? toDate);
 
-        Task<ClassEnrollment?> GetEnrollmentAsync(Guid classId, Guid studentId);
-        Task UpdateEnrollmentAsync(ClassEnrollment enrollment);
+        Task<ClassEnrollment> GetClassSummaryAsync(Guid classId, Guid studentId);
+
         Task<IEnumerable<ClassTum>> GetClassesByTAIdAsync(Guid taId);
         Task<IEnumerable<Student>> GetStudentsByClassIdAsync(Guid classId);
-
         Task<Class?> GetClassStaffAsync(Guid classId);
+
+        //Student Management
+        void UpdateEnrollment(ClassEnrollment enrollment);
+        Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId);
+        Task AddEnrollmentAsync(ClassEnrollment enrollment);
+        Task SaveChangesAsync();
+        Task<(List<Post> Items, int TotalCount)> GetClassPostAsync(Guid classId, int page, int size, DateTime? fromDate, DateTime? toDate);
+        Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size);
+        Task<ClassEnrollment?> GetEnrollmentAsync(Guid classId, Guid studentId);
+        Task<int> GetActiveStudentCountAsync(Guid classId);
+        Task<List<ClassEnrollment>> GetEnrollmentsByStudentIdsAsync(Guid classId, List<Guid> studentIds);
     }
 
 }

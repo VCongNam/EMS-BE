@@ -22,24 +22,30 @@ namespace EMS.Infrastructure.Repositories
         public async Task AddAsync(Student student)
         {
             await _context.Students.AddAsync(student);
-            await _context.SaveChangesAsync();
         }
 
         public async Task<Student?> GetByIdAsync(Guid studentId)
         {
             return await _context.Students
+                .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.StudentId == studentId);
         }
 
         public async Task<Student?> IsStudentExistAsync(Guid accountId, string name, DateOnly dob)
         {
-            return await _context.Students.
-                FirstOrDefaultAsync(s => s.Account.AccountId == accountId && s.FullName.ToLower().Equals(name.ToLower()) && s.Dob == dob);
+            return await _context.Students
+                .AsNoTracking() 
+                .FirstOrDefaultAsync(s => s.AccountId == accountId &&
+                    s.FullName.ToLower().Equals(name.ToLower()) &&
+                    s.Dob == dob);
         }
 
         public async Task UpdateAsync(Student student)
         {
             _context.Students.Update(student);
+        }
+        public async Task SaveChangesAsync()
+        {
             await _context.SaveChangesAsync();
         }
     }

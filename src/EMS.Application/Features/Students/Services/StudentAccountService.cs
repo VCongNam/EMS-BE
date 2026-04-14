@@ -37,6 +37,7 @@ namespace EMS.Application.Features.Students.Services
             string? rawPassword = null;
 
             string lastFourDigits = phone.Length >= 4 ? phone.Substring(phone.Length - 4) : _random.Next(1000, 10000).ToString();
+           
             //Tạo accocunt mới
             if (isAccountExisted == null)
             {
@@ -86,11 +87,74 @@ namespace EMS.Application.Features.Students.Services
                 Address = request.Address
             };
             await _studentRepository.AddAsync(studentProfile);
+            await _studentRepository.SaveChangesAsync();
+            return (newStudentId, rawPassword, isNew);
+        }
+
+        private async Task<(Guid StudentId, string? InitialPassword, bool IsNewAccount)> ProcessStudentImportAsync(
+    CreateStudentDto request, Guid studentRoleId)
+        {
+            string phone = request.PhoneNumber?.Trim() ?? "";
+            string fullName = request.FullName?.Trim() ?? "";
+
+            var isAccountExisted = await _accountRepository.GetByPhoneAsync(phone);
+            Guid accountIdToUse;
+            bool isNew = false;
+            string? rawPassword = null;
+
+            if (isAccountExisted == null)
+            {
+                isNew = true;
+                rawPassword = request.Password;
+
+                accountIdToUse = Guid.NewGuid();
+                var accountEntity = new Account
+                {
+                    AccountId = accountIdToUse,
+                    Email = $"student_{phone}@ems.internal", 
+                    FullName = fullName,
+                    RoleId = studentRoleId,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword),
+                    PhoneNumber = phone,
+                    Status = "Unverified",
+                    IsDeleted = false,
+                    CreatedAt = DateTime.UtcNow,
+                };
+
+                await _accountRepository.AddAsync(accountEntity);
+            }
+            else
+            {
+                accountIdToUse = isAccountExisted.AccountId;
+            }
+
+            var dob = DateOnly.FromDateTime(request.DOB);
+            var existingStudent = await _studentRepository.IsStudentExistAsync(accountIdToUse, fullName, dob);
+
+            if (existingStudent != null)
+            {
+                return (existingStudent.StudentId, null, false);
+            }
+
+            Guid newStudentId = Guid.NewGuid();
+            var studentProfile = new Student
+            {
+                StudentId = newStudentId,
+                AccountId = accountIdToUse,
+                FullName = fullName,
+                Dob = dob,
+                Address = request.Address
+            };
+
+            await _studentRepository.AddAsync(studentProfile);
+
             return (newStudentId, rawPassword, isNew);
         }
 
         public async Task<ImportResultDto> ImportStudentsFromExcelAsync(IFormFile excelFile)
         {
+            var studentRole = await _accountRepository.GetRoleByNameAsync("Student");
+            var studentRoleId = studentRole.RoleId;
             var result = new ImportResultDto();
             if (excelFile == null || excelFile.Length == 0)
             {
@@ -100,6 +164,7 @@ namespace EMS.Application.Features.Students.Services
             var extension = Path.GetExtension(excelFile.FileName).ToLower();
             if (extension != ".xlsx")
                 throw new Exception("Hệ thống chỉ hỗ trợ file Excel định dạng .xlsx");
+           
             using var stream = new MemoryStream();
             await excelFile.CopyToAsync(stream);
 
@@ -138,7 +203,7 @@ namespace EMS.Application.Features.Students.Services
                         Address = address,
                         PhoneNumber = phone,
                     };
-                    var (sId, psw, isNew) = await CreateStudentAsync(createStudentDto);
+                    var (sId, psw, isNew) = await ProcessStudentImportAsync(createStudentDto, studentRoleId);
 
                     var successDto = new StudentImportSuccessDto
                     {
@@ -162,6 +227,11 @@ namespace EMS.Application.Features.Students.Services
                         ErrorMessage = ex.Message
                     });
                 }
+            }
+
+            if (result.SuccessCount > 0)
+            {
+                await _studentRepository.SaveChangesAsync();
             }
 
             var excelBytes = ExportImportResultToExcel(result);
