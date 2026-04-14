@@ -21,5 +21,7 @@ public partial class TeachingAssistantTask
 
     public string? Type { get; set; }
 
+    public string? Feedback { get; set; }
+
     public virtual ClassTum ClassTa { get; set; } = null!;
 }
