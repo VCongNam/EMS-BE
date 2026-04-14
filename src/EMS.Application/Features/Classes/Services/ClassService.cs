@@ -127,24 +127,48 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task<bool> AssignStudentAsync(Guid classId, AssignStudentDto request)
         {
-            bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, request.StudentID);
-            if (isEnrolled)
+            var classEntity = await _classRepository.GetByIdAsync(classId);
+            if (classEntity == null)
             {
-                throw new Exception("Học sinh đã được thêm vào lớp này rồi!");
+                throw new Exception("Không tìm thấy lớp học!");
             }
-            var newEnrollment = new ClassEnrollment
+            var currentMembers = await _classRepository.GetClassMemberAsync(classId);
+            int currentStudentCount = currentMembers.Count();
+            if (classEntity.MaxStudents.HasValue && currentStudentCount >= classEntity.MaxStudents.Value)
             {
-                EnrollmentId = Guid.NewGuid(),
-                ClassId = classId,
-                StudentId = request.StudentID,
-                EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                Status = "Active",
-                CreatedAt = DateTime.UtcNow
-            };
-            await _classRepository.AddEnrollmentAsync(newEnrollment);
+                throw new Exception($"Lớp học đã đạt số lượng tối đa ({classEntity.MaxStudents.Value} học sinh). Không thể thêm mới!");
+            }
+
+            var existingEnrollment = await _classRepository.GetEnrollmentAsync(classId, request.StudentID);
+
+            if (existingEnrollment != null)
+            {
+                if (existingEnrollment.Status == "Dropped")
+                {
+                    existingEnrollment.Status = "Active";
+                    existingEnrollment.EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow);
+                    await _classRepository.UpdateEnrollmentAsync(existingEnrollment);
+                }
+                else
+                {
+                    throw new Exception("Học sinh đã được thêm vào lớp này và đang hoạt động!");
+                }
+            }
+            else
+            {
+                var newEnrollment = new ClassEnrollment
+                {
+                    EnrollmentId = Guid.NewGuid(),
+                    ClassId = classId,
+                    StudentId = request.StudentID,
+                    EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                    Status = "Active",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _classRepository.AddEnrollmentAsync(newEnrollment);
+            }
 
             //Notification
-            var classEntity = await _classRepository.GetByIdAsync(classId);
             var accountId = await _notificationService.GetAccountIdByStudentIdAsync(request.StudentID);
             if (classEntity != null && accountId != null)
             {

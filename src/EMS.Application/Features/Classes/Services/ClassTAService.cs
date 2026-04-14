@@ -112,7 +112,8 @@ namespace EMS.Application.Features.Classes.Services
                 Email = cta.Ta.Ta.Email,
                 Permission = cta.Permission,
                 SalaryPerSession = cta.SalaryPerSession,
-                ClassTAId = cta.ClassTaid
+                ClassTAId = cta.ClassTaid,
+                Status = cta.Status
             }).ToList();
         }
 
@@ -198,7 +199,8 @@ namespace EMS.Application.Features.Classes.Services
                 FullName = ct.Ta.Ta.FullName,
                 Email = ct.Ta.Ta.Email,
                 PhoneNumber = ct.Ta.Ta.PhoneNumber,
-                ClassTaId = ct.ClassTaid
+                ClassTaId = ct.ClassTaid,
+                Status = ct.Status
             }).ToList();
             return result;
         }
