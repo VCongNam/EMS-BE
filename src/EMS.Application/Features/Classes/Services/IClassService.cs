@@ -20,6 +20,7 @@ namespace EMS.Application.Features.Classes.Services
         Task RestoreClassAsync(Guid classId);
         Task<bool> RemoveStudentFromClassAsync(Guid classId, Guid studentId);
         Task<bool> RestoreStudentInClassAsync(Guid classId, Guid studentId);
+        Task<IEnumerable<ClassStaffDto>> GetClassStaffOnlyAsync(Guid classId);
     }
 
 }

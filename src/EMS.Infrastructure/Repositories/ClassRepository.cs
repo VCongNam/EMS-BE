@@ -94,6 +94,18 @@ namespace EMS.Infrastructure.Repositories
                .ToListAsync();
         }
 
+        public async Task<Class?> GetClassStaffAsync(Guid classId)
+        {
+            return await _context.Classes
+                .Include(c => c.Teacher)
+                    .ThenInclude(t => t.TeacherNavigation)
+                .Include(c => c.ClassTa)
+                    .ThenInclude(cta => cta.Ta)
+                        .ThenInclude(ta => ta.Ta)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.ClassId == classId && (c.IsDeleted == null || c.IsDeleted == false));
+        }
+
         public async Task<bool> IsStudentAlreadyEnrolledAsync(Guid classId, Guid studentId)
         {
             return await _context.ClassEnrollments

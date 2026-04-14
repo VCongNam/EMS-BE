@@ -47,6 +47,15 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = "Error: " + ex.Message });
             }
         }
+
+
+        [HttpGet("{classId}/staff")]
+        public async Task<IActionResult> GetClassStaff(Guid classId)
+        {
+            var staff = await _classService.GetClassStaffOnlyAsync(classId);
+            return Ok(staff);
+        }
+
         [HttpPost("{classId}/assignStudent")]
         [Authorize]
         public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentDto request)

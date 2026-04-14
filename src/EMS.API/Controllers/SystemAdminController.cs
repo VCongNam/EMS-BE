@@ -1,4 +1,6 @@
-﻿using EMS.Application.Features.SystemAdmin.Dtos;
+﻿using EMS.Application.Features.Feedbacks.Dtos;
+using EMS.Application.Features.Feedbacks.Services;
+using EMS.Application.Features.SystemAdmin.Dtos;
 using EMS.Application.Features.SystemAdmin.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,69 +9,89 @@ namespace EMS.API.Controllers
 {
     [ApiController]
     [Route("api/admin")]
-    [Authorize(Roles = "Admin")] // Bức tường lửa: Chỉ Admin mới được truy cập
-    public class SystemAdminsController : ControllerBase
+    [Authorize(Roles = "Admin")]
+    public class SystemAdminController : ControllerBase
     {
-        private readonly ISystemAdminService adminService;
+        private readonly ISystemAdminService _adminService;
+        private readonly IFeedbackService _feedbackService;
 
-        public SystemAdminsController(ISystemAdminService adminService)
+        public SystemAdminController(ISystemAdminService adminService, IFeedbackService feedbackService)
         {
-            this.adminService = adminService;
+            _adminService = adminService;
+            _feedbackService = feedbackService;
         }
+
+        // --- QUẢN LÝ HỆ THỐNG & DASHBOARD ---
 
         [HttpGet("dashboard")]
-        public async Task<IActionResult> GetDashboard()
+        public async Task<IActionResult> GetSystemDashboard([FromQuery] DashboardFilterDto filter)
         {
             try
             {
-                var dashboard = await adminService.GetSystemDashboardAsync();
-                return Ok(dashboard);
+                var result = await _adminService.GetSystemDashboardAsync(filter);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return StatusCode(500, new { Error = ex.Message });
             }
         }
 
-        [HttpGet("accounts")]
-        public async Task<IActionResult> GetAllAccounts([FromQuery] string? role, [FromQuery] string? status)
+        [HttpGet("teachers")]
+        public async Task<IActionResult> GetTeachersList([FromQuery] string? searchTerm, [FromQuery] string? statusFilter)
         {
             try
             {
-                var accounts = await adminService.GetAllAccountsAsync(role, status);
-                return Ok(accounts);
+                var result = await _adminService.GetTeachersGridAsync(searchTerm, statusFilter);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { Error = ex.Message });
             }
         }
 
-        [HttpGet("accounts/{id}")]
-        public async Task<IActionResult> GetAccountDetail(Guid id)
+        [HttpGet("teachers/{id}")]
+        public async Task<IActionResult> GetTeacherDetail(Guid id)
         {
             try
             {
-                var account = await adminService.GetAccountDetailAsync(id);
-                return Ok(account);
+                var result = await _adminService.GetTeacherDetailAsync(id);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return NotFound(new { Message = ex.Message });
+                return NotFound(new { Error = ex.Message });
             }
         }
 
-        [HttpPatch("accounts/{id}/status")]
-        public async Task<IActionResult> ChangeAccountStatus(Guid id, [FromBody] ChangeAccountStatusDto request)
+        // --- QUẢN LÝ FEEDBACK ---
+
+        [HttpGet("feedbacks")]
+        public async Task<IActionResult> GetFeedbackList([FromQuery] string? type, [FromQuery] string? status)
         {
             try
             {
-                await adminService.ChangeAccountStatusAsync(id, request);
-                return Ok(new { Message = $"Đã chuyển trạng thái tài khoản thành: {request.NewStatus} và gửi email thông báo." });
+                var result = await _feedbackService.GetAdminListAsync(type, status);
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPut("feedbacks/{id}/process")]
+        public async Task<IActionResult> ProcessFeedback(Guid id, [FromBody] ProcessFeedbackDto dto)
+        {
+            try
+            {
+                await _feedbackService.ProcessFeedbackAsync(id, dto);
+                return Ok(new { Message = "Đã cập nhật trạng thái và gửi thông báo cho người dùng." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }

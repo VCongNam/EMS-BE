@@ -9,14 +9,17 @@ namespace EMS.Domain.Interfaces
 {
     public interface ISystemAdminRepository
     {
+        // Nhóm đếm số liệu Dashboard
         Task<int> CountAccountsByRoleAsync(string roleName);
-        Task<int> CountActiveClassesAsync();
-        Task<int> CountNewRegistrationsThisMonthAsync();
+        Task<int> CountOngoingClassesAsync();
 
-        Task<IEnumerable<Account>> GetAllAccountsAsync(string? role, string? status);
-        Task<Account?> GetAccountByIdAsync(Guid accountId);
-        Task UpdateAccountAsync(Account account);
-        Task<int> CountClassesByTeacherAsync(Guid teacherId);
+        Task<IEnumerable<Account>> GetAccountsInPeriodAsync(DateTime start, DateTime end);
+        Task<IEnumerable<Post>> GetPostsInPeriodAsync(DateTime start, DateTime end);
+        Task<IEnumerable<Assignment>> GetAssignmentsInPeriodAsync(DateTime start, DateTime end);
+        Task<IEnumerable<Session>> GetSessionsInPeriodAsync(DateTime start, DateTime end);
 
+        // Nhóm thao tác với Teacher
+        Task<IEnumerable<Teacher>> GetAllTeachersGridAsync(string? searchTerm, string? statusFilter);
+        Task<Teacher?> GetTeacherByIdAsync(Guid teacherId);
     }
 }

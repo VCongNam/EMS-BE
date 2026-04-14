@@ -8,7 +8,7 @@ using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.LearningMaterials.Services;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.Services;
-using EMS.Application.Features.ProgressReports.Services;
+using EMS.Application.Features.Feedbacks.Services;
 using EMS.Application.Features.ProgressReports.Validators;
 using EMS.Application.Features.Sessions.Services;
 using EMS.Application.Features.Students.Services;
@@ -58,6 +58,7 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<ILearningMaterialRepository, LearningMaterialRepository>();
 builder.Services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
 builder.Services.AddScoped<ITuitionFeeRepository, TuitionFeeRepository>();
+builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
 // Progress report service and repository
 builder.Services.AddScoped<EMS.Application.Features.ProgressReports.Services.IProgressReportService, EMS.Application.Features.ProgressReports.Services.ProgressReportService>();
 builder.Services.AddScoped<IGradeCategoryRepository, GradeCategoryRepository>();
@@ -86,7 +87,7 @@ builder.Services.AddScoped<IStudentAssignmentService, StudentAssignmentService>(
 builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
 builder.Services.AddScoped<IStudentScheduleService, StudentScheduleService>();
 builder.Services.AddScoped<IStudentTuitionService, StudentTuitionService>();
-
+builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
