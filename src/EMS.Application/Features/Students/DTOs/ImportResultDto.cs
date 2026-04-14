@@ -11,14 +11,19 @@ namespace EMS.Application.Features.Students.DTOs
         public int TotalRows { get; set; }
         public int SuccessCount { get; set; }
         public int FailedCount { get; set; }
-        public List<StudentImportSuccessDto> SuccessList { get; set; } = new();      
+        public List<StudentImportSuccessDto> NewAccounts { get; set; } = new();
+        public List<StudentImportSuccessDto> ExistedAccounts { get; set; } = new();
         public List<ImportErrorDto> ErrorList { get; set; } = new();
+
+        public string? Base64ExcelReport { get; set; }
     }
 
     public class StudentImportSuccessDto
     {
         public Guid StudentId { get; set; }
-        public string FullName { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string? Password { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
     }
 
     public class ImportErrorDto

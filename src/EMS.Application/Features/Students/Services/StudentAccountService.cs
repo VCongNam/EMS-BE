@@ -1,5 +1,6 @@
 ﻿using ClosedXML.Excel;
 using DocumentFormat.OpenXml.VariantTypes;
+using EMS.Application.Common.Helpers;
 using EMS.Application.Features.Students.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
@@ -16,31 +17,47 @@ namespace EMS.Application.Features.Students.Services
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IStudentRepository _studentRepository;
+        private static readonly Random _random = new Random();
         public StudentAccountService(IAccountRepository accountRepository, IStudentRepository studentRepository)
         {
             _accountRepository = accountRepository;
             _studentRepository = studentRepository;
         }
-        public async Task<Guid> CreateStudentAsync(CreateStudentDto request)
+        public async Task<(Guid StudentId, string? InitialPassword, bool IsNewAccount)> CreateStudentAsync(CreateStudentDto request)
         {
+            string phone = request.PhoneNumber?.Trim() ?? "";
+            string fullName = request.FullName?.Trim() ?? "";
+
+            if (string.IsNullOrWhiteSpace(fullName)) throw new Exception("Tên học sinh không được để trống.");
+            if (!DataValidator.IsValidPhoneNumber(phone)) throw new Exception("Số điện thoại không hợp lệ.");
+
+            var isAccountExisted = await _accountRepository.GetByPhoneAsync(phone);
             Guid accountIdToUse;
-            var isAccountExisted = await _accountRepository.GetByPhoneAsync(request.PhoneNumber);
+            bool isNew = false;
+            string? rawPassword = null;
 
-
+            string lastFourDigits = phone.Length >= 4 ? phone.Substring(phone.Length - 4) : _random.Next(1000, 10000).ToString();
             //Tạo accocunt mới
             if (isAccountExisted == null)
             {
+                if (string.IsNullOrWhiteSpace(request.Password) || !DataValidator.IsValidPassword(request.Password))
+                    throw new Exception("Mật khẩu tạo mới không đủ độ phức tạp (8 ký tự, 1 hoa, 1 ký tự đặc biệt).");
+
+                isNew = true;
+                rawPassword = request.Password.Trim();
                 var studentRole = await _accountRepository.GetRoleByNameAsync("Student");
+
                 accountIdToUse = Guid.NewGuid();
                 var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
                 var accountEntity = new Account
                 {
                     AccountId = accountIdToUse,
-                    Email = $"user_{request.PhoneNumber}@ems.internal",
-                    FullName = $"Account{request.PhoneNumber}",
+                    Email = $"user_{phone}@ems.internal",
+                    FullName = $"Account{lastFourDigits}",
                     RoleId = studentRole.RoleId,
                     PasswordHash = hashedPassword,
-                    PhoneNumber = request.PhoneNumber,
+                    PhoneNumber = phone,
                     Status = "Unverified",
                     IsDeleted = false,
                     CreatedAt = DateTime.Now,
@@ -51,22 +68,25 @@ namespace EMS.Application.Features.Students.Services
                 accountIdToUse = isAccountExisted.AccountId;
             }
 
-            var existingStudent = await _studentRepository.IsStudentExistAsync(accountIdToUse, request.FullName, DateOnly.FromDateTime(request.DOB));
+            //Check stuednt in Account
+            var dob = DateOnly.FromDateTime(request.DOB);
+            var existingStudent = await _studentRepository.IsStudentExistAsync(accountIdToUse, fullName, dob);
             if (existingStudent != null)
             {
-                return existingStudent.StudentId;
+                return (existingStudent.StudentId, null, false);
             }
+
             Guid newStudentId = Guid.NewGuid();
             var studentProfile = new Student
             {
                 StudentId = newStudentId,
                 AccountId = accountIdToUse,
-                FullName = request.FullName,
-                Dob = DateOnly.FromDateTime(request.DOB),
+                FullName = fullName,
+                Dob = dob,
                 Address = request.Address
             };
             await _studentRepository.AddAsync(studentProfile);
-            return newStudentId;
+            return (newStudentId, rawPassword, isNew);
         }
 
         public async Task<ImportResultDto> ImportStudentsFromExcelAsync(IFormFile excelFile)
@@ -94,28 +114,44 @@ namespace EMS.Application.Features.Students.Services
                 string studentName = row.Cell(1).GetString().Trim();
                 try
                 {
-                    string phone = row.Cell(2).GetString().Trim();
+                    string phone = row.Cell(2).GetValue<string>()?.Trim();
                     string dob = row.Cell(3).GetString().Trim();
-                    string address = row.Cell(4).GetString().Trim();
-                    if (string.IsNullOrEmpty(studentName)) throw new Exception("Tên học sinh không được để trống.");
-                    if (string.IsNullOrEmpty(phone)) throw new Exception("Số điện thoại phụ huynh bắt buộc nhập.");
-                    if (!DateTime.TryParse(dob, out DateTime birthDate)) throw new Exception("Ngày sinh không đúng định dạng (VD: 01/12/2010).");
+                    string address = row.Cell(4).GetValue<string>()?.Trim();
+
+                    if (string.IsNullOrWhiteSpace(studentName))
+                        throw new Exception("Tên học sinh không được để trống.");
+
+                    if (!DateTime.TryParse(dob, out DateTime birthDate))
+                        throw new Exception("Ngày sinh không đúng định dạng.");
+
+
+                    string studentFirstName = studentName.Split(' ').Last();
+                    string unaccentedName = DataValidator.RemoveVietnameseSigns(studentFirstName);
+                    string padding = unaccentedName.Length < 3 ? "Student" : "";
+                    string generatedPassword = $"{padding}{unaccentedName}@{phone.Substring(Math.Max(0, phone.Length - 4))}";
 
                     var createStudentDto = new CreateStudentDto
                     {
                         FullName = studentName,
-                        Password = "123456",
+                        Password = generatedPassword,
                         DOB = birthDate,
                         Address = address,
                         PhoneNumber = phone,
                     };
-                    Guid newStudentId = await CreateStudentAsync(createStudentDto);
-                    result.SuccessList.Add(new StudentImportSuccessDto
+                    var (sId, psw, isNew) = await CreateStudentAsync(createStudentDto);
+
+                    var successDto = new StudentImportSuccessDto
                     {
-                        StudentId = newStudentId,
-                        FullName = studentName
-                    });
+                        StudentId = sId,
+                        FullName = studentName,
+                        PhoneNumber = phone,
+                        Password = psw
+                    };
+
+                    if (isNew) result.NewAccounts.Add(successDto);
+                    else result.ExistedAccounts.Add(successDto);
                     result.SuccessCount++;
+
                 } catch (Exception ex)
                 {
                     result.FailedCount++;
@@ -127,7 +163,66 @@ namespace EMS.Application.Features.Students.Services
                     });
                 }
             }
+
+            var excelBytes = ExportImportResultToExcel(result);
+            result.Base64ExcelReport = Convert.ToBase64String(excelBytes);
+
             return result;
+        }
+
+        public byte[] ExportImportResultToExcel(ImportResultDto result)
+        {
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add("Ket_Qua_Import");
+
+                var headers = new string[] { "Họ tên", "Số Điện Thoại", "Trạng thái tài khoản", "Mật Khẩu Mặc Định", "Ghi Chú/Lỗi" };
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    var cell = worksheet.Cell(1, i + 1);
+                    cell.Value = headers[i];
+                    cell.Style.Font.Bold = true;
+                    cell.Style.Fill.BackgroundColor = XLColor.LightGray;
+                }
+                int currentRow = 2;
+
+                foreach (var item in result.NewAccounts)
+                {
+                    worksheet.Cell(currentRow, 1).Value = item.FullName;
+                    worksheet.Cell(currentRow, 2).Value = item.PhoneNumber;
+                    worksheet.Cell(currentRow, 3).Value = "Tạo mới";
+                    worksheet.Cell(currentRow, 4).Value = item.Password; // Hiển thị pass để giáo viên gửi cho học sinh
+                    worksheet.Cell(currentRow, 5).Value = "Thành công";
+                    worksheet.Cell(currentRow, 5).Style.Font.FontColor = XLColor.Green;
+                    currentRow++;
+                }
+
+                foreach (var item in result.ExistedAccounts)
+                {
+                    worksheet.Cell(currentRow, 1).Value = item.FullName;
+                    worksheet.Cell(currentRow, 2).Value = item.PhoneNumber;
+                    worksheet.Cell(currentRow, 3).Value = "Đã có sẵn";
+                    worksheet.Cell(currentRow, 4).Value = "********"; // Không hiện pass cũ vì lý do bảo mật
+                    worksheet.Cell(currentRow, 5).Value = "Thành công (Dùng lại account cũ)";
+                    currentRow++;
+                }
+
+                foreach (var item in result.ErrorList)
+                {
+                    worksheet.Cell(currentRow, 1).Value = item.StudentName;
+                    worksheet.Cell(currentRow, 5).Value = $"Lỗi dòng {item.RowNumber}: {item.ErrorMessage}";
+                    worksheet.Cell(currentRow, 5).Style.Font.FontColor = XLColor.Red;
+                    currentRow++;
+                }
+
+                worksheet.Columns().AdjustToContents();
+
+                using (var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    return stream.ToArray();
+                }
+            }
         }
     }
 }
