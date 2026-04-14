@@ -38,8 +38,28 @@ namespace EMS.Application.Features.Feedbacks.Services
                 Content = dto.Content,
                 Type = dto.Type,
                 CreatedAt = DateTime.UtcNow
+
+
+
             };
             await feedbackRepository.AddAsync(fb);
+
+            // 2. Gửi thông báo (Sử dụng đúng mẫu try-catch của bạn)
+            try
+            {
+                await notificationService.SendNotificationAsync(
+                    targetAccountId: Guid.Parse("af855625-e5bf-485e-83be-8d9a6895787"),
+                    studentId: null,
+                    title: "Phản hồi hệ thống",
+                    content: $"Giáo viên góp ý: '{fb.Title}'.",
+                    actionUrl: "/teacher/feedback/history",
+                    type: "Feedback"
+                );
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Lỗi gửi thông báo Feedback: {ex.Message}");
+            }
         }
 
         public async Task<IEnumerable<FeedbackSummaryDto>> GetAdminListAsync(string? t, string? s)

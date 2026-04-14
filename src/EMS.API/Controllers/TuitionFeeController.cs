@@ -4,6 +4,7 @@ using EMS.Application.Features.TuitionFees.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 
 namespace EMS.API.Controllers
@@ -22,60 +23,17 @@ namespace EMS.API.Controllers
             this.currentUserService = currentUserService;
         }
 
-        /// <summary>
-        /// UC1: Lấy danh sách cấu hình học phí của tất cả các lớp do giáo viên này quản lý.
-        /// </summary>
-        [HttpGet("configs")]
-        public async Task<IActionResult> GetConfigs()
-        {
-            try
-            {
-                var teacherId = currentUserService.UserId;
-                var result = await tuitionFeeService.GetTuitionFeeConfigsAsync(teacherId);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                // Do not expose internal exception messages to clients
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau." });
-            }
-        }
+        
 
-        /// <summary>
-        /// UC1: Cập nhật đơn giá và hình thức thu (Thu trước/Thu sau) cho 1 lớp.
-        /// </summary>
-        [HttpPut("class/{classId}/fee")]
-        public async Task<IActionResult> UpdateFee(Guid classId, UpdateTuitionFeeDto dto)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            try
-            {
-                var teacherId = currentUserService.UserId;
-                await tuitionFeeService.UpdateTuitionFeeAsync(classId, dto, teacherId);
-                return Ok(new { Message = "Cập nhật cấu hình học phí thành công." });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                // validation/business rule error: return client-friendly message
-                return BadRequest(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau." });
-            }
-        }
+       
 
-        /// <summary>
-        /// UC5 & UC2: Phát hành hóa đơn hàng loạt cho cả lớp.
-        /// </summary>
+
+
+
+
+      
+
+        // Phát hành hóa đơn cho một lớp trong một kỳ
         [HttpPost("class/{classId}/generate-invoices")]
         public async Task<IActionResult> Generate(Guid classId, GenerateInvoiceDto dto)
         {
@@ -100,9 +58,7 @@ namespace EMS.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Tính năng Cấn trừ: Chốt sổ cuối tháng để tính tiền hoàn lại cho học sinh.
-        /// </summary>
+        // Chốt sổ cuối tháng để trừ/cộng dồn cho tháng sau (áp dụng cho các lớp có học phí trả trước)
         [HttpPost("class/{classId}/reconcile")]
         public async Task<IActionResult> ReconcilePrepaid(Guid classId, [FromQuery] int month, [FromQuery] int year)
         {
@@ -122,9 +78,12 @@ namespace EMS.API.Controllers
             }
         }
 
-        /// <summary>
-        /// UC6: Lấy danh sách các giao dịch (hóa đơn chuyển khoản) đang chờ xử lý của các lớp giáo viên đang dạy.
-        /// </summary>
+
+        // =========================================================
+        // 🔍 MÀN 3: DUYỆT GIAO DỊCH (Queue & History)
+        // =========================================================
+
+        // Lấy danh sách các giao dịch chuyển khoản đang chờ phê duyệt của giáo viên
         [HttpGet("transactions/pending")]
         public async Task<IActionResult> GetPending()
         {
@@ -144,41 +103,6 @@ namespace EMS.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Lấy danh sách hóa đơn của một lớp trong kỳ với paging và filter
-        /// </summary>
-        [HttpGet("class/{classId}/invoices")]
-        public async Task<IActionResult> GetClassInvoices(Guid classId,
-            [FromQuery] int? month,
-            [FromQuery] int? year,
-            [FromQuery] int page = 1,
-            [FromQuery] int size = 20,
-            [FromQuery] string? status = null,
-            [FromQuery] Guid? studentId = null)
-        {
-            try
-            {
-                var teacherId = currentUserService.UserId;
-                int m = month ?? DateTime.UtcNow.Month;
-                int y = year ?? DateTime.UtcNow.Year;
-
-                var (items, total) = await tuitionFeeService.GetClassInvoicesForPeriodAsync(classId, m, y, teacherId, page, size, status, studentId);
-
-                return Ok(new { Items = items, TotalCount = total, Page = page, Size = size });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau." });
-            }
-        }
-
-        /// <summary>
-        /// UC7: Phê duyệt hoặc Từ chối một giao dịch chuyển khoản.
-        /// </summary>
         [HttpPost("transaction/{id}/review")]
         public async Task<IActionResult> Review(Guid id, [FromBody] ReviewTransactionDto dto)
         {
@@ -198,129 +122,152 @@ namespace EMS.API.Controllers
             }
         }
 
-        /// <summary>
-        /// UC4: Lấy chi tiết báo cáo công nợ của từng học sinh trong một lớp.
-        /// </summary>
-        [HttpGet("class/{classId}/detail")]
-        public async Task<IActionResult> GetDetail(Guid classId, [FromQuery] int month, [FromQuery] int year)
+        [HttpGet("transactions/history")]
+        public async Task<IActionResult> GetHistory([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
             try
             {
-                var teacherId = currentUserService.UserId;
-                var result = await tuitionFeeService.GetClassFinancialDetailAsync(classId, month, year, teacherId);
+                var result = await tuitionFeeService.GetTransactionHistoryAsync(currentUserService.UserId, fromDate, toDate);
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException)
+            catch (Exception)
             {
-                return Forbid();
+                return StatusCode(500, new { Message = "Lỗi khi tải lịch sử giao dịch." });
             }
-            catch (Exception ex)
+        }
+
+
+
+
+
+        [HttpGet("class/{classId}/postpaid-invoices")]
+        public async Task<IActionResult> GetPostpaidInvoices(Guid classId, [FromQuery] int month, [FromQuery] int year)
+        {
+            try
             {
-                return BadRequest(new { Message = ex.Message });
+                // Gọi cực kỳ sạch sẽ, không cần bận tâm lấy UserId nữa
+                var result = await tuitionFeeService.GetPostpaidInvoicesAsync(classId, month, year);
+                return Ok(result);
             }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
+        }
+
+        [HttpGet("class/{classId}/prepaid-invoices")]
+        public async Task<IActionResult> GetPrepaidInvoices(Guid classId, [FromQuery] int month, [FromQuery] int year)
+        {
+            try
+            {
+                var result = await tuitionFeeService.GetPrepaidInvoicesAsync(classId, month, year);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
+        }
+
+        [HttpGet("class/{classId}/revenue-summary")]
+        public async Task<IActionResult> GetClassRevenueSummary(Guid classId, [FromQuery] int month, [FromQuery] int year)
+        {
+            try
+            {
+                var result = await tuitionFeeService.GetClassRevenueReportAsync(classId, month, year);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
         }
 
         /// <summary>
-        /// UC3: Lấy báo cáo doanh thu tổng quan của riêng giáo viên đó.
+        /// Lấy danh sách cấu hình học phí của tất cả các lớp đang dạy
         /// </summary>
-        [HttpGet("report/summary")]
-        public async Task<IActionResult> GetReportSummary()
+        [HttpGet("configs")]
+        public async Task<IActionResult> GetFeeConfigs()
         {
             try
             {
-                var teacherId = currentUserService.UserId;
-                var result = await tuitionFeeService.GetOverallReportAsync(teacherId);
-                return Ok(result);
+                var result = await tuitionFeeService.GetClassFeeConfigsAsync();
+                return Ok(result); // Bây giờ nó trả thẳng về List<ClassFeeConfigDto>
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống khi tải cấu hình." }); }
         }
 
-        [HttpGet("report/class-summaries")]
-        public async Task<IActionResult> GetClassFinancialSummaries()
-        {
-            try
-            {
-                var teacherId = currentUserService.UserId;
-                var result = await tuitionFeeService.GetClassFinancialSummariesAsync(teacherId);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        [HttpGet("report/dashboard-analytics")]
-        public async Task<IActionResult> GetDashboardAnalytics()
-        {
-            try
-            {
-                var teacherId = currentUserService.UserId;
-                var result = await tuitionFeeService.GetDashboardAnalyticsAsync(teacherId);
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-        }
-
-        [HttpPut("invoice/{invoiceId}/extend-due-date")]
-        public async Task<IActionResult> ExtendDueDate(Guid invoiceId, [FromBody] ExtendInvoiceDto dto)
+        /// <summary>
+        /// Cập nhật cấu hình học phí cho một lớp cụ thể
+        /// </summary>
+        [HttpPut("class/{classId}/config")]
+        public async Task<IActionResult> UpdateClassConfig(Guid classId, [FromBody] UpdateClassFeeConfigDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
             try
             {
-                var teacherId = currentUserService.UserId;
-                await tuitionFeeService.ExtendInvoiceDueDateAsync(invoiceId, dto.AdditionalDays, teacherId);
-                return Ok(new { Message = $"Đã gia hạn hóa đơn thêm {dto.AdditionalDays} ngày." });
+                await tuitionFeeService.UpdateClassFeeAsync(classId, dto);
+                return Ok(new { Message = "Đã cập nhật cấu hình lớp học thành công." });
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
+        }
+
+        /// <summary>
+        /// Lấy chi tiết cấu hình học phí của MỘT lớp cụ thể (Dùng để fill dữ liệu vào Form Edit)
+        /// </summary>
+        [HttpGet("class/{classId}/config")]
+        public async Task<IActionResult> GetClassConfig(Guid classId)
+        {
+            try
             {
-                return Forbid();
+                var result = await tuitionFeeService.GetClassFeeConfigAsync(classId);
+                return Ok(result);
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải cấu hình lớp." });
             }
         }
 
         /// <summary>
-        /// Gia hạn hàng loạt tất cả hóa đơn đang nợ của một lớp trong một kỳ cụ thể
+        /// Gia hạn thêm ngày cho MỘT hóa đơn cụ thể (Dùng khi 1 phụ huynh xin khất)
+        /// </summary>
+        [HttpPut("invoice/{invoiceId}/extend-due-date")]
+        public async Task<IActionResult> ExtendSingleInvoice(Guid invoiceId, [FromBody] ExtendInvoiceDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                await tuitionFeeService.ExtendInvoiceAsync(invoiceId, dto);
+                return Ok(new { Message = $"Đã gia hạn hóa đơn thêm {dto.AdditionalDays} ngày thành công." });
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (KeyNotFoundException ex) { return NotFound(new { Message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
+        }
+
+        /// <summary>
+        /// Gia hạn hàng loạt cho TẤT CẢ hóa đơn đang nợ của một lớp trong một kỳ
         /// </summary>
         [HttpPut("class/{classId}/extend-due-date")]
-        public async Task<IActionResult> ExtendClassDueDate(Guid classId, [FromBody] ExtendClassInvoicesDto dto)
+        public async Task<IActionResult> ExtendClassInvoices(Guid classId, [FromBody] ExtendClassInvoicesDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
             try
             {
-                var teacherId = currentUserService.UserId;
-                await tuitionFeeService.ExtendClassInvoicesDueDateAsync(classId, dto, teacherId);
-                return Ok(new { Message = $"Đã gia hạn thành công thêm {dto.AdditionalDays} ngày cho các hóa đơn đang nợ của lớp." });
+                await tuitionFeeService.ExtendClassInvoicesAsync(classId, dto);
+                return Ok(new { Message = $"Đã gia hạn thành công thêm {dto.AdditionalDays} ngày cho toàn bộ hóa đơn đang nợ của lớp." });
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
         }
+
+
+
     }
 }
