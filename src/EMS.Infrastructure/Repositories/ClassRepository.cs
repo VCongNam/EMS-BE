@@ -112,17 +112,14 @@ namespace EMS.Infrastructure.Repositories
                 .AnyAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
         }
 
-        public async Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size, string? status)
+        public async Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size)
         {
             var query = _context.ClassEnrollments
                 .Include(ce => ce.Class)
                 .ThenInclude(c => c.Teacher.TeacherNavigation)
                 .Where(ce => ce.StudentId == studentId)
                 .AsNoTracking();
-            if (!string.IsNullOrEmpty(status))
-            {
-                query = query.Where(ce => ce.Status == status);
-            }
+                query = query.Where(ce => ce.Status != "Archive");
             int totalCount = await query.CountAsync();
             var items = await query
                 .OrderByDescending(ce => ce.EnrolledDate)

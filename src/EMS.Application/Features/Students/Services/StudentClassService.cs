@@ -1,9 +1,11 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Students.DTOs;
 using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -27,8 +29,8 @@ namespace EMS.Application.Features.Students.Services
         public async Task<PagedResult<EnrolledClassDto>> GetMyClassesAsync(EnrolledClassFilter filter)
         {
             Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
-
-            var (entities, totalCount) = await _classRepository.GetClassByStudentIdAsync(studentId, filter.Page, filter.Size, filter.Status);
+            var now = DateOnly.FromDateTime(DateTime.UtcNow);
+            var (entities, totalCount) = await _classRepository.GetClassByStudentIdAsync(studentId, filter.Page, filter.Size);
             var responseItems = entities.Select(ce => new EnrolledClassDto
             {
                 ClassID = ce.ClassId,
@@ -38,6 +40,10 @@ namespace EMS.Application.Features.Students.Services
                 TeacherName = ce.Class?.Teacher.TeacherNavigation.FullName,
                 EnrollmentStatus = ce.Status,
                 EnrolledDate = (DateOnly)ce.EnrolledDate,
+               
+                ClassStatus = now < ce.Class.StartDate ? "Scheduled"
+                          : now > ce.Class.EndDate ? "Completed"
+                          : "Ongoing",
             }).ToList();
             return new PagedResult<EnrolledClassDto>
             {
