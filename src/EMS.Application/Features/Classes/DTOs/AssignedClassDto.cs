@@ -21,5 +21,6 @@ namespace EMS.Application.Features.Classes.DTOs
 
         public string? Permission { get; set; }
         public decimal? SalaryPerSession { get; set; }
+        public Guid ClassTaId { get; set; }
     }
 }

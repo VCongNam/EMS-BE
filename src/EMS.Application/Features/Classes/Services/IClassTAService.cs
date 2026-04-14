@@ -23,5 +23,7 @@ namespace EMS.Application.Features.Classes.Services
 
         Task<bool> RemoveTAFromClassAsync(Guid classId, Guid taId);
 
-    }
+        Task UpdateTaskStatusAsync(Guid taskId, UpdateTaskStatusDto newStatus);
+        Task ReviewTaskAsync(Guid taskId, bool isApproved, string? teacherFeedback);
+}
 }
