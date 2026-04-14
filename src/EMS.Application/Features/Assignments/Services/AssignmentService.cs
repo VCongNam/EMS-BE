@@ -336,7 +336,7 @@ namespace EMS.Application.Features.Assignments.Services
                 if(targetAccountId != null)
                 {
                     await _notificationService.SendNotificationAsync(
-                            targetAccountId: (Guid)targetAccountId,
+                            targetAccountId:targetAccountId.Value,
                             studentId: submission.StudentId,
                             title: "Bài tập đã được cho điểm",
                             content: $"Giáo viên đã chấm bài tập: {submission.Assignment.Title} của bạn.",

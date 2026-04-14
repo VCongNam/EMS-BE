@@ -187,28 +187,31 @@ namespace EMS.Application.Features.Classes.Services
         {
             var teacherId = _currentUser.UserId;
             var classes = await _classRepository.GetClassesByTeacherIdAsync(teacherId);
+            var now = DateOnly.FromDateTime(DateTime.UtcNow);
 
             var result = classes.Where(c => c.Status != "Archived").Select(c => new ClassSummaryDto
+            {
+                ClassId = c.ClassId,
+                ClassName = c.ClassName,
+                Room = c.Room,
+                Status = now < c.StartDate ? "Scheduled"
+                           : now > c.EndDate ? "Completed"
+                           : "Ongoing",
+                StartDate = c.StartDate,
+                SubjectName = c.Subject?.SubjectName ?? "N/A",
+                GradeLevel = c.Subject?.GradeLevel ?? 0,
+                MaxStudents = c.MaxStudents,
+                CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
+                Schedules = c.ClassSchedules.Select(s => new ScheduleDto
                 {
-                    ClassId = c.ClassId,
-                    ClassName = c.ClassName,
-                    Room = c.Room,
-                    Status = c.Status ?? string.Empty,
-                    StartDate = c.StartDate,
-                    SubjectName = c.Subject?.SubjectName ?? "N/A",
-                    GradeLevel = c.Subject?.GradeLevel ?? 0,
-                    MaxStudents = c.MaxStudents,
-                    CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
-                    Schedules = c.ClassSchedules.Select(s => new ScheduleDto
-                    {
-                        DayOfWeek = s.DayOfWeek,
-                        StartTime = s.StartTime,
-                        EndTime = s.EndTime
-                    }).ToList()
-                });
-
+                    DayOfWeek = s.DayOfWeek,
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime
+                }).ToList()
+            });
             return result;
         }
+
 
         public async Task<ClassDetailDto> GetClassDetailAsync(Guid classId)
         {
@@ -308,7 +311,7 @@ namespace EMS.Application.Features.Classes.Services
                 throw new Exception($"Class with ID {classId} not found.");
             }
 
-            classroom.Status = "Active"; // Restoring to Active state
+            classroom.Status = "Active"; 
             classroom.UpdatedAt = DateTime.UtcNow;
 
             await _classRepository.UpdateAsync(classroom);

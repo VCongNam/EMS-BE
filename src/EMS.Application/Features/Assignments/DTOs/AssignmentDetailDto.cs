@@ -15,6 +15,7 @@ namespace EMS.Application.Features.Assignments.DTOs
         public DateTime DueDate { get; set; }
         public string? Status { get; set; }
         public bool? AllowLateSubmission { get; set; }
+        public bool? Isgraded { get; set; }
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public List<AttachmentDto> Attachments { get; set; } = new();

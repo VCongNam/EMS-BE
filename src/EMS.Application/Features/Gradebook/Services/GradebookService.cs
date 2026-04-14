@@ -140,7 +140,6 @@ namespace EMS.Application.Features.Gradebook.Services
         public async Task<GradebookResponseDto> GetClassGradebookAsync(Guid classId)
         {
             await RequireTeacherAccessAsync(classId);
-
             var classroom = await _classRepository.GetByIdAsync(classId);
             var enrollments = await _classRepository.GetClassMemberAsync(classId);
             var assignments = await _assignmentRepository.GetByClassIdAsync(classId);
@@ -165,10 +164,6 @@ namespace EMS.Application.Features.Gradebook.Services
                 });
             }
 
-            // Calculate active total weights from current categories in class
-            var totalWeight = response.Columns.GroupBy(c => c.GradeCategoryId)
-                                                .Sum(g => g.First().Weight);
-
             // Build student rows
             foreach (var e in enrollments)
             {
@@ -178,15 +173,14 @@ namespace EMS.Application.Features.Gradebook.Services
                     StudentName = e.Student?.FullName ?? "Unknown"
                 };
 
-                double sumGradeWeight = 0;
-                double sumCurrentWeights = 0; // Sum of category weights that the student has been graded on.
-                                              // Wait, the formula requested is: Total(Grade * Weight) / Total_Weights (of graded).
-                                              // We need to carefully define "Total Weights". If they missed an assignment, do they get 0 or is it excluded?
-                                              // "Tổng (Điểm * Hệ số) / Tổng các Hệ số hiện có" -> means we divide by sum of ALL weights.
+                // Group assignments by category để tính avg từng category
+                var categoryData = new Dictionary<Guid, (double sumGrades, int count, double weight)>();
 
                 foreach (var col in response.Columns)
                 {
-                    var sub = submissions.FirstOrDefault(s => s.AssignmentId == col.AssignmentId && s.StudentId == e.StudentId);
+                    var sub = submissions.FirstOrDefault(s =>
+                        s.AssignmentId == col.AssignmentId && s.StudentId == e.StudentId);
+
                     studentRow.Grades.Add(new StudentGradeEntryDto
                     {
                         AssignmentId = col.AssignmentId,
@@ -194,24 +188,36 @@ namespace EMS.Application.Features.Gradebook.Services
                         Grade = sub?.Grade
                     });
 
-                    if (sub?.Grade != null)
+                    // Chỉ tính nếu có điểm và có category
+                    if (sub?.Grade != null && col.GradeCategoryId.HasValue)
                     {
-                        sumGradeWeight += (double)sub.Grade * (double)col.Weight;
-                        sumCurrentWeights += (double)col.Weight; 
-                        // Wait, is sumCurrentWeights for all columns, or only for columns where the student has a grade?
-                        // If we divide by sumCurrentWeights of *graded* items, then `Average = sumGradeWeight / sumCurrentWeights`. 
+                        var catId = col.GradeCategoryId.Value;
+                        if (!categoryData.ContainsKey(catId))
+                            categoryData[catId] = (0, 0, (double)col.Weight);
+
+                        var existing = categoryData[catId];
+                        categoryData[catId] = (
+                            existing.sumGrades + (double)sub.Grade,
+                            existing.count + 1,
+                           (double)col.Weight
+                        );
                     }
                 }
 
-                // If no totalWeight, or no sumCurrentWeights
-                if (sumCurrentWeights > 0)
+                // Tính FinalAverage: Tổng(AvgCategory * Weight) / Tổng(Weight có điểm)
+                double sumGradeWeight = 0;
+                double sumCurrentWeights = 0;
+
+                foreach (var (_, data) in categoryData)
                 {
-                    studentRow.FinalAverage = (decimal)Math.Round(sumGradeWeight / sumCurrentWeights, 2);
+                    var avgInCategory = data.sumGrades / data.count;
+                    sumGradeWeight += avgInCategory * data.weight;
+                    sumCurrentWeights += data.weight;
                 }
-                else
-                {
-                    studentRow.FinalAverage = 0;
-                }
+
+                studentRow.FinalAverage = sumCurrentWeights > 0
+                    ? (decimal)Math.Round(sumGradeWeight / sumCurrentWeights, 2)
+                    : 0;
 
                 response.StudentRows.Add(studentRow);
             }
