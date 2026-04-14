@@ -140,7 +140,7 @@ namespace EMS.Application.Features.Classes.Services
                 ClassTaid = request.ClassTAID,
                 Title = request.Title,
                 DueDate = request.DueDate,
-                Status = "Pending",
+                Status = "Todo",
                 Type = request.Type,
                 CreatedAt = DateTime.UtcNow
             };
@@ -181,7 +181,8 @@ namespace EMS.Application.Features.Classes.Services
                 Title = t.Title,
                 DueDate = t.DueDate,
                 Status = t.Status ?? "N/A",
-                Type = t.Type ?? "N/A"
+                Type = t.Type ?? "N/A",
+                Feedback = t.Feedback
             }).ToList();
         }
 
@@ -236,7 +237,8 @@ namespace EMS.Application.Features.Classes.Services
                 Title = t.Title,
                 DueDate = t.DueDate,
                 Status = t.Status ?? "N/A",
-                Type = t.Type ?? "N/A"
+                Type = t.Type ?? "N/A",
+                Feedback = t.Feedback
             }).ToList();
         }
 
@@ -262,7 +264,8 @@ namespace EMS.Application.Features.Classes.Services
                 CreatedAt = a.Class.CreatedAt ?? DateTime.MinValue, // Thời gian mở lớp
 
                 Permission = a.Permission,
-                SalaryPerSession = a.SalaryPerSession
+                SalaryPerSession = a.SalaryPerSession,
+                ClassTaId = a.ClassTaid,
             }).ToList();
         }
 
@@ -299,6 +302,92 @@ namespace EMS.Application.Features.Classes.Services
                 _logger.LogError($"Lỗi gửi thông báo gỡ TA khỏi lớp: {ex.Message}");
             }
             return true;
+        }
+
+        public async Task UpdateTaskStatusAsync(Guid taskId, UpdateTaskStatusDto newStatus)
+        {
+            var taId = _currentUser.UserId;
+            var task = await _taRepository.GetTaskByIdAsync(taskId);
+            if (task == null) throw new Exception("Nhiệm vụ không tồn tại!");
+            if(task.ClassTa.Taid != taId) throw new Exception("Bạn không có quyền thao tác nhiệu vụ này!");
+
+            if (newStatus.Status == "Done")
+                throw new Exception("Chỉ giáo viên mới có quyền chuyển trạng thái sang Hoàn thành.");
+
+            if (task.Status == "Done")
+                throw new Exception("Nhiệm vụ đã hoàn thành và đóng lại, không thể thay đổi trạng thái.");
+
+            if (task.Status == "Review" || task.Status == "In Review")
+            {
+                throw new Exception("Nhiệm vụ đang trong quá trình chờ giáo viên duyệt, bạn không thể thay đổi trạng thái lúc này.");
+            }
+
+            if (task.Status == newStatus.Status) return;
+
+            task.Status = newStatus.Status;
+            task.UpdatedAt = DateTime.UtcNow;
+            await _taRepository.UpdateTaskAsync(task);
+
+            //Notification
+            if (newStatus.Status == "Review")
+            {
+                try
+                {
+                    var teacherAccountId = task.ClassTa.Class.TeacherId;
+                    var className = task.ClassTa.Class.ClassName;
+
+                    await _notificationService.SendNotificationAsync(
+                        targetAccountId: teacherAccountId,
+                        studentId: null,
+                        title: "Nhiệm vụ chờ duyệt",
+                        content: $"Trợ giảng đã hoàn thành nhiệm vụ: '{task.Title}' trong lớp {className}. Vui lòng kiểm tra và duyệt.",
+                        actionUrl: $"/teacher/classes/{task.ClassTa.ClassId}/assistants",
+                        type: "Task"
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Lỗi gửi thông báo Review Task: {ex.Message}");
+                }
+            }
+        }
+
+        public async Task ReviewTaskAsync(Guid taskId, bool isApproved, string? teacherFeedback)
+        {
+            var task = await _taRepository.GetTaskByIdAsync(taskId);
+            if (task == null) throw new Exception("Nhiệm vụ không tồn tại!");
+
+            if (task.Status != "Review")
+            {
+                throw new Exception($"Không thể thực hiện thao tác này. Nhiệm vụ hiện đang ở trạng thái: {task.Status}");
+            }
+
+            if (isApproved)
+            {
+                task.Status = "Done";
+                task.Feedback = teacherFeedback; // Lưu lời khen hoặc ghi chú
+            }
+            else
+            {
+                task.Status = "InProgress"; 
+                task.Feedback = teacherFeedback; // Lưu lý do tại sao bắt làm lại
+            }
+
+            task.UpdatedAt = DateTime.UtcNow;
+            await _taRepository.UpdateTaskAsync(task);
+
+            try
+            {
+                await _notificationService.SendNotificationAsync(
+                    targetAccountId: task.ClassTa.Taid,
+                    studentId: null,
+                    title: isApproved ? "Nhiệm vụ hoàn tất" : "Nhiệm vụ cần sửa lại",
+                    content: $"Nhiệm vụ '{task.Title}' {(isApproved ? "đã được duyệt" : "cần được chỉnh sửa")}. Phản hồi: {teacherFeedback}",
+                    actionUrl: $"/ta/tasks",
+                    type: "Task"
+                );
+            }
+            catch (Exception ex) { _logger.LogError(ex.Message); }
         }
     }
 }
