@@ -223,16 +223,15 @@ namespace EMS.Application.Features.Classes.Services
             };
         }
 
-        // 1. Lấy tất cả Task của TA đó từ tất cả các lớp họ tham gia
         public async Task<IEnumerable<TaskDto>> GetTasksByTAIdAsync(Guid taId)
         {
-            // Bạn cần viết thêm hàm này trong TARepository để query:
-            // Join từ ClassTA sang TeachingAssistantTask dựa trên TAID
             var tasks = await _taRepository.GetTasksByTAIdAsync(taId);
 
             return tasks.Select(t => new TaskDto
             {
                 TATaskID = t.TataskId,
+                ClassID = t.ClassTa.ClassId,
+                ClassName = t.ClassTa.Class.ClassName, // Gán tên lớp vào đây
                 Title = t.Title,
                 DueDate = t.DueDate,
                 Status = t.Status ?? "N/A",
@@ -240,16 +239,27 @@ namespace EMS.Application.Features.Classes.Services
             }).ToList();
         }
 
-        // 2. Lấy danh sách lớp học mà TA này được phân công
         public async Task<IEnumerable<AssignedClassDto>> GetClassesByTAIdAsync(Guid taId)
         {
-            // Query bảng ClassTA (ClassTum) lọc theo TAID và Include bảng Class
             var assignments = await _classRepository.GetClassesByTAIdAsync(taId);
 
             return assignments.Select(a => new AssignedClassDto
             {
                 ClassID = a.ClassId,
-                ClassName = a.Class.ClassName, // Giả sử bảng Class có trường ClassName
+                ClassName = a.Class.ClassName,
+                SubjectName = a.Class.Subject?.SubjectName ?? "N/A",
+                TeacherName = a.Class.Teacher?.TeacherNavigation?.FullName ?? "N/A",
+                Status = a.Class.Status,
+
+                // Đếm số học sinh có trạng thái Active
+                StudentCount = a.Class.ClassEnrollments.Count(ce => ce.Status == "Active"),
+
+                // Format lịch học (Ví dụ: "Monday (08:00-10:00)")
+                Schedules = a.Class.ClassSchedules.Select(s =>
+                    $"{s.DayOfWeek} ({s.StartTime:hh\\:mm}-{s.EndTime:hh\\:mm})").ToList(),
+
+                CreatedAt = a.Class.CreatedAt ?? DateTime.MinValue, // Thời gian mở lớp
+
                 Permission = a.Permission,
                 SalaryPerSession = a.SalaryPerSession
             }).ToList();
