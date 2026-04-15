@@ -1,5 +1,6 @@
 using EMS.Application.Features.Assignments.DTOs;
 using EMS.Application.Features.Assignments.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,12 @@ namespace EMS.API.Controllers
     public class AssignmentController : ControllerBase
     {
         private readonly IAssignmentService _assignmentService;
+        private readonly IStudentAssignmentService _studentAssignmentService;
 
-        public AssignmentController(IAssignmentService assignmentService)
+        public AssignmentController(IAssignmentService assignmentService, IStudentAssignmentService studentAssignmentService)
         {
             _assignmentService = assignmentService;
+            _studentAssignmentService = studentAssignmentService;
         }
 
         [HttpPost]
@@ -131,6 +134,89 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Error = ex.Message }); 
+            }
+        }
+
+        // Student feature
+
+        [HttpGet("student/assignments")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetAssignments(Guid classId, [FromQuery] AssignmentFilter filter)
+        {
+            try
+            {
+                var result = await _studentAssignmentService.GetClassAssignmentsAsync(classId, filter);
+                return Ok(new
+                {
+                    Message = "Lấy danh sách bài tập thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("student/{assignmentId}/detail")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentAssignmentDetail(Guid assignmentId)
+        {
+            try
+            {
+                var result = await _studentAssignmentService.GetClassAssignmentsDetailAsync(assignmentId);
+                return Ok(new
+                {
+                    Message = "Lấy chi tiết bài tập thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("student/{assignmentId}/submit")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> SubmitAssignment(Guid assignmentId, [FromForm] SubmitAssignmentRequest request)
+        {
+            try
+            {
+                if (request.Files == null || !request.Files.Any())
+                {
+                    return BadRequest(new { Message = "Vui lòng đính kèm ít nhất 1 file." });
+                }
+
+                await _studentAssignmentService.SubmitAssignmentAsync(assignmentId, request);
+
+                return Ok(new
+                {
+                    Message = "Nộp bài thành công!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpDelete("student/{assignmentId}/unsubmit")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> UnsubmitAssignment(Guid assignmentId)
+        {
+            try
+            {
+                await _studentAssignmentService.UnsubmitAssignmentAsync(assignmentId);
+
+                return Ok(new
+                {
+                    Message = "Đã hủy nộp bài!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }

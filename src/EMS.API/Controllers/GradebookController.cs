@@ -150,5 +150,21 @@ namespace EMS.API.Controllers
             }
 
         }
+
+        [HttpGet("student/{classId}/myGrades")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentClassGrades(Guid classId)
+        {
+            try
+            {
+                var result = await _gradebookService.GetStudentGradeReportAsync(classId);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }

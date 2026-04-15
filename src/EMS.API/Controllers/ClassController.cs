@@ -13,11 +13,13 @@ namespace EMS.API.Controllers
     {
         private readonly IClassService _classService;
         private readonly IClassTAService _classTAService;
+        private readonly IStudentClassService _studentClassService;
 
-        public ClassController(IClassService classService, IClassTAService classTAService)
+        public ClassController(IClassService classService, IClassTAService classTAService, IStudentClassService studentClassService)
         {
             _classService = classService;
             _classTAService = classTAService;
+            _studentClassService = studentClassService;
         }
 
         [HttpPost]
@@ -320,6 +322,46 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        //Student 
+        [HttpGet("student/myClasses")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetMyClasses([FromQuery] EnrolledClassFilter filter)
+        {
+            try
+            {
+                var result = await _studentClassService.GetMyClassesAsync(filter);
+                return Ok(new
+                {
+                    Message = "Lấy danh sách lớp học thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+
+        }
+
+        [HttpGet("student{classId}/detail")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentClassDetail(Guid classId)
+        {
+            try
+            {
+                var result = await _studentClassService.GetClassDetailAsync(classId);
+                return Ok(new
+                {
+                    Message = "Lấy thông tin lớp học thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }
