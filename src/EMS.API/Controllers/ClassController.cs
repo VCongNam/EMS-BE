@@ -346,7 +346,7 @@ namespace EMS.API.Controllers
 
         }
 
-        [HttpGet("student{classId}/detail")]
+        [HttpGet("student/{classId}/detail")]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetStudentClassDetail(Guid classId)
         {
