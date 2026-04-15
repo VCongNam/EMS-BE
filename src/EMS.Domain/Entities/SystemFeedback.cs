@@ -13,7 +13,7 @@ public partial class SystemFeedback
 
     public string Content { get; set; } = null!;
 
-    public string? Type { get; set; } 
+    public string? Type { get; set; }
 
     public string? Status { get; set; }
 

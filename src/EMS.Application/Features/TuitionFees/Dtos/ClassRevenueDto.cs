@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Dtos
 {
-    public class ClassRevenueDistributionDto
+    public class ClassRevenueDto
     {
-        public string ClassName { get; set; } = null!;
-        public decimal Revenue { get; set; }
+        public string ClassName { get; set; } = string.Empty;
+        public decimal Revenue { get; set; } // Tổng doanh thu thực tế (Paid)
     }
 }
