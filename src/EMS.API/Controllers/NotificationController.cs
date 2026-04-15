@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace EMS.API.Controllers
 {
@@ -43,6 +44,18 @@ namespace EMS.API.Controllers
         {
             await _notificationService.MaskAllAsReadAsync();
             return NoContent();
+        }
+
+        [HttpGet("unread-count")]
+        [Authorize]
+        public async Task<IActionResult> GetUnreadCount()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var count = await _notificationService.CountUnreadAsync();
+
+            return Ok(new { count });
         }
     }
 }

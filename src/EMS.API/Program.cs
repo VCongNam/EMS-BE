@@ -11,18 +11,19 @@ using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.Feedbacks.Services;
 using EMS.Application.Features.ProgressReports.Validators;
 using EMS.Application.Features.Sessions.Services;
-using EMS.Application.Features.Students.Services;
 using EMS.Application.Features.SystemAdmin.Services;
 using EMS.Application.Features.TuitionFees.Services;
 using EMS.Application.Features.TuitionFees.Validators;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Configuration;
 using EMS.Infrastructure.Data;
+using EMS.Infrastructure.Hubs;
 using EMS.Infrastructure.Repositories;
-using EMS.Infrastructure.Services; 
+using EMS.Infrastructure.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -37,7 +38,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-
+builder.Services.AddSignalR();
 
 // 2. ĐĂNG KÝ EMAIL SERVICE (Dùng HttpClient cho Brevo API)
 // Dòng này cực kỳ quan trọng: Nó vừa đăng ký IEmailService, vừa nạp HttpClient vào EmailService
@@ -64,7 +65,6 @@ builder.Services.AddScoped<EMS.Application.Features.ProgressReports.Services.IPr
 builder.Services.AddScoped<IGradeCategoryRepository, GradeCategoryRepository>();
 builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
-builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("SupabaseSettings"));
 
@@ -87,6 +87,7 @@ builder.Services.AddScoped<IStudentAssignmentService, StudentAssignmentService>(
 builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
 builder.Services.AddScoped<IStudentScheduleService, StudentScheduleService>();
 builder.Services.AddScoped<IStudentTuitionService, StudentTuitionService>();
+
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAccountService, AccountService>();
@@ -104,10 +105,13 @@ builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
 // Gradebook feature
 builder.Services.AddScoped<EMS.Application.Features.Gradebook.Services.IGradebookService, EMS.Application.Features.Gradebook.Services.GradebookService>();
 
-// Đăng ký Interface và Class triển khai thực tế của nó
-builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
-builder.Services.AddScoped<ISystemAdminService,SystemAdminService>();
+//Notification
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<ISignalRService, SignalRService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// Đăng ký Interface và Class triển khai thực tế của nó
+builder.Services.AddScoped<ISystemAdminService,SystemAdminService>();
 
 
 builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Request nếu dữ liệu sai và trả về lỗi 400
@@ -118,6 +122,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<UpdateTuitionFeeValidator>(
 
 // Đăng ký Worker tự động hóa
 builder.Services.AddHostedService<InvoiceAutomationWorker>();
+builder.Services.AddHostedService<SessionReminderWorker>();
+builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
 builder.Services.AddCors(options =>
 {
@@ -163,6 +169,23 @@ builder.Services.AddAuthentication(options =>
     // In development, allow HTTP metadata endpoints; in production ensure HTTPS
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
+
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Lấy access_token từ query string (FE sẽ gửi dạng: /notificationHub?access_token=...)
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 
@@ -237,5 +260,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();

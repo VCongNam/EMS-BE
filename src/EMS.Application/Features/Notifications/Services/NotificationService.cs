@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml.Office2016.Excel;
+using DocumentFormat.OpenXml.Spreadsheet;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Notifications.DTOs;
 using EMS.Domain.Entities;
@@ -16,11 +17,12 @@ namespace EMS.Application.Features.Notifications.Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ICurrentUserService _currentUser;
-
-        public NotificationService(INotificationRepository notificationRepository, ICurrentUserService currentUser)
+        private readonly ISignalRService _signalRService;
+        public NotificationService(INotificationRepository notificationRepository, ICurrentUserService currentUser, ISignalRService signalRService)
         {
             _notificationRepository = notificationRepository;
             _currentUser = currentUser;
+            _signalRService = signalRService;
         }
 
         public async Task<List<NotificationDto>> GetNotificationsAsync()
@@ -85,20 +87,20 @@ namespace EMS.Application.Features.Notifications.Services
 
 
             //SignalR
-            //int unreadCount = await _notificationRepository.CountUnreadAsync(targetAccountId, studentId);
+            int unreadCount = await _notificationRepository.CountUnreadAsync(targetAccountId, studentId);
 
-            //var notificationData = new
-            //{
-            //    notification.NotificationId,
-            //    notification.Title,
-            //    notification.Content,
-            //    notification.ActionUrl,
-            //    notification.StudentId,
-            //    notification.CreatedAt,
-            //    BadgeCount = unreadCount 
-            //};
+            var notificationData = new
+            {
+                notification.NotificationId,
+                notification.Title,
+                notification.Content,
+                notification.ActionUrl,
+                notification.StudentId,
+                notification.CreatedAt,
+                BadgeCount = unreadCount
+            };
 
-            //await _signalRService.SendNotificationToUser(targetAccountId, notificationData);
+            await _signalRService.SendNotificationToUser(targetAccountId, notificationData);
         }
 
         public async Task SendBulkNotificationWithStudentAsync(List<(Guid AccId, Guid? StdId)> targets, string title, string content, string actionUrl, string type)
@@ -122,17 +124,17 @@ namespace EMS.Application.Features.Notifications.Services
             await _notificationRepository.AddRangeAsync(notifications);
 
             //SignalR
-            //var uniqueAccountIds = targets.Select(t => t.AccId).Distinct();
-            //foreach (var accId in uniqueAccountIds)
-            //{
-            //    await _signalRService.SendNotificationToUser(accId, new
-            //    {
-            //        title,
-            //        content,
-            //        actionUrl,
-            //        RelevantStudentIds = targets.Where(t => t.AccId == accId).Select(t => t.StdId)
-            //    });
-            //}
+            var uniqueAccountIds = targets.Select(t => t.AccId).Distinct();
+            foreach (var accId in uniqueAccountIds)
+            {
+                await _signalRService.SendNotificationToUser(accId, new
+                {
+                    title,
+                    content,
+                    actionUrl,
+                    RelevantStudentIds = targets.Where(t => t.AccId == accId).Select(t => t.StdId)
+                });
+            }
         }
 
         public async Task<Guid?> GetAccountIdByStudentIdAsync(Guid studentId)
