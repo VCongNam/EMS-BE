@@ -626,9 +626,11 @@ namespace EMS.Infrastructure.Repositories
             return await context.Invoices
                 .Include(i => i.Class)
                 .Where(i => i.Class.TeacherId == teacherId
-                         && i.PeriodMonth == month && i.PeriodYear == year
+                         && i.PeriodMonth == month
+                         && i.PeriodYear == year
+                         // Lọc hóa đơn hợp lệ (Không tính hóa đơn đã hủy)
                          && i.Status != "Cancelled"
-                         && i.Class.Status != "Archived" // Không lấy lớp đã lưu trữ
+                         && i.Class.Status != "Archived"
                          && i.IsDeleted != true)
                 .ToListAsync();
         }
@@ -636,11 +638,13 @@ namespace EMS.Infrastructure.Repositories
         public async Task<List<Transaction>> GetSuccessfulTransactionsByPeriodAsync(Guid teacherId, int month, int year)
         {
             return await context.Transactions
-                .Include(t => t.Invoice).ThenInclude(i => i.Class)
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Class)
                 .Where(t => t.Invoice.Class.TeacherId == teacherId
-                         && t.Invoice.PeriodMonth == month && t.Invoice.PeriodYear == year
-                         && t.Status == "Successful" // Chỉ lấy giao dịch thành công
-                         && t.Invoice.Class.Status != "Archived"
+                         && t.Invoice.PeriodMonth == month
+                         && t.Invoice.PeriodYear == year
+                         // CHỈ lấy các giao dịch nộp tiền THÀNH CÔNG
+                         && t.Status == "Successful"
                          && t.Invoice.IsDeleted != true)
                 .ToListAsync();
         }
