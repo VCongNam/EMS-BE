@@ -349,7 +349,7 @@ namespace EMS.API.Controllers
         }
 
 
-        [HttpGet("class/{classId}/transactions")]
+        [HttpGet("class/{classId}/transactions-period")]
         public async Task<IActionResult> GetClassTransactions(Guid classId, [FromQuery] int month, [FromQuery] int year)
         {
             // 1. Kiểm tra tham số, nếu không truyền tháng/năm thì lấy hiện tại
