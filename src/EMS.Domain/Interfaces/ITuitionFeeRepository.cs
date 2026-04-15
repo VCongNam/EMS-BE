@@ -112,5 +112,8 @@ namespace EMS.Domain.Interfaces
         // Lấy danh sách Invoice trực tiếp để tính Summary
         Task<IEnumerable<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, Guid? classId, int month, int year);
 
+        Task<List<Class>> GetActiveClassesAsync(Guid teacherId);
+
+        Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId);
     }
 }

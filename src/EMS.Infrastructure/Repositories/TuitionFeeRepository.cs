@@ -166,10 +166,6 @@ namespace EMS.Infrastructure.Repositories
                 .AnyAsync(a => a.Session.ClassId == classId && a.Session.Date.Month == month && a.Session.Date.Year == year);
         }
 
-        public async Task<bool> HasInvoicesForPeriodAsync(Guid classId, int month, int year)
-        {
-            return await context.Invoices.AnyAsync(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year);
-        }
 
         public async Task<Dictionary<Guid, int>> GetAttendanceCountsForClassPeriodAsync(Guid classId, DateTime startDate, DateTime endDate)
         {
@@ -588,8 +584,32 @@ namespace EMS.Infrastructure.Repositories
             throw new NotImplementedException();
         }
 
+        public async Task<List<Class>> GetActiveClassesAsync(Guid teacherId)
+        {
+            return await context.Classes
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true)
+                .ToListAsync();
+        }
 
-
+        public async Task<bool> HasInvoicesForPeriodAsync(Guid classId, int month, int year)
+        {
+            return await context.Invoices
+                .AnyAsync(i => i.ClassId == classId
+                            && i.PeriodMonth == month
+                            && i.PeriodYear == year
+                            && i.IsDeleted != true);
+        }
+        public async Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId)
+        {
+            return await context.Transactions
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Student)
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Class)
+                .Where(t => t.Invoice.Class.TeacherId == teacherId && t.Invoice.IsDeleted != true)
+                .OrderByDescending(t => t.CreatedAt) // Mới nhất lên đầu
+                .ToListAsync();
+        }
 
 
 

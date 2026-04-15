@@ -430,6 +430,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Pending'::character varying");
             entity.Property(e => e.StudentId).HasColumnName("StudentID");
+            entity.Property(e => e.UnitPrice)
+                .HasPrecision(12, 2)
+                .HasDefaultValueSql("0");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");

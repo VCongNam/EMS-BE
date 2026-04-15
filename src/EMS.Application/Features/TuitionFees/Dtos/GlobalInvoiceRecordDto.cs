@@ -16,12 +16,14 @@ namespace EMS.Domain.Interfaces
         public Guid StudentId { get; set; }
         public string StudentName { get; set; } = string.Empty;
         public string? AvatarUrl { get; set; }
-
+        public string Description { get; set; } = string.Empty;
+        public decimal? UnitPrice { get; set; }
         public int SessionCount { get; set; }
         public decimal TotalAmount { get; set; } // Số tiền trên hóa đơn
         public decimal PaidAmount { get; set; }  // Tổng tiền từ các giao dịch thành công
         public DateTime DueDate { get; set; }
         public string Status { get; set; } = string.Empty;
+
 
         // Thêm kỳ học để hiển thị nếu cần
         public int PeriodMonth { get; set; }

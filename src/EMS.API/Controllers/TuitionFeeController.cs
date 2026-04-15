@@ -31,32 +31,7 @@ namespace EMS.API.Controllers
 
 
 
-      
-
-        // Phát hành hóa đơn cho một lớp trong một kỳ
-        [HttpPost("class/{classId}/generate-invoices")]
-        public async Task<IActionResult> Generate(Guid classId, GenerateInvoiceDto dto)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            try
-            {
-                var teacherId = currentUserService.UserId;
-                await tuitionFeeService.GenerateInvoicesForClassAsync(classId, dto, teacherId);
-                return Ok(new { Message = "Đã phát hành hóa đơn cho kỳ này thành công." });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau." });
-            }
-        }
+  
 
         // Chốt sổ cuối tháng để trừ/cộng dồn cho tháng sau (áp dụng cho các lớp có học phí trả trước)
         [HttpPost("class/{classId}/reconcile")]
@@ -295,5 +270,65 @@ namespace EMS.API.Controllers
                 return StatusCode(500, new { Message = "Lỗi hệ thống khi tải danh sách báo cáo tổng quan lớp học." });
             }
         }
+
+
+        [HttpPost("class/{classId}/generate-invoices")]
+        public async Task<IActionResult> Generate(Guid classId, [FromBody] GenerateInvoiceDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                await tuitionFeeService.GenerateInvoicesForClassAsync(classId, dto, teacherId);
+                return Ok(new { Message = "Đã phát hành hóa đơn cho kỳ học thành công." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Trả về lỗi nghiệp vụ (ví dụ: đang trong giờ học)
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Đã xảy ra lỗi: " + ex.Message });
+            }
+        }
+
+        [HttpGet("reminders")]
+        public async Task<IActionResult> GetReminders()
+        {
+            try
+            {
+                var result = await tuitionFeeService.GetPendingInvoiceRemindersAsync();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Lỗi khi tải danh sách nhắc nhở." });
+            }
+        }
+
+
+
+
+        /// <summary>
+        /// Lấy toàn bộ lịch sử giao dịch kèm thông tin chi tiết (Học sinh, Lớp, Hóa đơn)
+        /// Dùng để hiển thị bảng dữ liệu tổng và cho phép Filter ở Frontend
+        /// </summary>
+        [HttpGet("transactions/full-history")]
+        public async Task<IActionResult> GetFullHistory()
+        {
+            try
+            {
+                var result = await tuitionFeeService.GetHistoryFullAsync();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải lịch sử: " + ex.Message });
+            }
+        }
+
+
+
     }
 }

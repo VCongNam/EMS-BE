@@ -31,6 +31,8 @@ public partial class Invoice
 
     public string? Description { get; set; }
 
+    public decimal? UnitPrice { get; set; }
+
     public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
     public virtual Class Class { get; set; } = null!;

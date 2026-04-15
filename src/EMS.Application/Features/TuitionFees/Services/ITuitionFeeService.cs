@@ -15,14 +15,6 @@ namespace EMS.Application.Features.TuitionFees.Services
  
 
 
-        Task<(IEnumerable<ClassInvoiceItemDto> Items, int TotalCount)> GetClassInvoicesForPeriodAsync(
-            Guid classId, int month, int year, Guid teacherId, int page, int size, string? status = null, Guid? studentId = null);
-
-        
-
-
-
-
         Task GenerateInvoicesForClassAsync(Guid classId, GenerateInvoiceDto request, Guid teacherId);
 
         Task ReconcilePrepaidClassAsync(Guid classId, int month, int year, Guid teacherId);
@@ -61,5 +53,10 @@ namespace EMS.Application.Features.TuitionFees.Services
         Task<IEnumerable<ClassTuitionReportDto>> GetClassesOverviewAsync(int month, int year);
         // Hàm cho 3 Card tổng quan
         Task<TuitionSummaryDto> GetTuitionSummaryAsync(Guid? classId, int month, int year);
-    }
+
+        Task<List<ClassInvoiceReminderDto>> GetPendingInvoiceRemindersAsync();
+
+        Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync();
+
+        }
 }
