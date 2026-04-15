@@ -14,10 +14,13 @@ namespace EMS.API.Controllers
     public class SessionController : ControllerBase
     {
         private readonly ISessionService _sessionService;
+        private readonly IStudentScheduleService _scheduleService;
 
-        public SessionController(ISessionService sessionService)
+
+        public SessionController(ISessionService sessionService, IStudentScheduleService scheduleService)
         {
             _sessionService = sessionService;
+            _scheduleService = scheduleService;
         }
 
         // [GET] /api/session/class/{classId}
@@ -137,6 +140,29 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        // API Get Schedule: filter has classId,
+        // if null return all schedule,
+        // if not null return schedule of specific class
+        [HttpGet("student/schedule")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentSchedules([FromQuery] ScheduleFilter filter)
+        {
+            try
+            {
+                var result = await _scheduleService.GetMySchedulesAsync(filter);
+
+                return Ok(new
+                {
+                    Message = "Lấy lịch học thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }

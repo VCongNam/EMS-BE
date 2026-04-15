@@ -118,5 +118,24 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Message = ex.Message });
             }
         }
+
+        [HttpGet("student/{classId}/posts")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentClassPosts(Guid classId, [FromQuery] PostFilter filter)
+        {
+            try
+            {
+                var result = await postService.GetClassPostsAsync(classId, filter);
+                return Ok(new
+                {
+                    Message = "Lấy bảng tin thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }
