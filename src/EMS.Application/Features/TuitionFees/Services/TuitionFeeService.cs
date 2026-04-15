@@ -160,7 +160,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                     if (target != default)
                     {
                         string content = $"Hệ thống đã phát hành hóa đơn học phí tháng {invoice.PeriodMonth}/{invoice.PeriodYear}. Số tiền: {invoice.Amount:N0}đ.";
-                        await _notificationService.SendNotificationAsync(target.AccId, invoice.StudentId, "Thông báo học phí", content, $"/student/invoices/{invoice.InvoiceId}", "Invoice");
+                        await _notificationService.SendNotificationAsync(target.AccId, invoice.StudentId, "Thông báo học phí", content, $"/student/classes/{target.StdId}/tuition", "Invoice");
                     }
                 }
             }
