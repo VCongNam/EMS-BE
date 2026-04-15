@@ -220,16 +220,30 @@ namespace EMS.API.Controllers
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> SetTAPermisson(Guid classId, Guid taId, [FromBody] UpdateTAPermissionDto request)
         {
-            await _classTAService.UpdateTAPermissionAsync(classId, taId, request);
-            return Ok(new { Message = "Cập nhật quyền hạn Trợ giảng thành công!" });
+            try
+            {
+                await _classTAService.UpdateTAPermissionAsync(classId, taId, request);
+                return Ok(new { Message = "Cập nhật quyền hạn Trợ giảng thành công!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpPost("createTask")]
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto request)
         {
-            var task = await _classTAService.CreateTaskAsync(request);
-            return StatusCode(201, new { Message = "Giao việc thành công", TaskId = task });
+            try
+            {
+                var task = await _classTAService.CreateTaskAsync(request);
+                return StatusCode(201, new { Message = "Giao việc thành công", TaskId = task });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpGet("classta/{classTaId}")]

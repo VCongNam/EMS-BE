@@ -2,6 +2,7 @@
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Ocsp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -73,6 +74,14 @@ namespace EMS.Infrastructure.Repositories
         {
             _context.TeachingAssistantTasks.Update(task);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<ClassTum> GetClassTAByIdAsync(Guid classTaId)
+        {
+            var result = await _context.ClassTa
+                .Include(ct => ct.Class)
+                .FirstOrDefaultAsync(ct => ct.ClassTaid == classTaId && ct.Status != "Deactive");
+            return result;
         }
     }
 }
