@@ -47,14 +47,14 @@ namespace EMS.Application.Features.Notifications.Services
             }).ToList();
         }
 
-        public async Task MaskAllAsReadAsync()
+        public async Task MarkAllAsReadAsync()
         {
             Guid accountId = _currentUser.UserId;
             Guid? studentId = _currentUser.StudentId;
             await _notificationRepository.MarkAllAsReadAsync(accountId, studentId);
         }
 
-        public async Task MaskAsReadAsync(Guid notificationId)
+        public async Task MarkAsReadAsync(Guid notificationId)
         {
             Guid accountId = _currentUser.UserId;
             Guid? studentId = _currentUser.StudentId;

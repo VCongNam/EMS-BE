@@ -35,14 +35,14 @@ namespace EMS.API.Controllers
         [HttpPatch("mark-as-read/{notificationId}")]
         public async Task<IActionResult> MarkAsRead(Guid notificationId)
         {
-            await _notificationService.MaskAsReadAsync(notificationId);
+            await _notificationService.MarkAsReadAsync(notificationId);
             return NoContent();
         }
 
         [HttpPatch("mark-all-as-read")]
         public async Task<IActionResult> MarkAllAsRead()
         {
-            await _notificationService.MaskAllAsReadAsync();
+            await _notificationService.MarkAllAsReadAsync();
             return NoContent();
         }
 

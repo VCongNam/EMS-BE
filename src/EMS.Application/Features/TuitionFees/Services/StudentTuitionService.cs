@@ -201,7 +201,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             {
                 await _notificationService.SendNotificationAsync(
                     targetAccountId: invoiceInfo.Class.TeacherId,
-                    studentId: studentId,
+                    studentId: null,
                     title: "Giao dịch học phí mới",
                     content: $"Một học sinh lớp {invoiceInfo.Class.ClassName} đã nộp học phí tháng {invoiceInfo.PeriodMonth}/{invoiceInfo.PeriodYear}",
                     actionUrl: $"/tuition/reports/{invoiceInfo.ClassId}",
