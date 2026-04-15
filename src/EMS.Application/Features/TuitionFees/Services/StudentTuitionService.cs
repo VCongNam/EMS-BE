@@ -229,7 +229,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             return result;
         }
 
-        public async Task<TransactionDetailDto?> GetTransactionByIdAsync(Guid transactionId)
+        public async Task<StudentTransactionDetailDto?> GetTransactionByIdAsync(Guid transactionId)
         {
             Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             var transaction = await _tuitionRepository.GetTransactionDetailAsync(transactionId, studentId);
@@ -237,7 +237,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             {
                 throw new Exception("Không tìm thấy giao dịch");
             }
-            return new TransactionDetailDto
+            return new StudentTransactionDetailDto
             {
                 TransactionId = transaction.TransactionId,
                 InvoiceContent = !string.IsNullOrWhiteSpace(transaction.Invoice.Description)

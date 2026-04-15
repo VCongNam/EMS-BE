@@ -17,7 +17,7 @@ namespace EMS.Application.Features.TuitionFees.Dtos
         public string Status { get; set; }
     }
 
-    public class TransactionDetailDto
+    public class StudentTransactionDetailDto
     {
         public Guid TransactionId { get; set; }
         public string InvoiceContent { get; set; }
