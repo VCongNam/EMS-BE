@@ -134,6 +134,26 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task<Guid> CreateTaskAsync(CreateTaskDto request)
         {
+            var classTA = await _taRepository.GetClassTAByIdAsync(request.ClassTAID);
+
+            if (classTA == null)
+            {
+                throw new Exception("Thông tin trợ giảng trong lớp học không tồn tại.");
+            }
+
+            var allowedPermissions = classTA.Permission?.Split(',')
+                                .Select(p => p.Trim())
+                                .ToList() ?? new List<string>();
+
+            bool hasPermission = allowedPermissions.Any(p =>
+                p.Equals(request.Type, StringComparison.OrdinalIgnoreCase));
+
+            if (!hasPermission)
+            {
+                throw new Exception($"Trợ giảng không có quyền thực hiện nhiệm vụ loại: {request.Type}. " +
+                                    $"Quyền hiện tại: {classTA.Permission}");
+            }
+
             var newTask = new TeachingAssistantTask
             {
                 TataskId = Guid.NewGuid(),
