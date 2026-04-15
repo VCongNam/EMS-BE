@@ -553,36 +553,48 @@ namespace EMS.Application.Features.TuitionFees.Services
         {
             var teacherId = currentUserService.UserId;
 
-            // 1. Lấy dữ liệu thô từ Repo
+            // Lấy dữ liệu thô từ Repository
             var invoices = await tuitionFeeRepository.GetInvoicesByPeriodAsync(teacherId, month, year);
-            var transactions = await tuitionFeeRepository.GetSuccessfulTransactionsByPeriodAsync(teacherId, month, year);
+            var successfulTransactions = await tuitionFeeRepository.GetSuccessfulTransactionsByPeriodAsync(teacherId, month, year);
 
-            // 2. Tính 3 con số tổng (Cộng dồn tất cả các lớp)
+            // 1. Tổng doanh thu dự kiến (Tổng tiền của tất cả Invoice hợp lệ trong kỳ)
             var totalExpected = invoices.Sum(i => i.Amount);
-            var totalPaid = transactions.Sum(t => t.AmountPaid);
 
-            // 3. Xử lý biến động theo ngày (Daily Trend)
+            // 2. Tổng thực thu (Tổng tiền từ các giao dịch Successful)
+            var totalPaid = successfulTransactions.Sum(t => t.AmountPaid);
+
+            // 3. Biến động theo ngày (Daily Trend)
             var dailyTrend = new List<DailyRevenueDto>();
             int daysInMonth = DateTime.DaysInMonth(year, month);
+
             for (int day = 1; day <= daysInMonth; day++)
             {
-                var dayAmount = transactions
+                // Cộng dồn tất cả giao dịch Successful của tất cả các lớp trong ngày này
+                var dayAmount = successfulTransactions
                     .Where(t => t.PaidDate.HasValue && t.PaidDate.Value.Day == day)
                     .Sum(t => t.AmountPaid);
-                dailyTrend.Add(new DailyRevenueDto { Day = day, ReceivedAmount = dayAmount });
+
+                dailyTrend.Add(new DailyRevenueDto
+                {
+                    Day = day,
+                    ReceivedAmount = dayAmount
+                });
             }
 
-            // 4. Xử lý tỷ trọng theo lớp (Pie Chart)
-            var proportion = transactions
+            // 4. Tỷ trọng theo lớp (Pie Chart) - Dựa trên số tiền thực tế thu được
+            var proportion = successfulTransactions
                 .GroupBy(t => t.Invoice.Class.ClassName)
-                .Select(g => new ClassRevenueDto { ClassName = g.Key, Revenue = g.Sum(t => t.AmountPaid) })
-                .ToList();
+                .Select(g => new ClassRevenueDto
+                {
+                    ClassName = g.Key,
+                    Revenue = g.Sum(t => t.AmountPaid)
+                }).ToList();
 
             return new TuitionDashboardDto
             {
                 TotalExpected = totalExpected,
                 TotalPaid = totalPaid,
-                TotalDebt = totalExpected - totalPaid,
+                TotalDebt = Math.Max(0, totalExpected - totalPaid), // Tổng nợ còn lại
                 DailyTrend = dailyTrend,
                 ProportionByClass = proportion
             };
