@@ -115,5 +115,11 @@ namespace EMS.Domain.Interfaces
         Task<List<Class>> GetActiveClassesAsync(Guid teacherId);
 
         Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId);
+        Task<List<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, int month, int year);
+        Task<List<Transaction>> GetSuccessfulTransactionsByPeriodAsync(Guid teacherId, int month, int year);
+
+        Task<List<Invoice>> GetInvoicesInRangeAsync(Guid teacherId, DateTime startDate, DateTime endDate);
+        Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId);
+        Task<IEnumerable<Transaction>> GetTransactionsByClassAndPeriodAsync(Guid classId, Guid teacherId, int month, int year);
     }
 }

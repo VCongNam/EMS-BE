@@ -328,7 +328,51 @@ namespace EMS.API.Controllers
             }
         }
 
+        [HttpGet("dashboard/overview")]
+        public async Task<IActionResult> GetDashboardOverview([FromQuery] int month, [FromQuery] int year)
+        {
+            // Nếu FE không gửi tham số, mặc định lấy tháng/năm hiện tại
+            var targetMonth = month > 0 ? month : DateTime.Now.Month;
+            var targetYear = year > 0 ? year : DateTime.Now.Year;
+
+            var result = await tuitionFeeService.GetDashboardDataAsync(targetMonth, targetYear);
+            return Ok(result);
+        }
+
+        [HttpGet("class/{classId}/transactions")]
+        public async Task<IActionResult> GetClassTransactions(Guid classId)
+        {
+            try
+            {
+                var result = await tuitionFeeService.GetTransactionsByClassAsync(classId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Lỗi khi lấy lịch sử giao dịch của lớp: " + ex.Message });
+            }
+        }
 
 
+        [HttpGet("class/{classId}/transactions")]
+        public async Task<IActionResult> GetClassTransactions(Guid classId, [FromQuery] int month, [FromQuery] int year)
+        {
+            // 1. Kiểm tra tham số, nếu không truyền tháng/năm thì lấy hiện tại
+            int targetMonth = month > 0 ? month : DateTime.Now.Month;
+            int targetYear = year > 0 ? year : DateTime.Now.Year;
+
+            try
+            {
+                // 2. Gọi Service xử lý
+                var result = await tuitionFeeService.GetClassTransactionsByPeriodAsync(classId, targetMonth, targetYear);
+
+                // 3. Trả về kết quả cho FE filter/hiển thị
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Lỗi khi lọc giao dịch theo kỳ: " + ex.Message });
+            }
+        }
     }
 }

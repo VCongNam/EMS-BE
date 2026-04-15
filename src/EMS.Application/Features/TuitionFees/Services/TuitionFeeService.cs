@@ -548,5 +548,107 @@ namespace EMS.Application.Features.TuitionFees.Services
                 ClassName = t.Invoice?.Class?.ClassName ?? "N/A"
             }).ToList();
         }
+
+        public async Task<TuitionDashboardDto> GetDashboardDataAsync(int month, int year)
+        {
+            var teacherId = currentUserService.UserId;
+
+            // 1. Lấy dữ liệu thô từ Repo
+            var invoices = await tuitionFeeRepository.GetInvoicesByPeriodAsync(teacherId, month, year);
+            var transactions = await tuitionFeeRepository.GetSuccessfulTransactionsByPeriodAsync(teacherId, month, year);
+
+            // 2. Tính 3 con số tổng (Cộng dồn tất cả các lớp)
+            var totalExpected = invoices.Sum(i => i.Amount);
+            var totalPaid = transactions.Sum(t => t.AmountPaid);
+
+            // 3. Xử lý biến động theo ngày (Daily Trend)
+            var dailyTrend = new List<DailyRevenueDto>();
+            int daysInMonth = DateTime.DaysInMonth(year, month);
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                var dayAmount = transactions
+                    .Where(t => t.PaidDate.HasValue && t.PaidDate.Value.Day == day)
+                    .Sum(t => t.AmountPaid);
+                dailyTrend.Add(new DailyRevenueDto { Day = day, ReceivedAmount = dayAmount });
+            }
+
+            // 4. Xử lý tỷ trọng theo lớp (Pie Chart)
+            var proportion = transactions
+                .GroupBy(t => t.Invoice.Class.ClassName)
+                .Select(g => new ClassRevenueDto { ClassName = g.Key, Revenue = g.Sum(t => t.AmountPaid) })
+                .ToList();
+
+            return new TuitionDashboardDto
+            {
+                TotalExpected = totalExpected,
+                TotalPaid = totalPaid,
+                TotalDebt = totalExpected - totalPaid,
+                DailyTrend = dailyTrend,
+                ProportionByClass = proportion
+            };
+        }
+
+
+        public async Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId)
+        {
+            var teacherId = currentUserService.UserId;
+            var transactions = await tuitionFeeRepository.GetTransactionsByClassAsync(classId, teacherId);
+
+            return transactions.Select(t => new FullTransactionHistoryDto
+            {
+                TransactionId = t.TransactionId,
+                AmountPaid = t.AmountPaid,
+                PaidDate = t.PaidDate,
+                PaymentMethod = t.PaymentMethod ?? "Chuyển khoản",
+                Status = t.Status ?? "Pending",
+                ProofImageUrl = t.ProofImageUrl,
+                CreatedAt = t.CreatedAt ?? DateTime.Now,
+
+                InvoiceId = t.InvoiceId,
+                InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
+                PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
+                PeriodYear = t.Invoice?.PeriodYear ?? 0,
+                InvoiceDescription = t.Invoice?.Description,
+                InvoiceUnitPrice = t.Invoice?.UnitPrice ?? 0,
+                InvoiceSessionCount = t.Invoice?.SessionCount ?? 0,
+
+                StudentId = t.Invoice?.StudentId ?? Guid.Empty,
+                StudentName = t.Invoice?.Student?.FullName ?? "N/A",
+
+                ClassId = t.Invoice?.ClassId ?? Guid.Empty,
+                ClassName = t.Invoice?.Class?.ClassName ?? "N/A"
+            }).ToList();
+        }
+        public async Task<IEnumerable<FullTransactionHistoryDto>> GetClassTransactionsByPeriodAsync(Guid classId, int month, int year)
+        {
+            var teacherId = currentUserService.UserId;
+            var transactions = await tuitionFeeRepository.GetTransactionsByClassAndPeriodAsync(classId, teacherId, month, year);
+
+            return transactions.Select(t => new FullTransactionHistoryDto
+            {
+                TransactionId = t.TransactionId,
+                AmountPaid = t.AmountPaid,
+                PaidDate = t.PaidDate,
+                PaymentMethod = t.PaymentMethod ?? "Chuyển khoản",
+                Status = t.Status ?? "Pending",
+                ProofImageUrl = t.ProofImageUrl,
+                CreatedAt = t.CreatedAt ?? DateTime.Now,
+
+                InvoiceId = t.InvoiceId,
+                InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
+                PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
+                PeriodYear = t.Invoice?.PeriodYear ?? 0,
+                InvoiceDescription = t.Invoice?.Description,
+                InvoiceUnitPrice = t.Invoice?.UnitPrice ?? 0,
+                InvoiceSessionCount = t.Invoice?.SessionCount ?? 0,
+
+                StudentId = t.Invoice?.StudentId ?? Guid.Empty,
+                StudentName = t.Invoice?.Student?.FullName ?? "N/A",
+
+                ClassId = t.Invoice?.ClassId ?? Guid.Empty,
+                ClassName = t.Invoice?.Class?.ClassName ?? "N/A"
+            }).ToList();
+        }
+
     }
 }

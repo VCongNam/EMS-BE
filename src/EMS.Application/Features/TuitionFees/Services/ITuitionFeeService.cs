@@ -58,5 +58,9 @@ namespace EMS.Application.Features.TuitionFees.Services
 
         Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync();
 
-        }
+        Task<TuitionDashboardDto> GetDashboardDataAsync(int month, int year);
+
+        Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId);
+        Task<IEnumerable<FullTransactionHistoryDto>> GetClassTransactionsByPeriodAsync(Guid classId, int month, int year);
+    }
 }

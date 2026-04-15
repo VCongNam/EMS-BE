@@ -562,7 +562,7 @@ namespace EMS.Infrastructure.Repositories
             return await context.Classes
                 .Include(c => c.ClassEnrollments.Where(ce => ce.Status == "Active"))
                 .Include(c => c.Invoices.Where(i => i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true))
-                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true)
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Archived")
                 .ToListAsync();
         }
 
@@ -587,7 +587,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<List<Class>> GetActiveClassesAsync(Guid teacherId)
         {
             return await context.Classes
-                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true)
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Archived")
                 .ToListAsync();
         }
 
@@ -610,8 +610,69 @@ namespace EMS.Infrastructure.Repositories
                 .OrderByDescending(t => t.CreatedAt) // Mới nhất lên đầu
                 .ToListAsync();
         }
+        public async Task<List<Invoice>> GetInvoicesInRangeAsync(Guid teacherId, DateTime startDate, DateTime endDate)
+        {
+            return await context.Invoices
+                .Include(i => i.Class) // Để lấy tên lớp cho biểu đồ tròn
+                .Where(i => i.Class.TeacherId == teacherId
+                         && i.CreatedAt >= startDate
+                         && i.CreatedAt <= endDate
+                         && i.IsDeleted != true)
+                .ToListAsync();
+        }
 
+        public async Task<List<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, int month, int year)
+        {
+            return await context.Invoices
+                .Include(i => i.Class)
+                .Where(i => i.Class.TeacherId == teacherId
+                         && i.PeriodMonth == month && i.PeriodYear == year
+                         && i.Status != "Cancelled"
+                         && i.Class.Status != "Archived" // Không lấy lớp đã lưu trữ
+                         && i.IsDeleted != true)
+                .ToListAsync();
+        }
 
+        public async Task<List<Transaction>> GetSuccessfulTransactionsByPeriodAsync(Guid teacherId, int month, int year)
+        {
+            return await context.Transactions
+                .Include(t => t.Invoice).ThenInclude(i => i.Class)
+                .Where(t => t.Invoice.Class.TeacherId == teacherId
+                         && t.Invoice.PeriodMonth == month && t.Invoice.PeriodYear == year
+                         && t.Status == "Successful" // Chỉ lấy giao dịch thành công
+                         && t.Invoice.Class.Status != "Archived"
+                         && t.Invoice.IsDeleted != true)
+                .ToListAsync();
+        }
 
+        public async Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId)
+        {
+            return await context.Transactions
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Student)
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Class)
+                .Where(t => t.Invoice.ClassId == classId
+                         && t.Invoice.Class.TeacherId == teacherId
+                         && t.Invoice.IsDeleted != true)
+                .OrderByDescending(t => t.CreatedAt) // Giao dịch mới nhất lên đầu
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Transaction>> GetTransactionsByClassAndPeriodAsync(Guid classId, Guid teacherId, int month, int year)
+        {
+            return await context.Transactions
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Student)
+                .Include(t => t.Invoice)
+                    .ThenInclude(i => i.Class)
+                .Where(t => t.Invoice.ClassId == classId
+                         && t.Invoice.Class.TeacherId == teacherId
+                         && t.Invoice.PeriodMonth == month
+                         && t.Invoice.PeriodYear == year
+                         && t.Invoice.IsDeleted != true)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+        }
     }
 }
