@@ -1,4 +1,6 @@
 ﻿using EMS.Application.Common.Interfaces;
+using EMS.Application.Features.Assignments.DTOs;
+using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.DTOs;
 using EMS.Domain.Entities;
@@ -19,7 +21,8 @@ namespace EMS.Application.Features.Posts.Services
         private readonly ISupabaseStorageService storageService;
         private readonly ICurrentUserService currentUserService;
         private readonly INotificationService _notificationService; 
-        private readonly ILogger<PostService> _logger; 
+        private readonly ILogger<PostService> _logger;
+        private readonly IClassRepository _classRepository;
 
         private const long MaxFileSize = 10 * 1024 * 1024; // 10MB
         private static readonly string[] AllowedMimeTypes =
@@ -36,13 +39,15 @@ namespace EMS.Application.Features.Posts.Services
             ISupabaseStorageService storageService,
             ICurrentUserService currentUserService,
             INotificationService notificationService, 
-            ILogger<PostService> logger)
+            ILogger<PostService> logger,
+            IClassRepository classRepository)
         {
             this.postRepository = postRepository;
             this.storageService = storageService;
             this.currentUserService = currentUserService;
             _notificationService = notificationService;
             _logger = logger;
+            _classRepository = classRepository;
         }
 
         public async Task<Guid> CreatePostAsync(CreatePostDto request)
@@ -303,6 +308,34 @@ namespace EMS.Application.Features.Posts.Services
 
             if (!AllowedMimeTypes.Contains(contentType))
                 throw new Exception($"File type '{contentType}' is not allowed.");
+        }
+
+        public async Task<PagedResult<StudentPostDto>> GetClassPostsAsync(Guid classId, PostFilter filter)
+        {
+            Guid studentId = currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
+            bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, studentId);
+            if (!isEnrolled)
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền truy cập!");
+            }
+            if (filter.FromDate > filter.ToDate)
+            {
+                throw new ArgumentException("Ngày bắt đầu phải trước ngày kết thúc!");
+            }
+            var (entities, totalCount) = await _classRepository.GetClassPostAsync(classId, filter.Page, filter.Size, filter.FromDate, filter.ToDate);
+            var items = entities.Select(p => new StudentPostDto
+            {
+                PostID = p.PostId,
+                Content = p.Content,
+                CreatedAt = (DateTime)p.CreatedAt,
+            }).ToList();
+            return new PagedResult<StudentPostDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)filter.Size),
+                CurrentPage = filter.Page
+            };
         }
 
     }

@@ -1,4 +1,5 @@
-﻿using EMS.Application.Features.Posts.DTOs;
+﻿using EMS.Application.Features.Assignments.DTOs;
+using EMS.Application.Features.Posts.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,5 +18,6 @@ namespace EMS.Application.Features.Posts.Services
 
         Task<Guid> CreateCommentAsync(Guid postId, CreateCommentDto request);
         Task DeleteCommentAsync(Guid commentId);
+        Task<PagedResult<StudentPostDto>> GetClassPostsAsync(Guid classId, PostFilter filter);
     }
 }

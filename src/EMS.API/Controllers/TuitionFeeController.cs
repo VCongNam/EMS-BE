@@ -11,30 +11,23 @@ namespace EMS.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Teacher")]
+    [Authorize]
     public class TuitionFeeController : ControllerBase
     {
         private readonly ITuitionFeeService tuitionFeeService;
         private readonly ICurrentUserService currentUserService;
+        private readonly IStudentTuitionService _tuitionService;
 
-        public TuitionFeeController(ITuitionFeeService tuitionFeeService, ICurrentUserService currentUserService)
+        public TuitionFeeController(ITuitionFeeService tuitionFeeService, ICurrentUserService currentUserService, IStudentTuitionService tuitionService)
         {
             this.tuitionFeeService = tuitionFeeService;
             this.currentUserService = currentUserService;
+            _tuitionService = tuitionService;
         }
-
-        
-
-       
-
-
-
-
-
-  
 
         // Chốt sổ cuối tháng để trừ/cộng dồn cho tháng sau (áp dụng cho các lớp có học phí trả trước)
         [HttpPost("class/{classId}/reconcile")]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> ReconcilePrepaid(Guid classId, [FromQuery] int month, [FromQuery] int year)
         {
             try
@@ -60,6 +53,7 @@ namespace EMS.API.Controllers
 
         // Lấy danh sách các giao dịch chuyển khoản đang chờ phê duyệt của giáo viên
         [HttpGet("transactions/pending")]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> GetPending()
         {
             try
@@ -79,6 +73,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost("transaction/{id}/review")]
+        [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> Review(Guid id, [FromBody] ReviewTransactionDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -372,6 +367,120 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "Lỗi khi lọc giao dịch theo kỳ: " + ex.Message });
+            }
+        }
+
+
+        //Student
+        [HttpGet("student/myTuitions")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentTuitions([FromQuery] TuitionFilter filter)
+        {
+            try
+            {
+                var result = await _tuitionService.GetMyTuitionAsync(filter);
+                if (result == null) throw new Exception("Bạn chưa có khoản học phí nào.");
+                return Ok(new
+                {
+                    Message = "Lấy danh sách học phí thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("student/{invoiceId}/detail")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentTuitionDetail(Guid invoiceId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetTuitionInvoiceDetailAsync(invoiceId);
+                if (result == null) throw new Exception("Không tìm thấy hóa đơn");
+                return Ok(new
+                {
+                    Message = "Lấy chi tiết hóa đơn thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("{invoiceId}/paymentQr")]
+        public async Task<IActionResult> GetPaymentQr(Guid invoiceId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetPaymentQrCodeAsync(invoiceId);
+                return Ok(new
+                {
+                    Message = "Tạo mã QR thanh toán thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("{invoiceId}/proof")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> UploadPaymentProof(Guid invoiceId, [FromForm] ProofUploadDto request)
+        {
+            try
+            {
+                if (request.ProofImage == null || request.ProofImage.Length == 0)
+                {
+                    return BadRequest(new { Message = "Vui lòng chọn ảnh minh chứng giao dịch." });
+                }
+
+                await _tuitionService.UploadPaymentProofAsync(invoiceId, request);
+
+                return Ok(new
+                {
+                    Message = "Nộp minh chứng thành công. Vui lòng chờ giáo viên xác nhận!"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("student/myTransactions")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentTransactions([FromQuery] Guid? classId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetMyTransactionsAsync(classId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpGet("student/myTransactions/{transactionId}")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentTransactionDetail(Guid transactionId)
+        {
+            try
+            {
+                var result = await _tuitionService.GetTransactionByIdAsync(transactionId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }

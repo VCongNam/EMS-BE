@@ -17,11 +17,13 @@ namespace EMS.API.Controllers
     {
         private readonly IAccountService accountService;
         private readonly ICurrentUserService currentUserService;
+        private readonly IStudentAccountService _studentAccountService;
 
-        public AccountController(IAccountService accountService, ICurrentUserService currentUserService)
+        public AccountController(IAccountService accountService, ICurrentUserService currentUserService, IStudentAccountService studentAccountService)
         {
             this.accountService = accountService;
             this.currentUserService = currentUserService;
+            _studentAccountService = studentAccountService;
         }
 
 
@@ -93,6 +95,44 @@ namespace EMS.API.Controllers
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
+
+        [HttpPost("student/create")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> CreateStudent([FromBody] CreateStudentDto request)
+        {
+            try
+            {
+                var result = await _studentAccountService.CreateStudentAsync(request);
+
+                return Ok(new
+                {
+                    message = "Create student account successfully!",
+                    studentId = result.StudentId,
+                    isNewAccount = result.IsNewAccount
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("student/import-excel")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> ImportExcel(IFormFile file)
+        {
+            try
+            {
+                var result = await _studentAccountService.ImportStudentsFromExcelAsync(file);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
 
         // 3. API UPDATE STUDENT
         [HttpPut("student/profile")]
