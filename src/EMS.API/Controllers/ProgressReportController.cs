@@ -31,6 +31,7 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return NotFound(new { Message = ex.Message }); }
         }
 
+        [Authorize(Roles ="Teacher")]
         [HttpPost]
         public async Task<IActionResult> CreateReport([FromBody] CreateProgressReportDto request)
         {
@@ -43,6 +44,8 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
+
+        [Authorize(Roles = "Teacher")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateReport(Guid id, [FromBody] UpdateProgressReportDto request)
         {
@@ -55,7 +58,7 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
-        // --- ĐIỂM CHẠM MỚI: API GỬI BÁO CÁO RIÊNG BIỆT ---
+        [Authorize(Roles = "Teacher")]
         [HttpPut("{id}/send")]
         public async Task<IActionResult> SendReport(Guid id)
         {
@@ -67,6 +70,8 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
+
+        [Authorize(Roles = "Teacher")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteReport(Guid id)
         {
@@ -77,7 +82,8 @@ namespace EMS.API.Controllers
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
-
+        
+        [Authorize(Roles = "Teacher")]
         [HttpGet("classes/summary")]
         public async Task<IActionResult> GetClassesReportSummary(
      [FromQuery] int month,
