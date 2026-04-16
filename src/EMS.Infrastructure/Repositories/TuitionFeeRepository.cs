@@ -21,73 +21,6 @@ namespace EMS.Infrastructure.Repositories
             this.context = context;
         }
 
-        // =========================================================
-        // 📊 MÀN 1: DASHBOARD & BÁO CÁO (Analytics & Reports)
-        // =========================================================
-
-        public async Task<decimal> GetTotalRevenueByTeacherAsync(Guid teacherId)
-        {
-            return await context.Transactions
-                .Where(t => t.Status == "Successful" && t.Invoice.Class.TeacherId == teacherId)
-                .SumAsync(t => t.AmountPaid);
-        }
-
-        public async Task<int> CountInvoicesByStatusForTeacherAsync(string status, Guid teacherId)
-        {
-            return await context.Invoices
-                .CountAsync(i => i.Status == status && i.Class.TeacherId == teacherId);
-        }
-
-        public async Task<int> GetTotalActiveStudentsByTeacherAsync(Guid teacherId)
-        {
-            return await context.ClassEnrollments
-                .Where(e => e.Status == "Active" && e.Class.TeacherId == teacherId && !e.Class.IsDeleted.Value)
-                .Select(e => e.StudentId)
-                .Distinct()
-                .CountAsync();
-        }
-
-        public async Task<IEnumerable<(Guid ClassId, string ClassName, int StudentCount, decimal ExpectedRevenue, decimal ActualRevenue)>> GetClassFinancialSummariesAsync(Guid teacherId)
-        {
-            var classes = await context.Classes
-                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true)
-                .Select(c => new
-                {
-                    c.ClassId,
-                    c.ClassName,
-                    StudentCount = c.ClassEnrollments.Count(e => e.Status == "Active"),
-                    Expected = c.Invoices.Sum(i => i.Amount),
-                    Actual = c.Invoices.SelectMany(i => i.Transactions).Where(t => t.Status == "Successful").Sum(t => t.AmountPaid)
-                })
-                .ToListAsync();
-
-            return classes.Select(c => (c.ClassId, c.ClassName, c.StudentCount, c.Expected, c.Actual));
-        }
-
-        public async Task<IEnumerable<(string MonthLabel, decimal Revenue)>> GetRevenueTrendAsync(Guid teacherId, int monthsToLookBack)
-        {
-            var startDate = DateTime.UtcNow.AddMonths(-monthsToLookBack);
-            var transactions = await context.Transactions
-                .Where(t => t.Status == "Successful" && t.Invoice.Class.TeacherId == teacherId && t.PaidDate >= startDate)
-                .ToListAsync();
-
-            return transactions
-                .GroupBy(t => new { t.PaidDate!.Value.Year, t.PaidDate.Value.Month })
-                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month)
-                .Select(g => ($"Tháng {g.Key.Month:D2}/{g.Key.Year.ToString().Substring(2)}", g.Sum(t => t.AmountPaid)));
-        }
-
-        public async Task<IEnumerable<(string StudentName, string ClassName, decimal Amount, DateTime DueDate)>> GetTopDebtorsRawAsync(Guid teacherId, int count)
-        {
-            return await context.Invoices
-                .Include(i => i.Student).Include(i => i.Class)
-                .Where(i => i.Class.TeacherId == teacherId && (i.Status == "Pending" || i.Status == "Overdue") && i.IsDeleted != true)
-                .OrderByDescending(i => i.Amount)
-                .Take(count)
-                .Select(i => ValueTuple.Create(i.Student.FullName, i.Class.ClassName, i.Amount, i.DueDate))
-                .ToListAsync();
-        }
-
 
         // =========================================================
         // 🎯 MÀN 2: QUẢN LÝ LỚP & HÓA ĐƠN (Class Hub & Invoices)
@@ -608,16 +541,6 @@ namespace EMS.Infrastructure.Repositories
                     .ThenInclude(i => i.Class)
                 .Where(t => t.Invoice.Class.TeacherId == teacherId && t.Invoice.IsDeleted != true)
                 .OrderByDescending(t => t.CreatedAt) // Mới nhất lên đầu
-                .ToListAsync();
-        }
-        public async Task<List<Invoice>> GetInvoicesInRangeAsync(Guid teacherId, DateTime startDate, DateTime endDate)
-        {
-            return await context.Invoices
-                .Include(i => i.Class) // Để lấy tên lớp cho biểu đồ tròn
-                .Where(i => i.Class.TeacherId == teacherId
-                         && i.CreatedAt >= startDate
-                         && i.CreatedAt <= endDate
-                         && i.IsDeleted != true)
                 .ToListAsync();
         }
 

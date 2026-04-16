@@ -9,7 +9,7 @@ namespace EMS.Application.Features.ProgressReports.DTOs
     public class ProgressReportDashboardDto
     {
         public int TotalClasses { get; set; }
-        public double OverallCompletionRate { get; set; } // Tỷ lệ hoàn thành tổng
+        public double OverallCompletionRate { get; set; }
         public List<ClassReportSummaryItemDto> ClassSummaries { get; set; } = new List<ClassReportSummaryItemDto>();
     }
 }
