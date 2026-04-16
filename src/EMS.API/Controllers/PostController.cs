@@ -7,7 +7,7 @@ namespace EMS.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bảo mật bằng JWT
+    [Authorize] 
     public class PostController : ControllerBase
     {
         private readonly IPostService postService;
@@ -17,8 +17,8 @@ namespace EMS.API.Controllers
             this.postService = postService;
         }
 
-        // --- QUẢN LÝ BÀI ĐĂNG (POST) ---
 
+        [Authorize (Roles ="Teacher, TA")]
         [HttpPost]
         public async Task<IActionResult> CreatePost([FromForm] CreatePostDto request)
         {
@@ -33,6 +33,7 @@ namespace EMS.API.Controllers
             }
         }
 
+        [Authorize(Roles = "Teacher, TA")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePost(Guid id, [FromForm] UpdatePostDto request)
         {
@@ -47,6 +48,7 @@ namespace EMS.API.Controllers
             }
         }
 
+        [Authorize(Roles = "Teacher, TA")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePost(Guid id)
         {
@@ -62,7 +64,6 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("{id}")]
-        // Ai cũng xem được (Student, Parent, Teacher...)
         public async Task<IActionResult> GetPostDetail(Guid id)
         {
             try
@@ -77,7 +78,6 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("class/{classId}")]
-        // Lấy danh sách bài đăng theo lớp
         public async Task<IActionResult> GetPostsByClassId(Guid classId)
         {
             try
