@@ -8,7 +8,7 @@ namespace EMS.Application.Features.ProgressReports.DTOs
 {
     public class ProgressReportResponseDto
     {
-        public Guid? ReportId { get; set; } // Nullable vì có thể học sinh chưa có báo cáo (trạng thái Sẵn sàng)
+        public Guid? ReportId { get; set; }
         public Guid StudentId { get; set; }
         public string StudentName { get; set; } = null!;
         public Guid ClassId { get; set; }
@@ -21,8 +21,6 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public string? Title { get; set; }
         public string? Content { get; set; }
         public string Status { get; set; }
-
-        // Bổ sung điểm số giả định để render UI Màn hình 2
         public decimal? Gpa { get; set; }
         public decimal? AttendanceRate { get; set; }
 
