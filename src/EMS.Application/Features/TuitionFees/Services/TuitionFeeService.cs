@@ -89,7 +89,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             // --- BƯỚC 2: CHUẨN BỊ DỮ LIỆU ---
             var students = (await tuitionFeeRepository.GetActiveStudentsInClassAsync(classId)).ToList();
             var invoices = new List<Invoice>();
-            decimal currentUnitPrice = classObj.TuitionFee; // Snapshot đơn giá
+            decimal currentUnitPrice = classObj.TuitionFee; 
 
             int scheduledSessions = await tuitionFeeRepository.CountScheduledSessionsAsync(classId, req.PeriodMonth, req.PeriodYear);
             var periodStart = new DateTime(req.PeriodYear, req.PeriodMonth, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -160,7 +160,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                     if (target != default)
                     {
                         string content = $"Hệ thống đã phát hành hóa đơn học phí tháng {invoice.PeriodMonth}/{invoice.PeriodYear}. Số tiền: {invoice.Amount:N0}đ.";
-                        await _notificationService.SendNotificationAsync(target.AccId, invoice.StudentId, "Thông báo học phí", content, $"/student/invoices/{invoice.InvoiceId}", "Invoice");
+                        await _notificationService.SendNotificationAsync(target.AccId, invoice.StudentId, "Thông báo học phí", content, $"/student/classes/{target.StdId}/tuition", "Invoice");
                     }
                 }
             }

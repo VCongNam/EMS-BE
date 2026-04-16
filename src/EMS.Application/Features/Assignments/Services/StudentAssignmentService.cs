@@ -232,7 +232,7 @@ namespace EMS.Application.Features.Assignments.Services
             {
                 await _notificationService.SendNotificationAsync(
                     targetAccountId: asignmentInfo.Class.TeacherId,
-                    studentId: studentId,
+                    studentId: null,
                     title: "Bài nộp mới",
                     content: $"Một học sinh lớp {asignmentInfo.Class.ClassName} đã nộp bài tập: {asignmentInfo.Title}",
                     actionUrl: $"/teacher/classes/{asignmentInfo.ClassId}/assignment/{asignmentInfo.AssignmentId}",
