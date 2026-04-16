@@ -59,7 +59,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost("{classId}/assignStudent")]
-        [Authorize]
+        [Authorize(Roles ="Teacher")]
         public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentDto request)
         {
             try
@@ -187,7 +187,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("{classId}/tas")]
-        //[Authorize]
+        [Authorize]
         public async Task<IActionResult> GetClassTAs(Guid classId)
         {
             try
@@ -202,7 +202,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost("{classId}/tas/assign")]
-        //[Authorize]
+        [Authorize]
         public async Task<IActionResult> AssignTA(Guid classId, [FromBody] AssignTADto request)
         {
             try

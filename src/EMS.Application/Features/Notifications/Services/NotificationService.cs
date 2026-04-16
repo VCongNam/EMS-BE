@@ -51,6 +51,8 @@ namespace EMS.Application.Features.Notifications.Services
         {
             Guid accountId = _currentUser.UserId;
             Guid? studentId = _currentUser.StudentId;
+
+            if (accountId == Guid.Empty) throw new UnauthorizedAccessException();
             await _notificationRepository.MarkAllAsReadAsync(accountId, studentId);
         }
 
@@ -58,6 +60,7 @@ namespace EMS.Application.Features.Notifications.Services
         {
             Guid accountId = _currentUser.UserId;
             Guid? studentId = _currentUser.StudentId;
+            if (accountId == Guid.Empty) throw new UnauthorizedAccessException();
             await _notificationRepository.MarkAsReadAsync(notificationId, accountId, studentId);
         }
 
