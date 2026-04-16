@@ -10,6 +10,6 @@ namespace EMS.Application.Features.Sessions.Services
 {
     public interface IStudentScheduleService
     {
-        Task<List<StudentScheduleDto>> GetMySchedulesAsync(ScheduleFilter filter);
+        Task<List<StudentScheduleDto>> GetStudentSchedulesAsync(ScheduleFilter filter);
     }
 }

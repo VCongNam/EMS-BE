@@ -152,7 +152,7 @@ namespace EMS.API.Controllers
         {
             try
             {
-                var result = await _scheduleService.GetMySchedulesAsync(filter);
+                var result = await _scheduleService.GetStudentSchedulesAsync(filter);
 
                 return Ok(new
                 {

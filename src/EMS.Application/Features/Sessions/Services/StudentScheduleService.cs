@@ -21,7 +21,7 @@ namespace EMS.Application.Features.Sessions.Services
             _currentUser = currentUser;
         }
 
-        public async Task<List<StudentScheduleDto>> GetMySchedulesAsync(ScheduleFilter filter)
+        public async Task<List<StudentScheduleDto>> GetStudentSchedulesAsync(ScheduleFilter filter)
         {
             Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
