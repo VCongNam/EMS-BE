@@ -374,9 +374,14 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task ReviewTaskAsync(Guid taskId, bool isApproved, string? teacherFeedback)
         {
+            var userId = _currentUser.UserId;
             var task = await _taRepository.GetTaskByIdAsync(taskId);
             if (task == null) throw new Exception("Nhiệm vụ không tồn tại!");
 
+            if (task.ClassTa.Class.TeacherId != userId) {
+                throw new Exception("Bạn không có quyền thao tác nhiệm vụ này");
+            } 
+            
             if (task.Status != "Review")
             {
                 throw new Exception($"Không thể thực hiện thao tác này. Nhiệm vụ hiện đang ở trạng thái: {task.Status}");
@@ -385,12 +390,12 @@ namespace EMS.Application.Features.Classes.Services
             if (isApproved)
             {
                 task.Status = "Done";
-                task.Feedback = teacherFeedback; // Lưu lời khen hoặc ghi chú
+                task.Feedback = teacherFeedback; 
             }
             else
             {
                 task.Status = "InProgress"; 
-                task.Feedback = teacherFeedback; // Lưu lý do tại sao bắt làm lại
+                task.Feedback = teacherFeedback; 
             }
 
             task.UpdatedAt = DateTime.UtcNow;
