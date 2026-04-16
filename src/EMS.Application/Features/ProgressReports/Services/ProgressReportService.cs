@@ -29,12 +29,10 @@ namespace EMS.Application.Features.ProgressReports.Services
             _logger = logger;
         }
 
-        // --- CÁC HÀM PHỤ TRỢ TÍNH TOÁN (Sửa kiểu trả về thành decimal để khớp với Entity) ---
         private decimal CalculateGpa(List<Submission> studentSubs)
         {
             if (!studentSubs.Any()) return 0m;
 
-            // Chuyển hết về decimal để tính toán đồng bộ
             decimal totalWeighted = studentSubs.Sum(s => (s.Grade ?? 0m) * (s.Assignment.GradeCategory.Weight / 100m));
             decimal totalWeight = studentSubs.Sum(s => s.Assignment.GradeCategory.Weight / 100m);
 
@@ -48,14 +46,12 @@ namespace EMS.Application.Features.ProgressReports.Services
             return Math.Round((decimal)presentCount / studentAtts.Count * 100, 2);
         }
 
-        // --- CÁC CHỨC NĂNG CHÍNH ---
 
         public async Task<IEnumerable<ProgressReportResponseDto>> GetClassReportDetailsAsync(Guid classId, int month, int year)
         {
             var enrollments = await reportRepository.GetActiveStudentsInClassAsync(classId);
             var existingReports = await reportRepository.GetReportsByClassAndPeriodAsync(classId, month, year);
 
-            // Chỉ định rõ DateTimeKind để tránh lỗi Supabase/Postgres
             var startDateDt = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
             var endDateDt = new DateTime(year, month, DateTime.DaysInMonth(year, month), 23, 59, 59, DateTimeKind.Utc);
 
@@ -68,7 +64,6 @@ namespace EMS.Application.Features.ProgressReports.Services
             {
                 var report = existingReports.FirstOrDefault(r => r.StudentId == e.StudentId);
 
-                // Tính toán "Live"
                 decimal liveGpa = CalculateGpa(allSubs.Where(s => s.StudentId == e.StudentId).ToList());
                 decimal liveAtt = CalculateAttendance(allAtts.Where(a => a.StudentId == e.StudentId).ToList());
 
@@ -83,7 +78,6 @@ namespace EMS.Application.Features.ProgressReports.Services
                     Title = report?.Title,
                     Content = report?.Content,
                     Status = report?.Status ?? "Ready",
-                    // Fix lỗi ?? giữa decimal? và decimal
                     Gpa = report?.Gpa ?? liveGpa,
                     AttendanceRate = report?.AttendanceRate ?? liveAtt,
                     CreatedAt = report?.CreatedAt,
@@ -113,7 +107,7 @@ namespace EMS.Application.Features.ProgressReports.Services
                 StudentId = request.StudentId,
                 ClassId = request.ClassId,
                 TeacherId = currentUserService.UserId,
-                PeriodMonth = (short)request.PeriodMonth, // Ép kiểu về short nếu Entity yêu cầu
+                PeriodMonth = (short)request.PeriodMonth, 
                 PeriodYear = request.PeriodYear,
                 Title = request.Title,
                 Content = request.Content,
@@ -134,7 +128,6 @@ namespace EMS.Application.Features.ProgressReports.Services
             if (report.TeacherId != currentUserService.UserId) throw new Exception("Bạn không có quyền sửa.");
             if (report.Status == "Published") throw new Exception("Báo cáo đã gửi không thể chỉnh sửa.");
 
-            // Áp dụng cách dùng !.Value và ép kiểu (int)
             var startDateDt = new DateTime(report.PeriodYear!.Value, (int)report.PeriodMonth!.Value, 1, 0, 0, 0, DateTimeKind.Utc);
 
             var endDateDt = new DateTime(
@@ -245,19 +238,17 @@ namespace EMS.Application.Features.ProgressReports.Services
             int totalSystemStudents = 0;
             int totalSystemCreatedReports = 0;
 
-            // Quy tắc Hạn chót: Ngày 5 của tháng kế tiếp
             var reportDeadline = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1).AddDays(4);
 
             foreach (var c in classes)
             {
                 var classReports = reports.Where(r => r.ClassId == c.ClassId).ToList();
 
-                // Dùng TryGetValue để tránh lỗi KeyNotFound
                 studentCounts.TryGetValue(c.ClassId, out int totalStudents);
 
-                int draftCount = classReports.Count(r => r.Status == "Draft");
+                int readyCount = classReports.Count(r => r.Status == "Ready");
                 int publishedCount = classReports.Count(r => r.Status == "Published");
-                int createdReports = draftCount + publishedCount;
+                int createdReports = readyCount + publishedCount;
 
                 double completionRate = totalStudents > 0 ? Math.Round((double)createdReports / totalStudents * 100, 1) : 0;
 
@@ -270,7 +261,7 @@ namespace EMS.Application.Features.ProgressReports.Services
                     ClassName = c.ClassName,
                     Room = c.Room,
                     TotalStudents = totalStudents,
-                    DraftCount = draftCount,
+                    ReadyCount = readyCount,
                     PublishedCount = publishedCount,
                     CompletionRate = completionRate,
                     Deadline = reportDeadline,
