@@ -89,7 +89,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             // --- BƯỚC 2: CHUẨN BỊ DỮ LIỆU ---
             var students = (await tuitionFeeRepository.GetActiveStudentsInClassAsync(classId)).ToList();
             var invoices = new List<Invoice>();
-            decimal currentUnitPrice = classObj.TuitionFee; // Snapshot đơn giá
+            decimal currentUnitPrice = classObj.TuitionFee; 
 
             int scheduledSessions = await tuitionFeeRepository.CountScheduledSessionsAsync(classId, req.PeriodMonth, req.PeriodYear);
             var periodStart = new DateTime(req.PeriodYear, req.PeriodMonth, 1, 0, 0, 0, DateTimeKind.Utc);
