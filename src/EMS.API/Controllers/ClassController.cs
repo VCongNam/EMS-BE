@@ -89,15 +89,11 @@ namespace EMS.API.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetClassDetail(Guid id)
         {
-            try
-            {
+           
                 var classDetail = await _classService.GetClassDetailAsync(id);
                 return Ok(classDetail);
-            }
-            catch (Exception ex)
-            {
-                return NotFound(new { Message = ex.Message });
-            }
+            
+           
         }
 
 
@@ -121,16 +117,10 @@ namespace EMS.API.Controllers
         // PATCH: api/class/{id}/archive[HttpPatch("{id}/archive")]
         [HttpPatch("{id}/archive")]
         public async Task<IActionResult> ArchiveClass(Guid id)
-        {
-            try
-            {
+        {        
                 await _classService.ArchiveClassAsync(id);
-                return Ok(new { Message = "Class archived successfully!" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+                return Ok(new { Message = "Class archived successfully!" });           
+          
         }
 
         // API 5: Khôi phục lớp học (Restore)
@@ -138,22 +128,17 @@ namespace EMS.API.Controllers
         [HttpPatch("{id}/restore")]
         public async Task<IActionResult> RestoreClass(Guid id)
         {
-            try
-            {
+          
                 await _classService.RestoreClassAsync(id);
                 return Ok(new { Message = "Class restored successfully!" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            
+          
         }
 
         [HttpGet("my-id")]
         [Authorize]
         public IActionResult GetMyId()
         {
-            // Thông tin này được trích xuất tự động từ Token bạn gửi lên
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
             var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;

@@ -133,5 +133,49 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message }); 
             }
         }
+
+        /// <summary>
+        /// Giáo viên xem chi tiết bài làm của 1 học sinh trong assignment.
+        /// Route: GET /api/Assignment/{assignmentId}/submissions/{studentId}
+        /// </summary>
+        [HttpGet("{assignmentId}/submissions/{studentId}")]
+        public async Task<IActionResult> GetStudentSubmissionDetail(Guid assignmentId, Guid studentId)
+        {
+            try
+            {
+                var result = await _assignmentService.GetStudentSubmissionDetailAsync(assignmentId, studentId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Kiểm tra học sinh có bài nộp không. Dùng trong gradebook để chặn edit điểm khi chưa có bài nộp.
+        /// Route: GET /api/Assignment/{assignmentId}/submissions/{studentId}/has-submitted
+        /// </summary>
+        [HttpGet("{assignmentId}/submissions/{studentId}/has-submitted")]
+        public async Task<IActionResult> CheckStudentSubmitted(Guid assignmentId, Guid studentId)
+        {
+            try
+            {
+                var hasSubmitted = await _assignmentService.HasStudentSubmittedAsync(assignmentId, studentId);
+                return Ok(new { AssignmentId = assignmentId, StudentId = studentId, HasSubmitted = hasSubmitted });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

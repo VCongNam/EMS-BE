@@ -477,5 +477,56 @@ namespace EMS.Application.Features.Assignments.Services
 
             return response;
         }
+        public async Task<StudentSubmissionDetailDto> GetStudentSubmissionDetailAsync(Guid assignmentId, Guid studentId)
+        {
+            await RequireTeacherAccessByAssignmentAsync(assignmentId);
+
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId)
+                ?? throw new KeyNotFoundException("Assignment not found.");
+
+            var submission = await _submissionRepository.GetSubmissionDetailForTeacherAsync(assignmentId, studentId);
+            if (submission == null)
+                throw new KeyNotFoundException("Học sinh này chưa nộp bài tập đó.");
+
+            return new StudentSubmissionDetailDto
+            {
+                SubmissionId = submission.SubmissionId,
+                AssignmentId = assignmentId,
+                AssignmentTitle = assignment.Title,
+                StudentId = submission.StudentId,
+                StudentFullName = submission.Student?.FullName ?? "Unknown",
+                SubmittedAt = submission.SubmittedAt,
+                Status = submission.Status ?? string.Empty,
+                Grade = submission.Grade,
+                Attachments = submission.SubmissionAttachments
+                    .Select(a => new SubmissionAttachmentDto
+                    {
+                        AttachmentId = a.AttachmentId,
+                        FileName = a.FileName,
+                        FileUrl = a.FileUrl,
+                        FileType = a.FileType,
+                        FileSize = a.FileSize,
+                        CreatedAt = a.CreatedAt
+                    }).ToList(),
+                Feedbacks = submission.SubmissionFeedbacks
+                    .OrderBy(f => f.CreatedAt)
+                    .Select(f => new SubmissionFeedbackDto
+                    {
+                        FeedbackId = f.FeedbackId,
+                        AuthorName = f.Author?.FullName ?? "Unknown",
+                        Content = f.Content,
+                        CreatedAt = f.CreatedAt
+                    }).ToList()
+            };
+        }
+
+        public async Task<bool> HasStudentSubmittedAsync(Guid assignmentId, Guid studentId)
+        {
+            // Xác minh assignment tồn tại
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            if (assignment == null) return false;
+
+            return await _submissionRepository.HasStudentSubmittedAsync(assignmentId, studentId);
+        }
     }
 }

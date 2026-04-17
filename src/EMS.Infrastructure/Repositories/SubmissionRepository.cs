@@ -1,4 +1,4 @@
-﻿using EMS.Domain.Entities;
+using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -120,6 +120,24 @@ namespace EMS.Infrastructure.Repositories
         {
             _context.Submissions.UpdateRange(submissions);
             await _context.SaveChangesAsync();
+        }
+
+    
+        public async Task<Submission?> GetSubmissionDetailForTeacherAsync(Guid assignmentId, Guid studentId)
+        {
+            return await _context.Submissions
+                .AsNoTracking()
+                .Include(s => s.SubmissionAttachments)
+                .Include(s => s.SubmissionFeedbacks)
+                    .ThenInclude(f => f.Author)
+                .Include(s => s.Student)
+                .FirstOrDefaultAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId);
+        }
+
+        public async Task<bool> HasStudentSubmittedAsync(Guid assignmentId, Guid studentId)
+        {
+            return await _context.Submissions
+                .AnyAsync(s => s.AssignmentId == assignmentId && s.StudentId == studentId && s.SubmittedAt != null);
         }
     }
 
