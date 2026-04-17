@@ -20,19 +20,23 @@ namespace EMS.Application.Features.Assignments.Services
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ISupabaseStorageService _supabaseStorageService;
         private readonly ISubmissionRepository _submissionRepository;
+        private readonly IClassRepository _classRepo;
         private readonly INotificationService _notificationService;
+
         public StudentAssignmentService(
             ICurrentUserService currentUser, 
             IAssignmentRepository assignmentRepository, 
             ISupabaseStorageService supabaseStorageService, 
             ISubmissionRepository submissionRepository,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IClassRepository classRepository)
         {
             _currentUser = currentUser;
             _assignmentRepository = assignmentRepository;
             _supabaseStorageService = supabaseStorageService;
             _submissionRepository = submissionRepository;
             _notificationService = notificationService;
+            _classRepo = classRepository;
         }
 
         public async Task<PagedResult<AssignmentItemDto>> GetClassAssignmentsAsync(Guid classId, AssignmentFilter filter)
@@ -87,7 +91,7 @@ namespace EMS.Application.Features.Assignments.Services
 
         public async Task<StudentAssignmentDetailDto> GetClassAssignmentsDetailAsync(Guid assignmentId)
         {
-            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
+            Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Đăng nhập bằng tài khoản học sinh để xem bài tập này.");
 
             var (assignment, submission) = await _assignmentRepository.GetAssignmentDetailAsync(assignmentId, studentId);
             if (assignment == null)
@@ -95,13 +99,15 @@ namespace EMS.Application.Features.Assignments.Services
                 throw new KeyNotFoundException("Không tìm thấy bài tập này!");
             }
 
+            var isEnrolled = await _classRepo.IsStudentAlreadyEnrolledAsync(assignment.ClassId, studentId);
+            if (!isEnrolled) throw new Exception("Bạn không có quyền xem bài tập này");
             SubmissionDetailDto? submissionDto = null;
             if (submission != null)
             {
                 submissionDto = new SubmissionDetailDto
                 {
                     SubmissionID = submission.SubmissionId,
-                    SubmittedAt = (DateTime)submission.SubmittedAt,
+                    SubmittedAt = submission.SubmittedAt.GetValueOrDefault(),
                     Grade = submission.Grade,
                     Status = submission.Status,
 
@@ -147,6 +153,9 @@ namespace EMS.Application.Features.Assignments.Services
             Guid studentId = _currentUser.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
 
             var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            var isEnrolled = await _classRepo.IsStudentAlreadyEnrolledAsync(assignment.ClassId, studentId);
+            if (!isEnrolled) throw new Exception("Bạn không có quyền xem bài tập này");
+
             if (assignment == null)
             {
                 throw new Exception("Bài tập không tồn tại!");

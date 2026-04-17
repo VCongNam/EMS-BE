@@ -68,7 +68,7 @@ namespace EMS.Application.Features.Accounts.Services
                 case "Student":
                     // Trỏ vào Students (số nhiều) và lấy phần tử đầu tiên
                     var studentInfo = account.Students?.FirstOrDefault(s => s.StudentId == currentStudentId);
-
+                    if (studentInfo == null) throw new Exception("Hồ sơ học sinh không tồn tại");
                     response.RoleSpecificData = new
                     {
                         StudentId = studentInfo?.StudentId, // Trả về luôn cho FE dễ dùng
@@ -137,6 +137,10 @@ namespace EMS.Application.Features.Accounts.Services
             var studentProfile = account.Students.FirstOrDefault(s => s.StudentId == currentStudentId);
             if (studentProfile != null)
             {
+                if (string.IsNullOrWhiteSpace(request.FullName))
+                    throw new Exception("Tên học sinh không được để trống");
+                var studentName = request.FullName.Trim();
+
                 studentProfile.Address = request.Address;
                 studentProfile.Dob = request.Dob;
                 studentProfile.FullName = request.FullName;

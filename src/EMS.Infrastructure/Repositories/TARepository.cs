@@ -37,6 +37,7 @@ namespace EMS.Infrastructure.Repositories
         {
             var ta = await _context.TeachingAssistants
                 .Include(ta => ta.Ta)
+                .ThenInclude(a => a.Role)
                 .Where(ta => ta.Ta.IsDeleted == false)
                 .FirstOrDefaultAsync(ta => ta.Ta.Email == email);
             return ta;
@@ -82,6 +83,13 @@ namespace EMS.Infrastructure.Repositories
                 .Include(ct => ct.Class)
                 .FirstOrDefaultAsync(ct => ct.ClassTaid == classTaId && ct.Status != "Deactive");
             return result;
+        }
+
+        public async Task<TeachingAssistant> GetByIdAsync(Guid taId)
+        {
+            return await _context.TeachingAssistants
+                .Include(ta => ta.Ta)
+                .FirstOrDefaultAsync(ta => ta.Taid == taId);
         }
     }
 }
