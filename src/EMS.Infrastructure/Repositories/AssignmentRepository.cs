@@ -112,7 +112,6 @@ namespace EMS.Infrastructure.Repositories
             return (dbResult.Assignment, dbResult.Submission);
         }
 
-        // Attachment management
         public async Task AddAttachmentAsync(AssignmentAttachment attachment)
         {
             await _context.AssignmentAttachments.AddAsync(attachment);

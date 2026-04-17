@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace EMS.API.Controllers
 {
     [ApiController]
-    [Route("api")]
+    [Route("api/[controller]")]
     [Authorize]
     public class SessionController : ControllerBase
     {
@@ -23,8 +23,8 @@ namespace EMS.API.Controllers
             _scheduleService = scheduleService;
         }
 
-        // [GET] /api/session/class/{classId}
-        [HttpGet("session/class/{classId}")]
+      
+        [HttpGet("class/{classId}")]
         public async Task<IActionResult> GetSessionsByClassId(Guid classId)
         {
             try
@@ -39,7 +39,7 @@ namespace EMS.API.Controllers
         }
 
         // [GET] /api/session/teacher-schedule
-        [HttpGet("session/teacher-schedule")]
+        [HttpGet("teacher-schedule")]
         public async Task<IActionResult> GetTeacherSchedule([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
         {
             try
@@ -54,7 +54,7 @@ namespace EMS.API.Controllers
         }
 
         // [POST] /api/session
-        [HttpPost("session")]
+        [HttpPost]
         public async Task<IActionResult> CreateSession([FromBody] CreateSessionDto request)
         {
             try
@@ -69,7 +69,7 @@ namespace EMS.API.Controllers
         }
 
         // [PUT] /api/session/{sessionId}
-        [HttpPut("session/{sessionId}")]
+        [HttpPut("{sessionId}")]
         public async Task<IActionResult> UpdateSession(Guid sessionId, [FromBody] UpdateSessionDto request)
         {
             try
@@ -84,7 +84,7 @@ namespace EMS.API.Controllers
         }
 
         // [DELETE] /api/session/{sessionId}
-        [HttpDelete("session/{sessionId}")]
+        [HttpDelete("{sessionId}")]
         public async Task<IActionResult> DeleteSession(Guid sessionId)
         {
             try
@@ -99,7 +99,7 @@ namespace EMS.API.Controllers
         }
 
         // [GET] /api/session/{sessionId}/attendance
-        [HttpGet("session/{sessionId}/attendance")]
+        [HttpGet("{sessionId}/attendance")]
         public async Task<IActionResult> GetAttendanceList(Guid sessionId)
         {
             try
@@ -114,7 +114,7 @@ namespace EMS.API.Controllers
         }
 
         // [POST] /api/session/{sessionId}/attendance
-        [HttpPost("session/{sessionId}/attendance")]
+        [HttpPost("{sessionId}/attendance")]
         public async Task<IActionResult> TakeAttendance(Guid sessionId, [FromBody] IEnumerable<TakeAttendanceDto> requests)
         {
             try
@@ -129,7 +129,7 @@ namespace EMS.API.Controllers
         }
 
         // [PUT] /api/session/attendance/{attendanceId}
-        [HttpPut("session/attendance/{attendanceId}")]
+        [HttpPut("attendance/{attendanceId}")]
         public async Task<IActionResult> UpdateAttendance(Guid attendanceId, [FromBody] UpdateAttendanceDto request)
         {
             try

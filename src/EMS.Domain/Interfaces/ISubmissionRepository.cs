@@ -27,5 +27,9 @@ namespace EMS.Domain.Interfaces
         Task<IEnumerable<Submission>> GetByAssignmentIdsAsync(List<Guid> assignmentIds);
         Task AddRangeAsync(IEnumerable<Submission> submissions);
         Task UpdateRangeAsync(IEnumerable<Submission> submissions);
+
+        Task<Submission?> GetSubmissionDetailForTeacherAsync(Guid assignmentId, Guid studentId);
+
+        Task<bool> HasStudentSubmittedAsync(Guid assignmentId, Guid studentId);
     }
 }

@@ -1,10 +1,12 @@
 
 using EMS.API.BackgroundServices;
+using EMS.API.Middlewares;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Auth.Services;
 using EMS.Application.Features.Classes.Services;
+using EMS.Application.Features.Classes.Validators;
 using EMS.Application.Features.LearningMaterials.Services;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.Services;
@@ -41,7 +43,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddSignalR();
 
 // 2. ĐĂNG KÝ EMAIL SERVICE (Dùng HttpClient cho Brevo API)
-// Dòng này cực kỳ quan trọng: Nó vừa đăng ký IEmailService, vừa nạp HttpClient vào EmailService
 builder.Services.AddHttpClient<IEmailService, EmailService>();
 
 
@@ -102,9 +103,10 @@ builder.Services.AddScoped<ILearningMaterialService, LearningMaterialService>();
 //builder.Services.AddScoped<IProgressReportService, ProgressReportService>();
 builder.Services.AddHttpClient<IVietQRService, VietQRService>();
 builder.Services.AddScoped<ITuitionFeeService, TuitionFeeService>();
-// Gradebook feature
+
 builder.Services.AddScoped<EMS.Application.Features.Gradebook.Services.IGradebookService, EMS.Application.Features.Gradebook.Services.GradebookService>();
 
+builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
 //Notification
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<ISignalRService, SignalRService>();
@@ -116,9 +118,9 @@ builder.Services.AddScoped<ISystemAdminService,SystemAdminService>();
 
 builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Request nếu dữ liệu sai và trả về lỗi 400
 builder.Services.AddFluentValidationClientsideAdapters();
-// Lệnh này sẽ tự động tìm tất cả các class Validator trong cùng một thư mục/Assembly với CreateProgressReportValidator
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProgressReportValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<UpdateTuitionFeeValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateClassDtoValidator>();
 
 // Đăng ký Worker tự động hóa
 builder.Services.AddHostedService<InvoiceAutomationWorker>();
@@ -163,10 +165,8 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        // Reduce default clock skew to avoid tokens being accepted slightly after expiry
         ClockSkew = TimeSpan.Zero
     };
-    // In development, allow HTTP metadata endpoints; in production ensure HTTPS
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
 
@@ -187,12 +187,6 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
-
-
-//builder.Services.AddControllers();
-//// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-//builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
@@ -228,6 +222,7 @@ builder.Services.AddSwaggerGen(c =>
 
 
 var app = builder.Build();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Diagnostic check: verify DI registrations for progress report service/repository
 //using (var startupScope = app.Services.CreateScope())
@@ -255,7 +250,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
-// QUAN TRỌNG: Thứ tự phải là Authentication trước, Authorization sau
 app.UseAuthentication();
 app.UseAuthorization();
 

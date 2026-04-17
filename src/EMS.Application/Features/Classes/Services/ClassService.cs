@@ -1,9 +1,11 @@
 using CloudinaryDotNet;
+using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Classes.DTOs;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using FluentValidation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,18 +20,57 @@ namespace EMS.Application.Features.Classes.Services
         private readonly ISessionRepository _sessionRepository;
         private readonly ICurrentUserService _currentUser;
         private readonly INotificationService _notificationService;
+        private readonly IValidator<CreateClassDto> _createClassValidator;
 
-        public ClassService(IClassRepository classRepository, ISessionRepository sessionRepository, ICurrentUserService currentUser, INotificationService notificationService)
+        public ClassService(
+             IClassRepository classRepository,
+             ISessionRepository sessionRepository,
+             ICurrentUserService currentUser,
+             INotificationService notificationService,
+             IValidator<CreateClassDto> createClassValidator) 
         {
             _classRepository = classRepository;
             _sessionRepository = sessionRepository;
             _currentUser = currentUser;
             _notificationService = notificationService;
+            _createClassValidator = createClassValidator;
         }
 
         public async Task<Guid> CreateClassAsync(CreateClassDto request)
         {
-            // 1. Xử lý Subject (Tìm hoặc Tạo mới)
+            var currentTeacherId = _currentUser.UserId;
+            if (request.Schedules != null && request.Schedules.Any())
+            {
+                var existingClasses = await _classRepository.GetClassesByTeacherIdAsync(currentTeacherId);
+
+                var overlappingClasses = existingClasses.Where(c =>
+                    c.Status != "Archived" && c.Status != "Completed" &&
+                    c.StartDate <= request.EndDate && c.EndDate >= request.StartDate).ToList();
+
+                foreach (var oldClass in overlappingClasses)
+                {
+                    foreach (var oldSchedule in oldClass.ClassSchedules) 
+                    {
+                        foreach (var newSchedule in request.Schedules)
+                        {
+                            if (oldSchedule.DayOfWeek == newSchedule.DayOfWeek)
+                            {
+                                if (newSchedule.StartTime < oldSchedule.EndTime && newSchedule.EndTime > oldSchedule.StartTime)
+                                {
+                                    var displayDay = oldSchedule.DayOfWeek == 7 ? "Chủ Nhật" : $"Thứ {oldSchedule.DayOfWeek + 1}";
+
+                                    throw new BadRequestException(
+                                        $"Trùng lịch dạy! Lớp '{oldClass.ClassName}' đang học vào {displayDay} " +
+                                        $"từ {oldSchedule.StartTime} đến {oldSchedule.EndTime}.");
+
+
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, request.GradeLevel);
             if (subject == null)
             {
@@ -43,7 +84,6 @@ namespace EMS.Application.Features.Classes.Services
                 await _classRepository.AddSubjectAsync(subject);
             }
 
-            // 2. Tạo Class
             var newClass = new Class
             {
                 ClassId = Guid.NewGuid(),
@@ -57,53 +97,54 @@ namespace EMS.Application.Features.Classes.Services
                 TuitionFee = request.TuitionFee,
                 Status = "Scheduled",
                 IsDeleted = false,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ClassSchedules = new List<ClassSchedule>(),
+                Sessions = new List<Session>()
             };
 
-            await _classRepository.AddAsync(newClass);
-
-            // 3. Thêm Lịch học (Schedules)
             if (request.Schedules != null && request.Schedules.Any())
             {
-                var schedules = request.Schedules.Select(s => new ClassSchedule
+                foreach(var s in request.Schedules)
                 {
-                    ScheduleId = Guid.NewGuid(),
-                    ClassId = newClass.ClassId,
-                    DayOfWeek = s.DayOfWeek, 
-                    StartTime = s.StartTime,
-                    EndTime = s.EndTime
-                });
-                await _classRepository.AddSchedulesAsync(schedules);
+                    short scheduleDayOfWeek = s.DayOfWeek == 0 ? (short)7 : s.DayOfWeek;
+                    newClass.ClassSchedules.Add(new ClassSchedule
+                    {
+                        ScheduleId = Guid.NewGuid(),
+                        ClassId = newClass.ClassId,
+                        DayOfWeek = scheduleDayOfWeek,
+                        StartTime = s.StartTime,
+                        EndTime = s.EndTime
+                    });
+                }
 
-                // 4. Sinh tự động các buổi học (Sessions) từ StartDate đến EndDate
-                var sessions = new List<Session>();
+                int lessonCount = 1; 
                 for (var d = request.StartDate; d <= request.EndDate; d = d.AddDays(1))
                 {
-                    var dayOfWeek = (short)d.DayOfWeek;
-                    if (dayOfWeek == 0) dayOfWeek = 7; // Assuming 1=Mon, 2=Tue... 7=Sun (commonly used). If it's 0-6, the DB logic may vary. But let's check Vietnam standard where Sunday could be 0 (C# default) or 8. Wait, I will just use C# default (short)d.DayOfWeek if the user previously used it.
-                    // Wait, C# DayOfWeek: Sunday=0, Monday=1, ..., Saturday=6. Let's just cast.
-                    var matchingSchedules = request.Schedules.Where(s => s.DayOfWeek == (short)d.DayOfWeek);
+                    short currentDayOfWeek = (short)d.DayOfWeek;
+                    if (currentDayOfWeek == 0) currentDayOfWeek = 7;
+
+                    var matchingSchedules = newClass.ClassSchedules.Where(s => s.DayOfWeek == currentDayOfWeek);
                     foreach (var s in matchingSchedules)
                     {
-                        sessions.Add(new Session
+                        newClass.Sessions.Add(new Session
                         {
                             SessionId = Guid.NewGuid(),
                             ClassId = newClass.ClassId,
-                            Title = $"{newClass.ClassName} - {d.ToString("dd/MM/yyyy")}",
+                            Title = $"Buổi {lessonCount}: {newClass.ClassName}",
                             Date = d,
+                            StartTime = s.StartTime,
+                            EndTime = s.EndTime,
                             Status = "Scheduled",
                             IsDeleted = false,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         });
+                        lessonCount++;
                     }
                 }
-
-                if (sessions.Any())
-                {
-                    await _sessionRepository.AddSessionsAsync(sessions);
-                }
             }
+
+            await _classRepository.AddAsync(newClass);
 
             return newClass.ClassId;
         }

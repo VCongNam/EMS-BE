@@ -137,20 +137,25 @@ namespace EMS.API.Controllers
             }
         }
 
-        // Student feature
-
-        [HttpGet("student/assignments")]
-        [Authorize(Roles = "Student")]
-        public async Task<IActionResult> GetAssignments(Guid classId, [FromQuery] AssignmentFilter filter)
+        /// <summary>
+        /// Giáo viên xem chi tiết bài làm của 1 học sinh trong assignment.
+        /// Route: GET /api/Assignment/{assignmentId}/submissions/{studentId}
+        /// </summary>
+        [HttpGet("{assignmentId}/submissions/{studentId}")]
+        public async Task<IActionResult> GetStudentSubmissionDetail(Guid assignmentId, Guid studentId)
         {
             try
             {
-                var result = await _studentAssignmentService.GetClassAssignmentsAsync(classId, filter);
-                return Ok(new
-                {
-                    Message = "Lấy danh sách bài tập thành công",
-                    Data = result
-                });
+                var result = await _assignmentService.GetStudentSubmissionDetailAsync(assignmentId, studentId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Error = ex.Message });
             }
             catch (Exception ex)
             {
@@ -158,61 +163,17 @@ namespace EMS.API.Controllers
             }
         }
 
-        [HttpGet("student/{assignmentId}/detail")]
-        [Authorize(Roles = "Student")]
-        public async Task<IActionResult> GetStudentAssignmentDetail(Guid assignmentId)
+        /// <summary>
+        /// Kiểm tra học sinh có bài nộp không. Dùng trong gradebook để chặn edit điểm khi chưa có bài nộp.
+        /// Route: GET /api/Assignment/{assignmentId}/submissions/{studentId}/has-submitted
+        /// </summary>
+        [HttpGet("{assignmentId}/submissions/{studentId}/has-submitted")]
+        public async Task<IActionResult> CheckStudentSubmitted(Guid assignmentId, Guid studentId)
         {
             try
             {
-                var result = await _studentAssignmentService.GetClassAssignmentsDetailAsync(assignmentId);
-                return Ok(new
-                {
-                    Message = "Lấy chi tiết bài tập thành công",
-                    Data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        [HttpPost("student/{assignmentId}/submit")]
-        [Authorize(Roles = "Student")]
-        public async Task<IActionResult> SubmitAssignment(Guid assignmentId, [FromForm] SubmitAssignmentRequest request)
-        {
-            try
-            {
-                if (request.Files == null || !request.Files.Any())
-                {
-                    return BadRequest(new { Message = "Vui lòng đính kèm ít nhất 1 file." });
-                }
-
-                await _studentAssignmentService.SubmitAssignmentAsync(assignmentId, request);
-
-                return Ok(new
-                {
-                    Message = "Nộp bài thành công!"
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
-        }
-
-        [HttpDelete("student/{assignmentId}/unsubmit")]
-        [Authorize(Roles = "Student")]
-        public async Task<IActionResult> UnsubmitAssignment(Guid assignmentId)
-        {
-            try
-            {
-                await _studentAssignmentService.UnsubmitAssignmentAsync(assignmentId);
-
-                return Ok(new
-                {
-                    Message = "Đã hủy nộp bài!"
-                });
+                var hasSubmitted = await _assignmentService.HasStudentSubmittedAsync(assignmentId, studentId);
+                return Ok(new { AssignmentId = assignmentId, StudentId = studentId, HasSubmitted = hasSubmitted });
             }
             catch (Exception ex)
             {
