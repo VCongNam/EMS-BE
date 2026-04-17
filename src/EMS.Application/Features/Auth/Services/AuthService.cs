@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Auth.Services
@@ -151,9 +152,21 @@ namespace EMS.Application.Features.Auth.Services
                 throw new Exception("Số điện thoại này chưa được đăng ký trong hệ thống.");
             if (account.Status == "Active")
                 throw new Exception("Tài khoản đã được xác thực!");
-            
+            if(request.NewPassword == null || request.NewPassword == "")
+            {
+                throw new Exception("Mật khẩu mới không được để trống và phải có ít nhất 6 ký tự!");
+            }
+            string strongPassPattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$";
 
-            
+            if (string.IsNullOrEmpty(request.NewPassword) || !Regex.IsMatch(request.NewPassword, strongPassPattern))
+            {
+                throw new Exception("Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt!");
+            }
+            if (request.NewPassword != request.ConfirmPassword)
+            {
+                throw new Exception("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+            }
+
             bool isOldPasswordValid = BCrypt.Net.BCrypt.Verify(request.OldPassword, account.PasswordHash);
             if (!isOldPasswordValid) throw new Exception("Mật khẩu cũ không chính xác!");
 
