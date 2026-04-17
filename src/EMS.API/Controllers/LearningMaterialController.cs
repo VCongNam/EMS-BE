@@ -1,5 +1,6 @@
 using EMS.Application.Features.LearningMaterials.DTOs;
 using EMS.Application.Features.LearningMaterials.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,12 @@ namespace EMS.API.Controllers
     public class LearningMaterialController : ControllerBase
     {
         private readonly ILearningMaterialService _materialService;
+        private readonly IStudentMaterialService _studentMaterialService;
 
-        public LearningMaterialController(ILearningMaterialService materialService)
+        public LearningMaterialController(ILearningMaterialService materialService, IStudentMaterialService studentMaterialService)
         {
             _materialService = materialService;
+            _studentMaterialService = studentMaterialService;
         }
 
         [HttpPost]
@@ -79,6 +82,25 @@ namespace EMS.API.Controllers
         {
             var materials = await _materialService.GetLearningMaterialsByClassIdAsync(classId);
             return Ok(materials);
+        }
+
+        [HttpGet("student/{classId}/materials")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentClassMaterials(Guid classId)
+        {
+            try
+            {
+                var result = await _studentMaterialService.GetClassMaterialsAsync(classId);
+                return Ok(new
+                {
+                    Message = "Lấy danh sách tài liệu thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
         }
     }
 }

@@ -9,10 +9,8 @@ namespace EMS.Application.Features.SystemAdmin.Services
 {
     public interface ISystemAdminService
     {
-        Task<AdminDashboardDto> GetSystemDashboardAsync();
-        Task<IEnumerable<AccountSummaryDto>> GetAllAccountsAsync(string? role, string? status);
-        Task<AccountDetailDto> GetAccountDetailAsync(Guid accountId);
-        Task ChangeAccountStatusAsync(Guid accountId, ChangeAccountStatusDto request);
-        Task<IEnumerable<SystemLogDto>> GetSuspiciousActivitiesAsync(int limit = 50);
+        Task<AdminDashboardDto> GetSystemDashboardAsync(DashboardFilterDto filter);
+        Task<IEnumerable<TeacherGridDto>> GetTeachersGridAsync(string? searchTerm, string? statusFilter);
+        Task<TeacherDetailDto> GetTeacherDetailAsync(Guid teacherId);
     }
 }

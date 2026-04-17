@@ -13,11 +13,13 @@ namespace EMS.API.Controllers
     {
         private readonly IClassService _classService;
         private readonly IClassTAService _classTAService;
+        private readonly IStudentClassService _studentClassService;
 
-        public ClassController(IClassService classService, IClassTAService classTAService)
+        public ClassController(IClassService classService, IClassTAService classTAService, IStudentClassService studentClassService)
         {
             _classService = classService;
             _classTAService = classTAService;
+            _studentClassService = studentClassService;
         }
 
         [HttpPost]
@@ -57,7 +59,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost("{classId}/assignStudent")]
-        [Authorize]
+        [Authorize(Roles ="Teacher")]
         public async Task<IActionResult> AssignStudent(Guid classId, [FromBody] AssignStudentDto request)
         {
             try
@@ -70,6 +72,29 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        [HttpPost("{classId}/assignMultipleStudent")]
+        [Authorize(Roles ="Teacher")]
+        public async Task<IActionResult> AssignMultipleStudent(Guid classId, [FromBody] AssignMultipleStudentsDto request)
+        {
+            try
+            {
+                if (request.StudentIds == null || request.StudentIds.Count == 0)
+                {
+                    return BadRequest(new { message = "Danh sách học sinh không được để trống." });
+                }
+
+                var result = await _classService.AssignMultipleStudentsAsync(classId, request.StudentIds);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
         [HttpGet("teacher/dashboard")]
         [Authorize]
         public async Task<IActionResult> GetTeacherDashboard()
@@ -147,7 +172,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("{classId}/tas")]
-        //[Authorize]
+        [Authorize]
         public async Task<IActionResult> GetClassTAs(Guid classId)
         {
             try
@@ -162,7 +187,7 @@ namespace EMS.API.Controllers
         }
 
         [HttpPost("{classId}/tas/assign")]
-        //[Authorize]
+        [Authorize]
         public async Task<IActionResult> AssignTA(Guid classId, [FromBody] AssignTADto request)
         {
             try
@@ -180,16 +205,30 @@ namespace EMS.API.Controllers
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> SetTAPermisson(Guid classId, Guid taId, [FromBody] UpdateTAPermissionDto request)
         {
-            await _classTAService.UpdateTAPermissionAsync(classId, taId, request);
-            return Ok(new { Message = "Cập nhật quyền hạn Trợ giảng thành công!" });
+            try
+            {
+                await _classTAService.UpdateTAPermissionAsync(classId, taId, request);
+                return Ok(new { Message = "Cập nhật quyền hạn Trợ giảng thành công!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpPost("createTask")]
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto request)
         {
-            var task = await _classTAService.CreateTaskAsync(request);
-            return StatusCode(201, new { Message = "Giao việc thành công", TaskId = task });
+            try
+            {
+                var task = await _classTAService.CreateTaskAsync(request);
+                return StatusCode(201, new { Message = "Giao việc thành công", TaskId = task });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpGet("classta/{classTaId}")]
@@ -282,6 +321,46 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        //Student 
+        [HttpGet("student/myClasses")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetMyClasses([FromQuery] EnrolledClassFilter filter)
+        {
+            try
+            {
+                var result = await _studentClassService.GetMyClassesAsync(filter);
+                return Ok(new
+                {
+                    Message = "Lấy danh sách lớp học thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+
+        }
+
+        [HttpGet("student/{classId}/detail")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> GetStudentClassDetail(Guid classId)
+        {
+            try
+            {
+                var result = await _studentClassService.GetClassDetailAsync(classId);
+                return Ok(new
+                {
+                    Message = "Lấy thông tin lớp học thành công",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }

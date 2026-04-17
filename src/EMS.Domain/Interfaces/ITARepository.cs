@@ -14,5 +14,8 @@ namespace EMS.Domain.Interfaces
         Task<IEnumerable<ClassTum>> GetTAsByTeacherIdAsync(Guid teacherId);
         Task<TeachingAssistant> GetTAByEmailAsync(string email);
         Task<IEnumerable<TeachingAssistantTask>> GetTasksByTAIdAsync(Guid taId);
+        Task<TeachingAssistantTask?> GetTaskByIdAsync(Guid taskId);
+        Task UpdateTaskAsync(TeachingAssistantTask task);
+        Task<ClassTum> GetClassTAByIdAsync(Guid classTaId);
     }
 }

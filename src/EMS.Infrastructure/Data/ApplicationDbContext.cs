@@ -60,7 +60,7 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<SubmissionFeedback> SubmissionFeedbacks { get; set; }
 
-    public virtual DbSet<SystemLog> SystemLogs { get; set; }
+    public virtual DbSet<SystemFeedback> SystemFeedbacks { get; set; }
 
     public virtual DbSet<Teacher> Teachers { get; set; }
 
@@ -430,6 +430,9 @@ public partial class ApplicationDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Pending'::character varying");
             entity.Property(e => e.StudentId).HasColumnName("StudentID");
+            entity.Property(e => e.UnitPrice)
+                .HasPrecision(12, 2)
+                .HasDefaultValueSql("0");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
@@ -777,31 +780,34 @@ public partial class ApplicationDbContext : DbContext
                 .HasConstraintName("SubmissionFeedback_SubmissionID_fkey");
         });
 
-        modelBuilder.Entity<SystemLog>(entity =>
+        modelBuilder.Entity<SystemFeedback>(entity =>
         {
-            entity.HasKey(e => e.LogId).HasName("SystemLog_pkey");
+            entity.HasKey(e => e.FeedbackId).HasName("SystemFeedback_pkey");
 
-            entity.ToTable("SystemLog");
+            entity.ToTable("SystemFeedback");
 
-            entity.Property(e => e.LogId)
+            entity.Property(e => e.FeedbackId)
                 .HasDefaultValueSql("uuid_generate_v4()")
-                .HasColumnName("LogID");
-            entity.Property(e => e.AccountId).HasColumnName("AccountID");
-            entity.Property(e => e.ActionType).HasMaxLength(20);
+                .HasColumnName("FeedbackID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
-            entity.Property(e => e.Ipaddress)
-                .HasMaxLength(45)
-                .HasColumnName("IPAddress");
-            entity.Property(e => e.NewValues).HasColumnType("jsonb");
-            entity.Property(e => e.OldValues).HasColumnType("jsonb");
-            entity.Property(e => e.RecordId).HasColumnName("RecordID");
-            entity.Property(e => e.TableName).HasMaxLength(50);
+            entity.Property(e => e.SenderId).HasColumnName("SenderID");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValueSql("'New'::character varying");
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Type)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'General'::character varying");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone");
 
-            entity.HasOne(d => d.Account).WithMany(p => p.SystemLogs)
-                .HasForeignKey(d => d.AccountId)
-                .HasConstraintName("SystemLog_AccountID_fkey");
+            entity.HasOne(d => d.Sender).WithMany(p => p.SystemFeedbacks)
+                .HasForeignKey(d => d.SenderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Feedback_Sender");
         });
 
         modelBuilder.Entity<Teacher>(entity =>

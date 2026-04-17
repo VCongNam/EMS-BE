@@ -34,30 +34,32 @@ namespace EMS.Infrastructure.Repositories
         {
             var query = _context.Notifications
                 .Where(n => n.AccountId == accountId && n.IsRead == false);
+
             if (studentId.HasValue)
             {
-                query = query.Where(n => n.StudentId == null || n.StudentId == studentId.Value);
-
-                var unreadNotifications = await query.ToListAsync();
-                foreach(var n in unreadNotifications)
-                {
-                    n.IsRead = true;
-                }
-                await _context.SaveChangesAsync();
+                query = query.Where(n => n.StudentId == studentId.Value);
             }
+            else
+            {
+                query = query.Where(n => n.StudentId == null);
+            }
+
+            var unreadNotifications = await query.ToListAsync();
+            foreach (var n in unreadNotifications)
+            {
+                n.IsRead = true;
+            }
+            await _context.SaveChangesAsync();
         }
 
         public async Task MarkAsReadAsync(Guid notificationId, Guid accountId, Guid? studentId)
         {
-            var query = _context.Notifications
-                    .Where(n => n.NotificationId == notificationId && n.AccountId == accountId);
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(n => n.NotificationId == notificationId
+                               && n.AccountId == accountId
+                               && n.StudentId == studentId);
 
-            if (studentId.HasValue)
-            {
-                query = query.Where(n => n.StudentId == studentId);
-            }
-            var notification = await query.FirstOrDefaultAsync();
-            if (notification != null && notification.IsRead == false)
+            if (notification != null && notification.IsRead != true)
             {
                 notification.IsRead = true;
                 await _context.SaveChangesAsync();
@@ -91,20 +93,24 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Guid?> GetAccountIdByStudentId(Guid studentId)
         {
-            var s = await _context.Students.FirstOrDefaultAsync(s=> s.StudentId == studentId);
-            return s.AccountId;
+            var s = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.StudentId == studentId);
+
+            return s?.AccountId;
         }
 
         public async Task<List<(Guid AccId, Guid? StdId)>> GetStudentsInClassAsync(Guid classId)
         {
             var data = await _context.ClassEnrollments
-            .Where(ce => ce.ClassId == classId)
-            .Select(ce => new
-            {
-                ce.Student.AccountId,
-                StudentId = (Guid?)ce.StudentId 
-            })
-            .ToListAsync();
+                .AsNoTracking()
+                .Where(ce => ce.ClassId == classId && ce.Status == "Active")
+                .Select(ce => new
+                {
+                    ce.Student.AccountId,
+                    StudentId = (Guid?)ce.StudentId
+                })
+                .ToListAsync();
 
             return data.Select(x => (x.AccountId, x.StudentId)).ToList();
         }
@@ -112,7 +118,8 @@ namespace EMS.Infrastructure.Repositories
         public async Task<List<Guid>> GetTutorsInClassAsync(Guid classId)
         {
             return await _context.ClassTa
-                .Where(ct => ct.ClassId == classId)
+                .AsNoTracking()
+                .Where(ct => ct.ClassId == classId && ct.Status == "Active")
                 .Select(ct => ct.Taid)
                 .ToListAsync();
         }

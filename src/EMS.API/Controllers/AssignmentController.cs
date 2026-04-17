@@ -1,5 +1,6 @@
 using EMS.Application.Features.Assignments.DTOs;
 using EMS.Application.Features.Assignments.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,12 @@ namespace EMS.API.Controllers
     public class AssignmentController : ControllerBase
     {
         private readonly IAssignmentService _assignmentService;
+        private readonly IStudentAssignmentService _studentAssignmentService;
 
-        public AssignmentController(IAssignmentService assignmentService)
+        public AssignmentController(IAssignmentService assignmentService, IStudentAssignmentService studentAssignmentService)
         {
             _assignmentService = assignmentService;
+            _studentAssignmentService = studentAssignmentService;
         }
 
         [HttpPost]

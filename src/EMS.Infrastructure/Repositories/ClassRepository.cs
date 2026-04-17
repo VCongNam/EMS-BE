@@ -1,5 +1,4 @@
-﻿using EMS.Application.Features.Students.DTOs;
-using EMS.Domain.Entities;
+﻿using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -77,11 +76,32 @@ namespace EMS.Infrastructure.Repositories
         }
 
         //Student Management
-        public async Task<ClassEnrollment> AddEnrollmentAsync(ClassEnrollment enrollment)
+        public async Task AddEnrollmentAsync(ClassEnrollment enrollment)
         {
             await _context.ClassEnrollments.AddAsync(enrollment);
+        }
+
+        public void UpdateEnrollment(ClassEnrollment enrollment)
+        {
+            _context.ClassEnrollments.Update(enrollment);
+        }
+
+        public async Task<List<ClassEnrollment>> GetEnrollmentsByStudentIdsAsync(Guid classId, List<Guid> studentIds)
+        {
+            return await _context.ClassEnrollments
+                .Where(ce => ce.ClassId == classId && studentIds.Contains(ce.StudentId))
+                .ToListAsync();
+        }
+
+        public async Task SaveChangesAsync()
+        {
             await _context.SaveChangesAsync();
-            return enrollment;
+        }
+
+        public async Task<int> GetActiveStudentCountAsync(Guid classId)
+        {
+            return await _context.ClassEnrollments
+                .CountAsync(ce => ce.ClassId == classId && ce.Status == "Active");
         }
 
         public async Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId)
@@ -112,17 +132,14 @@ namespace EMS.Infrastructure.Repositories
                 .AnyAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
         }
 
-        public async Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size, string? status)
+        public async Task<(List<ClassEnrollment> Items, int ToltalCount)> GetClassByStudentIdAsync(Guid studentId, int page, int size)
         {
             var query = _context.ClassEnrollments
                 .Include(ce => ce.Class)
                 .ThenInclude(c => c.Teacher.TeacherNavigation)
                 .Where(ce => ce.StudentId == studentId)
                 .AsNoTracking();
-            if (!string.IsNullOrEmpty(status))
-            {
-                query = query.Where(ce => ce.Status == status);
-            }
+                query = query.Where(ce => ce.Status != "Archive");
             int totalCount = await query.CountAsync();
             var items = await query
                 .OrderByDescending(ce => ce.EnrolledDate)
@@ -203,24 +220,19 @@ namespace EMS.Infrastructure.Repositories
                 .FirstOrDefaultAsync(ce => ce.ClassId == classId && ce.StudentId == studentId);
         }
 
-        public async Task UpdateEnrollmentAsync(ClassEnrollment enrollment)
-        {
-            _context.ClassEnrollments.Update(enrollment);
-            await _context.SaveChangesAsync();
-        }
         public async Task<IEnumerable<ClassTum>> GetClassesByTAIdAsync(Guid taId)
         {
             return await _context.ClassTa
-                .Include(c => c.Class)
+                .Where(ct => ct.Taid == taId && ct.Class.Status != "Archived")
+                .Include(ct => ct.Class)
                     .ThenInclude(cls => cls.Subject)
-                .Include(c => c.Class)
+                .Include(ct => ct.Class)
                     .ThenInclude(cls => cls.Teacher)
                         .ThenInclude(t => t.TeacherNavigation)
-                .Include(c => c.Class)
-                    .ThenInclude(cls => cls.ClassEnrollments) // Để đếm học sinh
-                .Include(c => c.Class)
-                    .ThenInclude(cls => cls.ClassSchedules)   // Để lấy lịch học
-                .Where(c => c.Taid == taId)
+                .Include(ct => ct.Class)
+                    .ThenInclude(cls => cls.ClassEnrollments)
+                .Include(ct => ct.Class)
+                    .ThenInclude(cls => cls.ClassSchedules)
                 .ToListAsync();
         }
 

@@ -173,8 +173,8 @@ namespace EMS.Application.Features.Classes.Services
             {
                 throw new Exception("Không tìm thấy lớp học!");
             }
-            var currentMembers = await _classRepository.GetClassMemberAsync(classId);
-            int currentStudentCount = currentMembers.Count();
+            int currentStudentCount = await _classRepository.GetActiveStudentCountAsync(classId);
+
             if (classEntity.MaxStudents.HasValue && currentStudentCount >= classEntity.MaxStudents.Value)
             {
                 throw new Exception($"Lớp học đã đạt số lượng tối đa ({classEntity.MaxStudents.Value} học sinh). Không thể thêm mới!");
@@ -188,7 +188,7 @@ namespace EMS.Application.Features.Classes.Services
                 {
                     existingEnrollment.Status = "Active";
                     existingEnrollment.EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow);
-                    await _classRepository.UpdateEnrollmentAsync(existingEnrollment);
+                    _classRepository.UpdateEnrollment(existingEnrollment);
                 }
                 else
                 {
@@ -209,12 +209,14 @@ namespace EMS.Application.Features.Classes.Services
                 await _classRepository.AddEnrollmentAsync(newEnrollment);
             }
 
+            await _classRepository.SaveChangesAsync();
+
             //Notification
             var accountId = await _notificationService.GetAccountIdByStudentIdAsync(request.StudentID);
             if (classEntity != null && accountId != null)
             {
                 await _notificationService.SendNotificationAsync(
-                targetAccountId: (Guid)accountId,
+                targetAccountId: accountId.Value,
                 studentId: request.StudentID,
                 title: "Chào mừng đến lớp học mới",
                 content: $"Bạn đã được giáo viên thêm vào lớp {classEntity.ClassName}",
@@ -224,6 +226,111 @@ namespace EMS.Application.Features.Classes.Services
             }
             return true;
         }
+
+        public async Task<AssignMultipleResultDto> AssignMultipleStudentsAsync(Guid classId, List<Guid> studentIds)
+        {
+            var result = new AssignMultipleResultDto
+            {
+                TotalRequested = studentIds?.Count ?? 0
+            };
+
+            if (studentIds == null || !studentIds.Any()) return result;
+
+            var uniqueStudentIds = studentIds.Distinct().ToList();
+
+            var classEntity = await _classRepository.GetByIdAsync(classId);
+            if (classEntity == null) throw new Exception("Không tìm thấy lớp học!");
+
+            var existingEnrollments = await _classRepository.GetEnrollmentsByStudentIdsAsync(classId, uniqueStudentIds);
+
+            var willAddOrRestoreCount = uniqueStudentIds.Count(id =>
+                !existingEnrollments.Any(e => e.StudentId == id && e.Status == "Active")
+            );
+
+            int currentStudentCount = await _classRepository.GetActiveStudentCountAsync(classId);
+
+            if (classEntity.MaxStudents.HasValue && (currentStudentCount + willAddOrRestoreCount) > classEntity.MaxStudents.Value)
+            {
+                throw new Exception($"Không thể thêm. Lớp hiện có {currentStudentCount}/{classEntity.MaxStudents.Value}. Số lượng thêm mới/khôi phục ({willAddOrRestoreCount}) vượt quá giới hạn.");
+            }
+
+            var notificationsToSend = new List<(Guid AccId, Guid? StdId)>();
+
+            foreach (var studentId in uniqueStudentIds)
+            {
+                var accountId = await _notificationService.GetAccountIdByStudentIdAsync(studentId);
+                if (accountId == null)
+                {
+                    result.NonExistentStudentIds.Add(studentId);
+                    result.Details.Add(new StudentAssignDetailDto { StudentId = studentId, Status = "Failed", Message = "Học sinh không tồn tại." });
+                    continue;
+                }
+
+                var existing = existingEnrollments.FirstOrDefault(e => e.StudentId == studentId);
+
+                if (existing != null)
+                {
+                    if (existing.Status == "Dropped")
+                    {
+                        // KHÔI PHỤC: Chuyển từ Dropped sang Active
+                        existing.Status = "Active";
+                        existing.EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow);
+                        existing.UpdatedAt = DateTime.UtcNow; 
+
+                        _classRepository.UpdateEnrollment(existing);
+
+                        notificationsToSend.Add((accountId.Value, studentId));
+                        result.SuccessCount++;
+                        result.Details.Add(new StudentAssignDetailDto { StudentId = studentId, Status = "Restored", Message = "Đã khôi phục trạng thái học sinh vào lớp." });
+                    }
+                    else
+                    {
+                        // Đã Active rồi thì bỏ qua
+                        result.ExistedCount++;
+                        result.Details.Add(new StudentAssignDetailDto { StudentId = studentId, Status = "AlreadyExists", Message = "Học sinh đã có trong lớp." });
+                    }
+                }
+                else
+                {
+                    // THÊM MỚI
+                    var newEnrollment = new ClassEnrollment
+                    {
+                        EnrollmentId = Guid.NewGuid(),
+                        ClassId = classId,
+                        StudentId = studentId,
+                        EnrolledDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                        Status = "Active",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    await _classRepository.AddEnrollmentAsync(newEnrollment);
+
+                    notificationsToSend.Add((accountId.Value, studentId));
+                    result.SuccessCount++;
+                    result.Details.Add(new StudentAssignDetailDto { StudentId = studentId, Status = "Added", Message = "Đã thêm mới học sinh vào lớp." });
+                }
+            }
+
+            if (result.SuccessCount > 0)
+            {
+                await _classRepository.SaveChangesAsync();
+
+                if (notificationsToSend.Any())
+                {
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                        targets: notificationsToSend,
+                        title: "Chào mừng đến lớp học mới",
+                        content: $"Bạn đã được giáo viên thêm vào lớp {classEntity.ClassName}",
+                        actionUrl: $"/student/classes/{classId}",
+                        type: "Class"
+                    );
+                }
+            }
+
+            return result;
+        }
+
+
         public async Task<IEnumerable<ClassSummaryDto>> GetTeacherDashboardAsync()
         {
             var teacherId = _currentUser.UserId;
@@ -387,11 +494,9 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task<bool> RemoveStudentFromClassAsync(Guid classId, Guid studentId)
         {
-            // Lấy thông tin người đang thực hiện thao tác
             var currentUserId = _currentUser.UserId;
             var currentUserRole = _currentUser.Role;
 
-            // 1. Kiểm tra tồn tại và trạng thái lớp học
             var classroom = await _classRepository.GetByIdAsync(classId);
             if (classroom == null)
             {
@@ -409,7 +514,7 @@ namespace EMS.Application.Features.Classes.Services
                 throw new UnauthorizedAccessException("Bạn không có quyền đuổi học sinh khỏi lớp này. Chỉ Giáo viên phụ trách mới được phép thao tác.");
             }
 
-            // 3. Lấy thông tin ghi danh
+
             var enrollment = await _classRepository.GetEnrollmentAsync(classId, studentId);
             if (enrollment == null)
             {
@@ -421,12 +526,12 @@ namespace EMS.Application.Features.Classes.Services
                 throw new Exception("Học sinh này đã được rút khỏi lớp từ trước.");
             }
 
-            // 4. Thực thi (Soft Update) - Giữ nguyên lịch sử học phí và điểm danh cũ
             enrollment.Status = "Dropped";
             enrollment.DroppedDate = DateOnly.FromDateTime(DateTime.UtcNow);
             enrollment.UpdatedAt = DateTime.UtcNow;
 
-            await _classRepository.UpdateEnrollmentAsync(enrollment);
+            _classRepository.UpdateEnrollment(enrollment);
+            await _classRepository.SaveChangesAsync();
 
             return true;
         }
@@ -446,7 +551,6 @@ namespace EMS.Application.Features.Classes.Services
             if (currentUserRole != "Teacher" && classroom.TeacherId != currentUserId)
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
-            // 3. Lấy thông tin ghi danh
             var enrollment = await _classRepository.GetEnrollmentAsync(classId, studentId);
             if (enrollment == null)
                 throw new Exception("Học sinh này chưa từng được ghi danh vào lớp.");
@@ -454,14 +558,13 @@ namespace EMS.Application.Features.Classes.Services
             if (enrollment.Status == "Active")
                 throw new Exception("Học sinh này vẫn đang học bình thường trong lớp.");
 
-            // 4. Thực thi: Đổi Status và Xóa ngày Dropped
             enrollment.Status = "Active";
-            enrollment.DroppedDate = null; // Quan trọng: Xóa ngày rút lớp
+            enrollment.DroppedDate = null; 
             enrollment.UpdatedAt = DateTime.UtcNow;
 
-            await _classRepository.UpdateEnrollmentAsync(enrollment);
+            _classRepository.UpdateEnrollment(enrollment);
+            await _classRepository.SaveChangesAsync();
 
-            // Mở rộng sau này: Ghi log "Restore Student", Khôi phục Hóa đơn (nếu cần)...
 
             return true;
         }

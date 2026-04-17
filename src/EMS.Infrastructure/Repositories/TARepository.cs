@@ -2,6 +2,7 @@
 using EMS.Domain.Interfaces;
 using EMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Ocsp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,11 +55,33 @@ namespace EMS.Infrastructure.Repositories
         public async Task<IEnumerable<TeachingAssistantTask>> GetTasksByTAIdAsync(Guid taId)
         {
             return await _context.TeachingAssistantTasks
-                .Include(t => t.ClassTa)           // Join sang bảng trung gian ClassTA
-                    .ThenInclude(ct => ct.Class)   // Join tiếp sang bảng Class để lấy ClassName
+                .Include(t => t.ClassTa)           
+                    .ThenInclude(ct => ct.Class)
                 .Where(t => t.ClassTa.Taid == taId)
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
+        }
+
+        public async Task<TeachingAssistantTask?> GetTaskByIdAsync(Guid taskId)
+        {
+            return await _context.TeachingAssistantTasks
+                .Include(t => t.ClassTa)
+                .ThenInclude(ct => ct.Class)
+                .FirstOrDefaultAsync(t => t.TataskId == taskId);
+        }
+
+        public async Task UpdateTaskAsync(TeachingAssistantTask task)
+        {
+            _context.TeachingAssistantTasks.Update(task);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<ClassTum> GetClassTAByIdAsync(Guid classTaId)
+        {
+            var result = await _context.ClassTa
+                .Include(ct => ct.Class)
+                .FirstOrDefaultAsync(ct => ct.ClassTaid == classTaId && ct.Status != "Deactive");
+            return result;
         }
     }
 }

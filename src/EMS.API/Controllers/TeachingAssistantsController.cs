@@ -1,4 +1,5 @@
-﻿using EMS.Application.Features.Classes.Services;
+﻿using EMS.Application.Features.Classes.DTOs;
+using EMS.Application.Features.Classes.Services;
 using EMS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -42,6 +43,37 @@ namespace EMS.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPatch("{taskId}/status")]
+        [Authorize(Roles = "TA")]
+        public async Task<IActionResult> UpdateTaskStatus(Guid taskId, [FromBody] UpdateTaskStatusDto status)
+        {
+            try
+            {
+                await _classTAService.UpdateTaskStatusAsync(taskId, status);
+                return Ok(new { message = "Cập nhật trạng thái thành công." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPatch("{taskId}/review")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> ReviewTask(Guid taskId, [FromBody] ReviewTaskDto request)
+        {
+            try
+            {
+                await _classTAService.ReviewTaskAsync(taskId, request.IsApproved, request.Feedback);
+                string msg = request.IsApproved ? "Đã duyệt nhiệm vụ." : "Đã từ chối nhiệm vụ.";
+                return Ok(new { message = msg });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

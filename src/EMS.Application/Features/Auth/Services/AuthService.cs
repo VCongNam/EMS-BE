@@ -30,6 +30,8 @@ namespace EMS.Application.Features.Auth.Services
         // Đăng ký
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
+
+            // 2. Logic kiểm tra trùng Email và lưu DB bên dưới giữ nguyên...
             var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
             if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
 
@@ -46,6 +48,8 @@ namespace EMS.Application.Features.Auth.Services
             {
                 throw new Exception($"Lỗi hệ thống: Role '{requestedRole}' chưa được cấu hình trong DB.");
             }
+            // Example of logic to add at the beginning of RegisterAsync
+            
 
             string plainOtp = otpService.GenerateOtp();
 

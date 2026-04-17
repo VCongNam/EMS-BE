@@ -1,5 +1,6 @@
 ﻿using EMS.Application.Features.TuitionFees.Dtos;
 using EMS.Domain.Entities;
+using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,43 +11,56 @@ namespace EMS.Application.Features.TuitionFees.Services
 {
     public interface ITuitionFeeService
     {
-        Task<IEnumerable<TuitionFeeConfigDto>> GetTuitionFeeConfigsAsync(Guid teacherId);
 
-        Task UpdateTuitionFeeAsync(Guid classId, UpdateTuitionFeeDto request, Guid teacherId);
+ 
+
 
         Task GenerateInvoicesForClassAsync(Guid classId, GenerateInvoiceDto request, Guid teacherId);
 
         Task ReconcilePrepaidClassAsync(Guid classId, int month, int year, Guid teacherId);
 
+        Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
+
+        Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId);
+
+
+
+
         Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync(Guid teacherId);
 
         Task ReviewTransactionAsync(Guid transactionId, bool isApproved, Guid approverId, string? note);
 
-        Task<ClassFinancialDetailDto> GetClassFinancialDetailAsync(Guid classId, int month, int year, Guid teacherId);
+        Task<IEnumerable<TransactionHistoryDto>> GetTransactionHistoryAsync(Guid teacherId, DateTime? from, DateTime? to);
 
-        // List invoices for a specific class and period with paging and optional filters
-        Task<(IEnumerable<ClassInvoiceItemDto> Items, int TotalCount)> GetClassInvoicesForPeriodAsync(
-            Guid classId,
-            int month,
-            int year,
-            Guid teacherId,
-            int page,
-            int size,
-            string? status = null,
-            Guid? studentId = null);
+        Task UndoTransactionAsync(Guid transactionId, Guid teacherId);
 
-        Task<OverallReportDto> GetOverallReportAsync(Guid teacherId);
 
-        // --- BỔ SUNG: DASHBOARD & GIA HẠN ---
-        Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
-        Task<IEnumerable<ClassFinancialSummaryDto>> GetClassFinancialSummariesAsync(Guid teacherId);
-        Task<DashboardAnalyticsDto> GetDashboardAnalyticsAsync(Guid teacherId);
-        Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId);
 
-        //// --- BỔ SUNG: STUDENT API ---
-        //Task<(IEnumerable<StudentInvoiceListDto> Invoices, int TotalCount)> GetMyInvoicesAsync(Guid studentId, int page, int size, Guid? classId);
-        //Task<StudentInvoiceDetailDto> GetMyInvoiceDetailAsync(Guid invoiceId, Guid studentId);
-        //Task SubmitPaymentProofAsync(Guid invoiceId, SubmitTransactionDto dto, Guid studentId);
 
+
+
+
+
+        Task<IEnumerable<GlobalInvoiceRecordDto>> GetInvoicesListAsync(Guid? classId, int month, int year);
+
+        Task<IEnumerable<ClassFeeConfigDto>> GetClassFeeConfigsAsync();
+        Task UpdateClassFeeAsync(Guid classId, UpdateClassFeeConfigDto dto);
+
+        Task<ClassFeeConfigDto> GetClassFeeConfigAsync(Guid classId);
+        Task ExtendInvoiceAsync(Guid invoiceId, ExtendInvoiceDto dto);
+        Task ExtendClassInvoicesAsync(Guid classId, ExtendClassInvoicesDto dto);
+        Task<IEnumerable<Class>> GetClassesOverviewEntitiesAsync(Guid teacherId, int month, int year);
+        Task<IEnumerable<ClassTuitionReportDto>> GetClassesOverviewAsync(int month, int year);
+        // Hàm cho 3 Card tổng quan
+        Task<TuitionSummaryDto> GetTuitionSummaryAsync(Guid? classId, int month, int year);
+
+        Task<List<ClassInvoiceReminderDto>> GetPendingInvoiceRemindersAsync();
+
+        Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync();
+
+        Task<TuitionDashboardDto> GetDashboardDataAsync(int month, int year);
+
+        Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId);
+        Task<IEnumerable<FullTransactionHistoryDto>> GetClassTransactionsByPeriodAsync(Guid classId, int month, int year);
     }
 }
