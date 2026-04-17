@@ -174,6 +174,7 @@ namespace EMS.Infrastructure.Repositories
             var startTime = TimeOnly.FromDateTime(fromTime);
             var endTime = TimeOnly.FromDateTime(toTime);
 
+            
             return await _context.Sessions
                 .Include(s => s.Class)
                 .Where(s => s.Date == startDate &&
