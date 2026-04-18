@@ -214,7 +214,7 @@ namespace EMS.Application.Features.Notifications.Services
                 existing.P256dh = request.P256dh;
                 existing.Auth = request.Auth;
                 existing.DeviceName = request.DeviceName;
-                existing.AccountId = accountId; // Cập nhật lại accountId nếu đổi user
+                existing.AccountId = accountId;
 
                 await _pushRepo.UpdateAsync(existing);
             }
@@ -232,7 +232,6 @@ namespace EMS.Application.Features.Notifications.Services
                 };
                 await _pushRepo.AddAsync(newSub);
             }
-
             await _pushRepo.SaveChangesAsync();
         }
 
