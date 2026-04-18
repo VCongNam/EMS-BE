@@ -13,6 +13,7 @@ using EMS.Application.Features.LearningMaterials.Services;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.Services;
 using EMS.Application.Features.ProgressReports.Validators;
+using EMS.Application.Features.Reports.Services;
 using EMS.Application.Features.Sessions.Services;
 using EMS.Application.Features.SystemAdmin.Services;
 using EMS.Application.Features.TuitionFees.Services;
@@ -67,6 +68,7 @@ builder.Services.AddScoped<EMS.Application.Features.ProgressReports.Services.IPr
 builder.Services.AddScoped<IGradeCategoryRepository, GradeCategoryRepository>();
 builder.Services.AddScoped<ISystemAdminRepository, SystemAdminRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<ITeacherReportRepository, TeacherReportRepository>();
 
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("SupabaseSettings"));
 
@@ -120,7 +122,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Đăng ký Interface và Class triển khai thực tế của nó
 builder.Services.AddScoped<ISystemAdminService,SystemAdminService>();
-
+builder.Services.AddScoped<ITeacherReportService, TeacherReportService>();
 
 builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Request nếu dữ liệu sai và trả về lỗi 400
 builder.Services.AddFluentValidationClientsideAdapters();
@@ -229,23 +231,6 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-// Diagnostic check: verify DI registrations for progress report service/repository
-//using (var startupScope = app.Services.CreateScope())
-//{
-//    var sp = startupScope.ServiceProvider;
-//    var prSvc = sp.GetService<EMS.Application.Features.ProgressReports.Services.IProgressReportService>();
-//    var prRepo = sp.GetService<EMS.Domain.Interfaces.IProgressReportRepository>();
-//    if (prSvc == null)
-//        System.Console.WriteLine("DI CHECK: IProgressReportService NOT registered");
-//    else
-//        System.Console.WriteLine("DI CHECK: IProgressReportService registered");
-
-//    if (prRepo == null)
-//        System.Console.WriteLine("DI CHECK: IProgressReportRepository NOT registered");
-//    else
-//        System.Console.WriteLine("DI CHECK: IProgressReportRepository registered");
-//}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

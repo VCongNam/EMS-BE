@@ -1,4 +1,5 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using DocumentFormat.OpenXml.VariantTypes;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.TuitionFees.Dtos;
 using EMS.Domain.Entities;
@@ -272,7 +273,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 {
                     string title = isApproved ? "Thanh toán thành công" : "Giao dịch bị từ chối";
                     string content = isApproved ? $"Giao dịch cho lớp {t.Invoice.Class.ClassName} đã xác nhận." : $"Giao dịch bị từ chối. Lý do: {note}";
-                    await _notificationService.SendNotificationAsync(targetAccountId.Value, t.Invoice.StudentId, title, content, $"/student/tuition", "Invoice");
+                    await _notificationService.SendNotificationAsync(targetAccountId.Value, t.Invoice.StudentId, title, content, $"/student/classes/{t.Invoice.ClassId}/tuition", "Invoice");
                 }
             }
             catch (Exception ex) { _logger.LogError($"Lỗi gửi thông báo duyệt: {ex.Message}"); }
