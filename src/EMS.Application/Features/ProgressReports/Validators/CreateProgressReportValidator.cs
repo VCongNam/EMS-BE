@@ -18,7 +18,7 @@ namespace EMS.Application.Features.ProgressReports.Validators
             RuleFor(x => x.PeriodMonth).InclusiveBetween(1, 12).WithMessage("Tháng phải từ 1-12.");
             RuleFor(x => x.PeriodYear).GreaterThan(2000).WithMessage("Năm không hợp lệ.");
             RuleFor(x => x.Content).NotEmpty().MinimumLength(10).WithMessage("Nhận xét tối thiểu 10 ký tự.");
-            RuleFor(x => x.Status).Must(s => s == "Draft" || s == "Published").WithMessage("Trạng thái không hợp lệ.");
+            RuleFor(x => x.Status).Must(s => s == "Ready" || s == "Published" || s == "Draft").WithMessage("Trạng thái không hợp lệ.");
         }
     }
 }

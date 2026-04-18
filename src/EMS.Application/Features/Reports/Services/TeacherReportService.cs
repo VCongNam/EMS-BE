@@ -1,6 +1,7 @@
 ﻿using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Reports.DTOs;
+using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -21,88 +22,75 @@ namespace EMS.Application.Features.Reports.Services
             this.currentUserService = currentUserService;
         }
 
-        public async Task<TeacherGrowthReportResponse> GetGrowthReportAsync(DateTime startDate, DateTime endDate)
+        private decimal CalculateGpa(List<Submission> subs)
         {
-            // 1. VALIDATION NGHIỆP VỤ (Business Rules)
-            // Middleware sẽ bắt lỗi này và tự động trả về HTTP 400
-            if (startDate >= endDate)
-            {
-                throw new BadRequestException("Ngày bắt đầu báo cáo phải diễn ra trước ngày kết thúc.");
-            }
+            if (!subs.Any()) return 0m;
+            decimal totalWeighted = subs.Sum(s => (s.Grade ?? 0m) * (s.Assignment.GradeCategory.Weight / 100m));
+            decimal totalWeight = subs.Sum(s => s.Assignment.GradeCategory.Weight / 100m);
+            return totalWeight > 0 ? Math.Round(totalWeighted / totalWeight, 2) : 0m;
+        }
 
-            // 2. LẤY THÔNG TIN NGƯỜI DÙNG HIỆN TẠI (Tránh IDOR)
+        public async Task<TeacherGrowthReportResponse> GetGrowthReportAsync(DateTime startDate, DateTime endDate, Guid? subjectId, string? status)
+        {
+            if (startDate >= endDate) throw new BadRequestException("Ngày bắt đầu báo cáo phải diễn ra trước ngày kết thúc.");
+
             var teacherId = currentUserService.UserId;
             var start = DateOnly.FromDateTime(startDate);
             var end = DateOnly.FromDateTime(endDate);
 
-            // 3. LẤY DỮ LIỆU TỪ REPOSITORY
-            var classes = await reportRepository.GetActiveClassesAsync(teacherId);
+            var classes = await reportRepository.GetFilteredClassesAsync(teacherId, start, end, subjectId, status);
+            var response = new TeacherGrowthReportResponse { TeacherId = teacherId, Period = $"{start:dd/MM/yyyy} - {end:dd/MM/yyyy}" };
 
-            // Kiểm tra nếu giáo viên chưa có lớp nào
-            // Middleware sẽ bắt lỗi này và tự trả về HTTP 404
-            if (classes == null || !classes.Any())
-            {
-                throw new NotFoundException("Giáo viên này hiện không có lớp học nào đang hoạt động trong hệ thống.");
-            }
+            if (!classes.Any()) return response;
 
             var classIds = classes.Select(c => c.ClassId).ToList();
 
             var enrollStats = await reportRepository.GetEnrollmentStatsAsync(classIds, start, end);
             var attendStats = await reportRepository.GetAttendanceStatsAsync(classIds, start, end);
-
-            // 4. KHỞI TẠO DTO RESPONSE
-            var response = new TeacherGrowthReportResponse
-            {
-                TeacherId = teacherId,
-                Period = $"{start:dd/MM/yyyy} - {end:dd/MM/yyyy}"
-            };
+            var allSubmissions = await reportRepository.GetSubmissionsForClassesAsync(classIds, startDate, endDate);
 
             int totalNew = 0, totalDrop = 0, totalPresent = 0, totalSlots = 0, totalStudents = 0, totalMax = 0;
+            var totalGrading = new GradingDistributionDto();
 
-            // 5. MAP DỮ LIỆU VÀ TÍNH TOÁN (Cho từng lớp và Tổng)
             foreach (var cls in classes)
             {
-                // Lấy data từ Dictionary, nếu không có thì trả về 0
-                var eStat = enrollStats.GetValueOrDefault(cls.ClassId, (NewCount: 0, DropoutCount: 0));
-                var aStat = attendStats.GetValueOrDefault(cls.ClassId, (TotalSlots: 0, PresentCount: 0));
+                (int NewCount, int DropoutCount) eStat = enrollStats.GetValueOrDefault(cls.ClassId, (0, 0));
+                (int TotalSlots, int PresentCount) aStat = attendStats.GetValueOrDefault(cls.ClassId, (0, 0));
 
                 int activeInClass = cls.ClassEnrollments.Count(x => x.Status == "Active");
 
-                // Tính tỉ lệ riêng cho từng lớp
-                double classCapacity = cls.MaxStudents > 0
-                    ? Math.Round((double)activeInClass / cls.MaxStudents.Value * 100, 2)
-                    : 0;
+                var classGrading = new GradingDistributionDto();
+                var classSubs = allSubmissions.Where(s => s.Assignment.ClassId == cls.ClassId).GroupBy(s => s.StudentId);
 
-                double classAttendance = aStat.TotalSlots > 0
-                    ? Math.Round((double)aStat.PresentCount / aStat.TotalSlots * 100, 2)
-                    : 0;
+                foreach (var studentGroup in classSubs)
+                {
+                    decimal gpa = CalculateGpa(studentGroup.ToList());
+                    if (gpa >= 8.0m) { classGrading.ExcellentCount++; totalGrading.ExcellentCount++; }
+                    else if (gpa >= 6.5m) { classGrading.GoodCount++; totalGrading.GoodCount++; }
+                    else if (gpa >= 5.0m) { classGrading.AverageCount++; totalGrading.AverageCount++; }
+                    else { classGrading.WeakCount++; totalGrading.WeakCount++; }
+                }
 
-                // Thêm vào danh sách Breakdown
-                var breakdown = new ClassBreakdownDto
+                response.ClassBreakdowns.Add(new ClassBreakdownDto
                 {
                     ClassId = cls.ClassId,
                     ClassName = cls.ClassName,
                     SubjectName = cls.Subject?.SubjectName ?? "N/A",
+                    Status = cls.Status ?? "N/A",
                     Overview = new OverviewMetrics
                     {
                         TotalActiveStudents = activeInClass,
                         MaxStudents = cls.MaxStudents,
-                        CapacityUtilizationPercent = classCapacity
+                        CapacityUtilizationPercent = cls.MaxStudents > 0 ? Math.Round((double)activeInClass / cls.MaxStudents.Value * 100, 2) : 0
                     },
-                    StudentGrowth = new StudentGrowthMetrics
-                    {
-                        NewEnrollments = eStat.NewCount,
-                        Dropouts = eStat.DropoutCount
-                    },
+                    StudentGrowth = new StudentGrowthMetrics { NewEnrollments = eStat.NewCount, Dropouts = eStat.DropoutCount },
                     AcademicPerformance = new AcademicPerformanceMetrics
                     {
-                        AttendanceRatePercent = classAttendance
+                        AttendanceRatePercent = aStat.TotalSlots > 0 ? Math.Round((double)aStat.PresentCount / aStat.TotalSlots * 100, 2) : 0,
+                        Grading = classGrading
                     }
-                };
+                });
 
-                response.ClassBreakdowns.Add(breakdown);
-
-                // Cộng dồn để tính số liệu Tổng
                 totalNew += eStat.NewCount;
                 totalDrop += eStat.DropoutCount;
                 totalPresent += aStat.PresentCount;
@@ -111,7 +99,6 @@ namespace EMS.Application.Features.Reports.Services
                 totalMax += cls.MaxStudents ?? 0;
             }
 
-            // 6. GÁN DỮ LIỆU TỔNG (Aggregate)
             response.TotalOverview = new OverviewMetrics
             {
                 TotalActiveStudents = totalStudents,
@@ -124,10 +111,71 @@ namespace EMS.Application.Features.Reports.Services
             };
             response.TotalAcademicPerformance = new AcademicPerformanceMetrics
             {
-                AttendanceRatePercent = totalSlots > 0 ? Math.Round((double)totalPresent / totalSlots * 100, 2) : 0
+                AttendanceRatePercent = totalSlots > 0 ? Math.Round((double)totalPresent / totalSlots * 100, 2) : 0,
+                Grading = totalGrading
             };
 
             return response;
         }
+
+        public async Task<ClassBreakdownDto> GetSingleClassGrowthReportAsync(Guid classId, DateTime startDate, DateTime endDate)
+        {
+            var cls = await reportRepository.GetClassByIdAsync(classId);
+            if (cls == null) throw new NotFoundException("Lớp học", classId);
+
+            if (cls.TeacherId != currentUserService.UserId)
+                throw new ForbiddenAccessException("Bạn không có quyền truy cập báo cáo của lớp này.");
+
+            if (startDate >= endDate) throw new BadRequestException("Ngày bắt đầu phải trước ngày kết thúc.");
+
+            var startOnly = DateOnly.FromDateTime(startDate);
+            var endOnly = DateOnly.FromDateTime(endDate);
+
+            var classIds = new List<Guid> { classId };
+            var enrollStats = await reportRepository.GetEnrollmentStatsAsync(classIds, startOnly, endOnly);
+            var attendStats = await reportRepository.GetAttendanceStatsAsync(classIds, startOnly, endOnly);
+            var submissions = await reportRepository.GetSubmissionsForClassesAsync(classIds, startDate, endDate);
+
+            var classGrading = new GradingDistributionDto();
+            var studentGroups = submissions.GroupBy(s => s.StudentId);
+
+            foreach (var group in studentGroups)
+            {
+                decimal gpa = CalculateGpa(group.ToList());
+                if (gpa >= 8.0m) classGrading.ExcellentCount++;
+                else if (gpa >= 6.5m) classGrading.GoodCount++;
+                else if (gpa >= 5.0m) classGrading.AverageCount++;
+                else classGrading.WeakCount++;
+            }
+
+            (int NewCount, int DropoutCount) eStat = enrollStats.GetValueOrDefault(classId, (0, 0));
+            (int TotalSlots, int PresentCount) aStat = attendStats.GetValueOrDefault(classId, (0, 0));
+            int activeInClass = cls.ClassEnrollments.Count(x => x.Status == "Active");
+
+            return new ClassBreakdownDto
+            {
+                ClassId = cls.ClassId,
+                ClassName = cls.ClassName,
+                SubjectName = cls.Subject?.SubjectName ?? "N/A",
+                Status = cls.Status ?? "N/A",
+                Overview = new OverviewMetrics
+                {
+                    TotalActiveStudents = activeInClass,
+                    MaxStudents = cls.MaxStudents,
+                    CapacityUtilizationPercent = cls.MaxStudents > 0 ? Math.Round((double)activeInClass / cls.MaxStudents.Value * 100, 2) : 0
+                },
+                StudentGrowth = new StudentGrowthMetrics
+                {
+                    NewEnrollments = eStat.NewCount,
+                    Dropouts = eStat.DropoutCount
+                },
+                AcademicPerformance = new AcademicPerformanceMetrics
+                {
+                    AttendanceRatePercent = aStat.TotalSlots > 0 ? Math.Round((double)aStat.PresentCount / aStat.TotalSlots * 100, 2) : 0,
+                    Grading = classGrading
+                }
+            };
+        }
+
     }
 }
