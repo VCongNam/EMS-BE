@@ -6,6 +6,7 @@ using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.TuitionFees.Dtos;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +23,15 @@ namespace EMS.Application.Features.TuitionFees.Services
         private readonly ISupabaseStorageService _supabaseStorageService;
         private readonly INotificationService _notificationService;
         private readonly IClassRepository _classRepository;
-        public StudentTuitionService(ITuitionFeeRepository tuitionRepository, ICurrentUserService currentUserService, IVietQRService vietQRService, ISupabaseStorageService supabaseStorageService, INotificationService notificationService, IClassRepository classRepository)
+        private readonly ILogger<StudentTuitionService> _logger;
+        public StudentTuitionService(
+            ITuitionFeeRepository tuitionRepository, 
+            ICurrentUserService currentUserService, 
+            IVietQRService vietQRService, 
+            ISupabaseStorageService supabaseStorageService, 
+            INotificationService notificationService, 
+            IClassRepository classRepository,
+            ILogger<StudentTuitionService> logger)
         {
             _tuitionRepository = tuitionRepository;
             _currentUserService = currentUserService;
@@ -30,6 +39,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             _supabaseStorageService = supabaseStorageService;
             _notificationService = notificationService;
             _classRepository = classRepository;
+            _logger = logger;
         }
 
         public async Task<PagedResult<StudentTuitionDto>> GetMyTuitionAsync(TuitionFilter filter)
@@ -184,6 +194,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             if (invoice.Invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn!");
             if (invoice.Invoice.Status == "Paid") throw new InvalidOperationException("Hóa đơn đã được thanh toán!");
             var existingTransaction = await _tuitionRepository.GetTransactionStudentAndInvoiceId(invoiceId, studentId);
+            
 
             if (existingTransaction != null)
             {
@@ -199,12 +210,24 @@ namespace EMS.Application.Features.TuitionFees.Services
             bool isReupload = false;
             if (existingTransaction != null && existingTransaction.Status == "Failed")
             {
+                var oldProofUrl = existingTransaction.ProofImageUrl;
                 // Nộp lại: Cập nhật Transaction cũ thành Pending
                 existingTransaction.ProofImageUrl = imageUrl;
                 existingTransaction.Status = "Pending";
                 existingTransaction.UpdatedAt = DateTime.UtcNow;
 
                 await _tuitionRepository.UpdateTransactionAsync(existingTransaction);
+                if (!string.IsNullOrEmpty(oldProofUrl))
+                {
+                    try
+                    {
+                        await _supabaseStorageService.DeleteFileByUrlAsync(oldProofUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Không thể xóa ảnh minh chứng cũ: {oldProofUrl}");
+                    }
+                }
                 isReupload = true;
             }
             else
@@ -233,7 +256,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                     studentId: null,
                     title: title,
                     content: $"Học sinh lớp {invoiceInfo.Class.ClassName} đã nộp minh chứng học phí tháng {invoiceInfo.PeriodMonth}/{invoiceInfo.PeriodYear}",
-                    actionUrl: $"/tuition/reports/{invoiceInfo.ClassId}",
+                    actionUrl: $"/tuition/reports/{invoiceInfo.ClassId}/transactions",
                     type: "Invoice");
             }
             return true;

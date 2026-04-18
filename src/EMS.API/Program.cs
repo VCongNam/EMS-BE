@@ -2,15 +2,16 @@
 using EMS.API.BackgroundServices;
 using EMS.API.Middlewares;
 using EMS.Application.Common.Interfaces;
+using EMS.Application.Common.Settings;
 using EMS.Application.Features.Accounts.Services;
 using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Auth.Services;
 using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.Classes.Validators;
+using EMS.Application.Features.Feedbacks.Services;
 using EMS.Application.Features.LearningMaterials.Services;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Posts.Services;
-using EMS.Application.Features.Feedbacks.Services;
 using EMS.Application.Features.ProgressReports.Validators;
 using EMS.Application.Features.Sessions.Services;
 using EMS.Application.Features.SystemAdmin.Services;
@@ -69,6 +70,9 @@ builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 builder.Services.Configure<SupabaseSettings>(builder.Configuration.GetSection("SupabaseSettings"));
 
+//VAPID key
+builder.Services.Configure<VapidSettings>(builder.Configuration.GetSection("VapidDetails"));
+
 // Supabase Client Setup
 var supabaseUrl = builder.Configuration["SupabaseSettings:Url"] ?? throw new ArgumentNullException("Supabase Url is missing");
 var supabaseKey = builder.Configuration["SupabaseSettings:Key"] ?? throw new ArgumentNullException("Supabase Key is missing");
@@ -81,6 +85,7 @@ builder.Services.AddSingleton(provider => new Supabase.Client(supabaseUrl, supab
 // 3. Đăng ký Service (Application/Infrastructure)
 builder.Services.AddScoped<ISupabaseStorageService, EMS.Infrastructure.Services.Supabase.SupabaseStorageService>();
 builder.Services.AddScoped<IClassService, ClassService>();
+builder.Services.AddScoped<IWebPushService, WebPushService>();
 //Student
 builder.Services.AddScoped<IStudentAccountService, StudentAccountService>();
 builder.Services.AddScoped<IStudentClassService, StudentClassService>();
@@ -109,6 +114,7 @@ builder.Services.AddScoped<EMS.Application.Features.Gradebook.Services.IGradeboo
 builder.Services.AddScoped<IStudentMaterialService, StudentMaterialService>();
 //Notification
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IPushSubscriptionRepository, PushSubscriptionRepository>();
 builder.Services.AddScoped<ISignalRService, SignalRService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 

@@ -46,6 +46,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<ProgressReport> ProgressReports { get; set; }
 
+    public virtual DbSet<PushSubscription> PushSubscriptions { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<Session> Sessions { get; set; }
@@ -616,6 +618,25 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.TeacherId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("ProgressReport_TeacherID_fkey");
+        });
+
+        modelBuilder.Entity<PushSubscription>(entity =>
+        {
+            entity.HasKey(e => e.SubscriptionId).HasName("PushSubscriptions_pkey");
+
+            entity.Property(e => e.SubscriptionId)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("SubscriptionID");
+            entity.Property(e => e.AccountId).HasColumnName("AccountID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.DeviceName).HasColumnType("character varying");
+
+            entity.HasOne(d => d.Account).WithMany(p => p.PushSubscriptions)
+                .HasForeignKey(d => d.AccountId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("PushSubscriptions_AccountID_fkey");
         });
 
         modelBuilder.Entity<Role>(entity =>
