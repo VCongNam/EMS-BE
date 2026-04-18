@@ -308,16 +308,21 @@ namespace EMS.Application.Features.Assignments.Services
 
         private async Task RequireTeacherAccessByAssignmentAsync(Guid assignmentId)
         {
-
+            
             var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
             if (assignment == null) throw new Exception("Assignment not found.");
 
-         
+            var tas = await _classRepository.GetTAsByClassIdAsync(assignment.ClassId);
+            bool isAssigned = false;
+            if (_currentUserService.Role == "TA")
+            {
+                isAssigned = tas.Any(ta => ta.Taid == _currentUserService.UserId);
+            }
             var classroom = await _classRepository.GetByIdAsync(assignment.ClassId);
             if (classroom == null) throw new Exception("Class not found.");
 
             // Kiểm tra quyền
-            if (classroom.TeacherId != _currentUserService.UserId)
+            if (classroom.TeacherId != _currentUserService.UserId && !isAssigned)
                 throw new UnauthorizedAccessException("You do not have access to grade this assignment.");
         }
 

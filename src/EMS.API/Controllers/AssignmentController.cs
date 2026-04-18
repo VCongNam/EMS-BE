@@ -128,7 +128,7 @@ namespace EMS.API.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message); 
+                return StatusCode(StatusCodes.Status403Forbidden, new { Error = ex.Message });
             }
             catch (Exception ex)
             {
