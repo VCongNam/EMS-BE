@@ -116,6 +116,10 @@ namespace EMS.Application.Features.TuitionFees.Services
             else if (transaction != null && transaction.Status == "Pending")
             {
                 statusDisplay = "Đang chờ giáo viên xác nhận";
+            }else if(transaction != null && transaction.Status == "Failed")
+            {
+                statusDisplay = "Giao dịch bị từ chối";
+                canPay = true;
             }
             else if (invoice.DueDate < DateTime.UtcNow)
             {

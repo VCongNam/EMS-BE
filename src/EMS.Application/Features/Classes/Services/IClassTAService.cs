@@ -25,5 +25,6 @@ namespace EMS.Application.Features.Classes.Services
 
         Task UpdateTaskStatusAsync(Guid taskId, UpdateTaskStatusDto newStatus);
         Task ReviewTaskAsync(Guid taskId, bool isApproved, string? teacherFeedback);
-}
+        Task<string> GetTAPermissionAsync(Guid classTaId);
+    }
 }
