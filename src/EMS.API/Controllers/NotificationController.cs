@@ -1,7 +1,10 @@
-﻿using EMS.Application.Features.Notifications.Services;
+﻿using EMS.Application.Common.Settings;
+using EMS.Application.Features.Notifications.DTOs;
+using EMS.Application.Features.Notifications.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
 namespace EMS.API.Controllers
@@ -12,9 +15,13 @@ namespace EMS.API.Controllers
     public class NotificationController : ControllerBase
     {
         private readonly INotificationService _notificationService;
-        public NotificationController(INotificationService notificationService)
+        private readonly VapidSettings _vapidSettings;
+        public NotificationController(
+            INotificationService notificationService,
+            IOptions<VapidSettings> vapidSettings)
         { 
             _notificationService = notificationService;
+            _vapidSettings = vapidSettings.Value;
         }
 
         [HttpGet("Notifications")]
@@ -47,7 +54,6 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("unread-count")]
-        [Authorize]
         public async Task<IActionResult> GetUnreadCount()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -56,6 +62,39 @@ namespace EMS.API.Controllers
             var count = await _notificationService.CountUnreadAsync();
 
             return Ok(new { count });
+        }
+
+        //Web Push
+        [HttpGet("public-key")]
+        [AllowAnonymous]
+        public IActionResult GetPublicKey()
+        {
+            return Ok(new { publicKey = _vapidSettings.PublicKey });
+        }
+
+        [HttpPost("subscribe")]
+        public async Task<IActionResult> Subscribe([FromBody] SubscribeRequestDto request)
+        {
+            try
+            {
+                await _notificationService.SubscribeAsync(request);
+                return Ok(new { Message = "Đã đăng ký nhận thông báo đẩy thành công!" });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        [HttpPost("unsubscribe")]
+        public async Task<IActionResult> Unsubscribe([FromBody] UnsubscribeRequestDto request)
+        {
+            await _notificationService.UnsubscribeAsync(request.Endpoint);
+            return NoContent();
         }
     }
 }

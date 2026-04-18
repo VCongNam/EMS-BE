@@ -76,10 +76,12 @@ namespace EMS.Domain.Interfaces
         Task<bool> HasPendingTransactionAsync(Guid invoiceId);
 
         Task AddTransactionAsync(Transaction transaction);
+        Task UpdateTransactionAsync(Transaction transaction);
 
         Task<List<Transaction>> GetTransactionsByStudentIdAsync(Guid studentId, Guid? classId);
 
         Task<Transaction?> GetTransactionDetailAsync(Guid transactionId, Guid studentId);
+        Task<Transaction?> GetTransactionStudentAndInvoiceId(Guid invoiceId, Guid studentId);
 
 
         // =========================================================

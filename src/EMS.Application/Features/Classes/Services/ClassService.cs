@@ -168,18 +168,23 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task<bool> AssignStudentAsync(Guid classId, AssignStudentDto request)
         {
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
             var classEntity = await _classRepository.GetByIdAsync(classId);
             if (classEntity == null)
             {
                 throw new Exception("Không tìm thấy lớp học!");
             }
+            if (classEntity.TeacherId != currentUserId && currentUserRole!="Teacher") throw new Exception("Bạn không có quyền thao tác ở lớp này!");
             int currentStudentCount = await _classRepository.GetActiveStudentCountAsync(classId);
+            if (classEntity.MaxStudents == 0) throw new Exception("Sĩ số tối đa của lớp bằng 0, hãy sửa và thử lại");
 
             if (classEntity.MaxStudents.HasValue && currentStudentCount >= classEntity.MaxStudents.Value)
             {
                 throw new Exception($"Lớp học đã đạt số lượng tối đa ({classEntity.MaxStudents.Value} học sinh). Không thể thêm mới!");
             }
-
+            var isStudentExisted = await _notificationService.GetAccountIdByStudentIdAsync((request.StudentID));
+            if (isStudentExisted == null) throw new Exception("Học sinh không có trong hệ thống");
             var existingEnrollment = await _classRepository.GetEnrollmentAsync(classId, request.StudentID);
 
             if (existingEnrollment != null)

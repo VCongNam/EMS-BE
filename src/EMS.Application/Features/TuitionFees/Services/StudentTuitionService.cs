@@ -6,6 +6,7 @@ using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.TuitionFees.Dtos;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +23,15 @@ namespace EMS.Application.Features.TuitionFees.Services
         private readonly ISupabaseStorageService _supabaseStorageService;
         private readonly INotificationService _notificationService;
         private readonly IClassRepository _classRepository;
-        public StudentTuitionService(ITuitionFeeRepository tuitionRepository, ICurrentUserService currentUserService, IVietQRService vietQRService, ISupabaseStorageService supabaseStorageService, INotificationService notificationService, IClassRepository classRepository)
+        private readonly ILogger<StudentTuitionService> _logger;
+        public StudentTuitionService(
+            ITuitionFeeRepository tuitionRepository, 
+            ICurrentUserService currentUserService, 
+            IVietQRService vietQRService, 
+            ISupabaseStorageService supabaseStorageService, 
+            INotificationService notificationService, 
+            IClassRepository classRepository,
+            ILogger<StudentTuitionService> logger)
         {
             _tuitionRepository = tuitionRepository;
             _currentUserService = currentUserService;
@@ -30,6 +39,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             _supabaseStorageService = supabaseStorageService;
             _notificationService = notificationService;
             _classRepository = classRepository;
+            _logger = logger;
         }
 
         public async Task<PagedResult<StudentTuitionDto>> GetMyTuitionAsync(TuitionFilter filter)
@@ -136,10 +146,13 @@ namespace EMS.Application.Features.TuitionFees.Services
             Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
             var invoice = await _tuitionRepository.GetInvoiceWithTeacherBankInfoAsync(invoiceId, studentId);
             if (invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn!");
+            var isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(invoice.ClassId, studentId);
+            if (!isEnrolled) throw new Exception("Bạn không thuộc lớp có hóa đơn này");
+
             if (invoice.Status == "Paid") throw new InvalidOperationException("Hóa đơn này đã được thanh toán!");
 
             var teacher = invoice.Class?.Teacher;
-            if (teacher == null || string.IsNullOrEmpty(teacher.BankAccount))
+            if (teacher == null || string.IsNullOrEmpty(teacher.BankAccount) && string.IsNullOrEmpty(teacher.BankName))
             {
                 throw new Exception("Giáo viên chưa cập nhật thông tin tài khoản ngân hàng. Vui lòng liên hệ giáo viên.");
             }
@@ -156,15 +169,21 @@ namespace EMS.Application.Features.TuitionFees.Services
             };
 
             string qrBase64 = await _vietQRService.GenerateQRCodeAsync(qrRequest);
-            return new PaymentQrDto
+            if (qrBase64 != null)
             {
-                QrCodeBase64 = qrBase64,
-                BankName = teacher.BankName,
-                AccountNo = teacher.BankAccount,
-                AccountName = teacher.BankAccountName,
-                Amount = invoice.Amount,
-                TransferContent = transferContent
-            };
+                return new PaymentQrDto
+                {
+                    QrCodeBase64 = qrBase64,
+                    BankName = teacher.BankName,
+                    AccountNo = teacher.BankAccount,
+                    AccountName = teacher.BankAccountName,
+                    Amount = invoice.Amount,
+                    TransferContent = transferContent
+                };
+            } else
+            {
+                throw new Exception("Tạo Qr thất bại. Vui lòng thử lại sau");
+            }
         }
 
         public async Task<bool> UploadPaymentProofAsync(Guid invoiceId, ProofUploadDto request)
@@ -174,37 +193,70 @@ namespace EMS.Application.Features.TuitionFees.Services
             var invoice = await _tuitionRepository.GetInvoiceDetailAsync(invoiceId, studentId);
             if (invoice.Invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn!");
             if (invoice.Invoice.Status == "Paid") throw new InvalidOperationException("Hóa đơn đã được thanh toán!");
-            bool isPending = await _tuitionRepository.HasPendingTransactionAsync(invoiceId);
-            if (isPending)
+            var existingTransaction = await _tuitionRepository.GetTransactionStudentAndInvoiceId(invoiceId, studentId);
+            
+
+            if (existingTransaction != null)
             {
-                throw new InvalidOperationException("Bạn đã nộp minh chứng rồi. Vui lòng chờ giáo viên xác nhận!");
+                if (existingTransaction.Status == "Pending")
+                {
+                    throw new InvalidOperationException("Bạn đã nộp minh chứng rồi. Vui lòng chờ giáo viên xác nhận!");
+                }
             }
+            
 
             DataValidator.ValidateFile(request.ProofImage);
             string imageUrl = await _supabaseStorageService.UploadFileAsync(request.ProofImage, "tuition-proofs");
-            var transaction = new Transaction
+            bool isReupload = false;
+            if (existingTransaction != null && existingTransaction.Status == "Failed")
             {
-                TransactionId = Guid.NewGuid(),
-                InvoiceId = invoiceId,
-                AmountPaid = invoice.Invoice.Amount, // Mặc định lấy đúng số tiền của hóa đơn
-                PaymentMethod = "Bank Transfer", // Phương thức: Chuyển khoản
-                ProofImageUrl = imageUrl,
-                Status = "Pending", // Trạng thái: Đang chờ duyệt
-                CreatedAt = DateTime.UtcNow
-            };
+                var oldProofUrl = existingTransaction.ProofImageUrl;
+                // Nộp lại: Cập nhật Transaction cũ thành Pending
+                existingTransaction.ProofImageUrl = imageUrl;
+                existingTransaction.Status = "Pending";
+                existingTransaction.UpdatedAt = DateTime.UtcNow;
 
-            await _tuitionRepository.AddTransactionAsync(transaction);
+                await _tuitionRepository.UpdateTransactionAsync(existingTransaction);
+                if (!string.IsNullOrEmpty(oldProofUrl))
+                {
+                    try
+                    {
+                        await _supabaseStorageService.DeleteFileByUrlAsync(oldProofUrl);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, $"Không thể xóa ảnh minh chứng cũ: {oldProofUrl}");
+                    }
+                }
+                isReupload = true;
+            }
+            else
+            {
+                // Nộp lần đầu: Tạo Transaction mới
+                var transaction = new Transaction
+                {
+                    TransactionId = Guid.NewGuid(),
+                    InvoiceId = invoiceId,
+                    AmountPaid = invoice.Invoice.Amount,
+                    PaymentMethod = "Bank Transfer",
+                    ProofImageUrl = imageUrl,
+                    Status = "Pending",
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _tuitionRepository.AddTransactionAsync(transaction);
+            }
 
             //Notification
             var invoiceInfo = await _tuitionRepository.GetInvoicesWithClassAsync(invoiceId);
-            if (invoiceInfo != null)
+            if (invoiceInfo.Class != null)
             {
+                string title = isReupload ? "Nộp lại minh chứng học phí" : "Giao dịch học phí mới";
                 await _notificationService.SendNotificationAsync(
                     targetAccountId: invoiceInfo.Class.TeacherId,
                     studentId: null,
-                    title: "Giao dịch học phí mới",
-                    content: $"Một học sinh lớp {invoiceInfo.Class.ClassName} đã nộp học phí tháng {invoiceInfo.PeriodMonth}/{invoiceInfo.PeriodYear}",
-                    actionUrl: $"/tuition/reports/{invoiceInfo.ClassId}",
+                    title: title,
+                    content: $"Học sinh lớp {invoiceInfo.Class.ClassName} đã nộp minh chứng học phí tháng {invoiceInfo.PeriodMonth}/{invoiceInfo.PeriodYear}",
+                    actionUrl: $"/tuition/reports/{invoiceInfo.ClassId}/transactions",
                     type: "Invoice");
             }
             return true;

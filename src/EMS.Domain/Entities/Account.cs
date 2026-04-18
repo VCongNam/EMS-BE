@@ -45,6 +45,8 @@ public partial class Account
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
 
+    public virtual ICollection<PushSubscription> PushSubscriptions { get; set; } = new List<PushSubscription>();
+
     public virtual Role Role { get; set; } = null!;
 
     public virtual ICollection<Student> Students { get; set; } = new List<Student>();

@@ -33,7 +33,13 @@ namespace EMS.Application.Features.Classes.Services
         }
         public async Task<Guid> AssignTAAsync(Guid classId, AssignTADto request)
         {
+            var currentUser = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            var classEntity = await _classRepository.GetByIdAsync(classId);
             var existingClassTA = await _classRepository.GetClassTAAsync(classId, request.TAID);
+            if (classEntity == null) throw new Exception("Lớp học không tồn tại");
+            if (classEntity.Status == "Completed" || classEntity.Status == "Archived") throw new Exception("Bạn không thể thêm trợ giảng vào lớp đã hoàn thành hoặc lưu trữ!");
+            if (classEntity.TeacherId != currentUser && currentUserRole !="Teacher") throw new Exception("Bạn không có quyền thao tác ở lớp học này!");
             Guid newClassTaId;
             if (existingClassTA != null)
             {
@@ -101,10 +107,16 @@ namespace EMS.Application.Features.Classes.Services
         //View class TAs
         public async Task<IEnumerable<ClassTADto>> GetClassTAsAsync(Guid classId)
         {
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            var classEntity = await _classRepository.GetByIdAsync(classId);
+            if (classEntity == null) throw new Exception("Lớp học không tồn tại");
+            if (currentUserRole != "Teacher" && classEntity.TeacherId != currentUserId) throw new Exception("Bạn không là giáo viên hoặc không phải là giảng viên lớp học này!");
+
             var tas = await _classRepository.GetTAsByClassIdAsync(classId);
             if(tas == null)
             {
-                throw new Exception("lớp này chưa được phân công trợ giảng!");
+                throw new Exception("Lớp này chưa được phân công trợ giảng!");
             }
             return tas.Select(cta => new ClassTADto
             {
@@ -120,12 +132,21 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task UpdateTAPermissionAsync(Guid classId, Guid taId, UpdateTAPermissionDto request)
         {
+           
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            var classEntity = await _classRepository.GetByIdAsync(classId);
+            if (classEntity == null) throw new Exception("Lớp học không tồn tại");
+            if (currentUserRole != "Teacher" && classEntity.TeacherId != currentUserId) throw new Exception("Bạn không là giáo viên hoặc không phải là giảng viên lớp học này!");
+            
+            var TAEntity = await _taRepository.GetByIdAsync(taId);
+            if (TAEntity == null) throw new Exception("Không tìm thấy trợ giảng trong hệ thống");
             var classTa = await _classRepository.GetClassTAAsync(classId, taId);
             if (classTa == null || classTa.Status == "Removed" || classTa.Status == "Deactive")
             {
-                throw new Exception("Không tìm thấy trợ giảng này trong lớp (hoặc đã bị gỡ).");
+                throw new Exception("Không tìm thấy trợ giảng này trong lớp hoặc đã bị gỡ.");
             }
-
+            if (string.IsNullOrEmpty(request.Permission)) throw new Exception("Trợ giảng phải có ít nhất 1 phân quyền");
             classTa.Permission = request.Permission;
             classTa.UpdatedAt = DateTime.UtcNow;
 
@@ -134,13 +155,20 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task<Guid> CreateTaskAsync(CreateTaskDto request)
         {
+            var currentUserId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
             var classTA = await _taRepository.GetClassTAByIdAsync(request.ClassTAID);
 
             if (classTA == null)
             {
-                throw new Exception("Thông tin trợ giảng trong lớp học không tồn tại.");
+                throw new Exception("Trợ giảng chưa được phân công vào lớp học này!");
             }
+            if (currentUserRole != "Teacher" && classTA.Class.TeacherId != currentUserId) throw new Exception("Bạn không là giáo viên hoặc không phải là giảng viên lớp học này!");
 
+            if(string.IsNullOrEmpty(request.Title)) throw new Exception("Tiêu đề không đưuọc để trống!");
+            if (request.DueDate < DateTime.Now) throw new Exception("Ngày đến hạn không được ở trong quá khứ");
+
+            if (string.IsNullOrEmpty(request.Type)) throw new Exception("Loại nhiệm vụ không được để trống!");
             var allowedPermissions = classTA.Permission?.Split(',')
                                 .Select(p => p.Trim())
                                 .ToList() ?? new List<string>();
@@ -230,14 +258,16 @@ namespace EMS.Application.Features.Classes.Services
         public async Task<TAProfileDto?> FindTAByEmailAsync(string email)
         {
             if (email == null) throw new ArgumentNullException("Hãy thêm email để tìm trợ giảng!");
-            var taEntity = await _taRepository.GetTAByEmailAsync(email);
+            var taEntity = await _taRepository.GetTAByEmailAsync(email.Trim());
             if (taEntity == null)
                 throw new Exception("Không có trợ giảng nào có email này!");
+
+            if (taEntity.Ta.Role.RoleName != "TA") throw new Exception("Tài khoản tìm được không phải là trợ giảng");
 
             return new TAProfileDto
             {
                 TAId = taEntity.Taid,
-                FullName = taEntity.Ta.FullName,
+                FullName = taEntity.Ta.FullName ?? "N/A",
                 Email = taEntity.Ta.Email,
                 PhoneNumber = taEntity.Ta.PhoneNumber,
                 Bio = taEntity.Bio,
@@ -337,11 +367,14 @@ namespace EMS.Application.Features.Classes.Services
             if (task.Status == "Done")
                 throw new Exception("Nhiệm vụ đã hoàn thành và đóng lại, không thể thay đổi trạng thái.");
 
-            if (task.Status == "Review" || task.Status == "In Review")
+            if (task.Status == "Review")
             {
                 throw new Exception("Nhiệm vụ đang trong quá trình chờ giáo viên duyệt, bạn không thể thay đổi trạng thái lúc này.");
             }
-
+            if (!IsValidTransition(task.Status, newStatus.Status))
+            {
+                throw new Exception("Không thể chuyển trạng thái không hợp lệ.");
+            }
             if (task.Status == newStatus.Status) return;
 
             task.Status = newStatus.Status;
@@ -372,6 +405,18 @@ namespace EMS.Application.Features.Classes.Services
             }
         }
 
+        private bool IsValidTransition(string current, string next)
+        {
+            return current switch
+            {
+                "Todo" => next == "InProgress",
+                "InProgress" => next == "Review", 
+                "Review" => false,
+                "Done" => false,
+                _ => false
+            };
+        }
+
         public async Task ReviewTaskAsync(Guid taskId, bool isApproved, string? teacherFeedback)
         {
             var userId = _currentUser.UserId;
@@ -386,6 +431,8 @@ namespace EMS.Application.Features.Classes.Services
             {
                 throw new Exception($"Không thể thực hiện thao tác này. Nhiệm vụ hiện đang ở trạng thái: {task.Status}");
             }
+            if (task.Status == "Done")
+                throw new Exception("Nhiệm vụ đã hoàn thành và đóng lại, không thể thay đổi trạng thái.");
 
             if (isApproved)
             {

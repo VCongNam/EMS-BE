@@ -1,14 +1,17 @@
 ﻿using DocumentFormat.OpenXml.Office2016.Excel;
 using DocumentFormat.OpenXml.Spreadsheet;
+using EMS.Application.Common.DTOs;
+using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Notifications.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
-using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Notifications.Services
@@ -17,12 +20,21 @@ namespace EMS.Application.Features.Notifications.Services
     {
         private readonly INotificationRepository _notificationRepository;
         private readonly ICurrentUserService _currentUser;
-        private readonly ISignalRService _signalRService;
-        public NotificationService(INotificationRepository notificationRepository, ICurrentUserService currentUser, ISignalRService signalRService)
+        private readonly IWebPushService _webPushService;
+        private readonly IPushSubscriptionRepository _pushRepo; // Repo xử lý bảng PushSubscriptions
+        private readonly ILogger<NotificationService> _logger;
+
+        public NotificationService(INotificationRepository notificationRepository,
+            ICurrentUserService currentUser,
+            IWebPushService webPushService,
+            IPushSubscriptionRepository pushSubscriptionRepository,
+             ILogger<NotificationService> logger)
         {
             _notificationRepository = notificationRepository;
             _currentUser = currentUser;
-            _signalRService = signalRService;
+            _webPushService = webPushService;
+            _pushRepo = pushSubscriptionRepository;
+            _logger = logger;
         }
 
         public async Task<List<NotificationDto>> GetNotificationsAsync()
@@ -82,28 +94,51 @@ namespace EMS.Application.Features.Notifications.Services
                 Content = content,
                 ActionUrl = actionUrl,
                 IsRead = false,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
                 Type = type
             };
 
             await _notificationRepository.AddAsync(notification);
 
 
-            //SignalR
+            //Web Push
             int unreadCount = await _notificationRepository.CountUnreadAsync(targetAccountId, studentId);
 
-            var notificationData = new
+            var payloadObj = new WebPushPayload
             {
-                notification.NotificationId,
-                notification.Title,
-                notification.Content,
-                notification.ActionUrl,
-                notification.StudentId,
-                notification.CreatedAt,
-                BadgeCount = unreadCount
+                Title = title,
+                Body = content,
+                Url = actionUrl,
+                Data = new
+                {
+                    notificationId = notification.NotificationId,
+                    studentId = studentId,
+                    type = type,
+                    badgeCount = unreadCount
+                }
             };
+            string payloadJson = JsonSerializer.Serialize(payloadObj);
 
-            await _signalRService.SendNotificationToUser(targetAccountId, notificationData);
+            var subscriptions = await _pushRepo.GetSubscriptionsByAccountIdAsync(targetAccountId);
+
+            foreach (var sub in subscriptions)
+            {
+                try
+                {
+                    await _webPushService.SendNotificationAsync(sub.Endpoint, sub.P256dh, sub.Auth, payloadJson);
+                }
+                catch (SubscriptionExpiredException ex)
+                {
+                    // Tự động xóa thiết bị đã gỡ PWA khỏi DB
+                    await _pushRepo.DeleteByEndpointAsync(ex.ExpiredEndpoint);
+                    await _pushRepo.SaveChangesAsync();
+                    _logger.LogInformation($"Đã xóa subscription rác khỏi DB: {ex.ExpiredEndpoint}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Lỗi gửi Push tới endpoint {sub.Endpoint}");
+                }
+            }
         }
 
         public async Task SendBulkNotificationWithStudentAsync(List<(Guid AccId, Guid? StdId)> targets, string title, string content, string actionUrl, string type)
@@ -126,18 +161,85 @@ namespace EMS.Application.Features.Notifications.Services
             }
             await _notificationRepository.AddRangeAsync(notifications);
 
-            //SignalR
+            //Web push
             var uniqueAccountIds = targets.Select(t => t.AccId).Distinct();
+
             foreach (var accId in uniqueAccountIds)
             {
-                await _signalRService.SendNotificationToUser(accId, new
+                var relevantStudentIds = targets.Where(t => t.AccId == accId).Select(t => t.StdId).ToList();
+
+                var payloadObj = new WebPushPayload
                 {
-                    title,
-                    content,
-                    actionUrl,
-                    RelevantStudentIds = targets.Where(t => t.AccId == accId).Select(t => t.StdId)
-                });
+                    Title = title,
+                    Body = content,
+                    Url = actionUrl,
+                    Data = new
+                    {
+                        type = type,
+                        relevantStudentIds = relevantStudentIds
+                    }
+                };
+                string payloadJson = JsonSerializer.Serialize(payloadObj);
+
+                var subscriptions = await _pushRepo.GetSubscriptionsByAccountIdAsync(accId);
+
+                foreach (var sub in subscriptions)
+                {
+                    try
+                    {
+                        await _webPushService.SendNotificationAsync(sub.Endpoint, sub.P256dh, sub.Auth, payloadJson);
+                    }
+                    catch (SubscriptionExpiredException ex)
+                    {
+                        await _pushRepo.DeleteByEndpointAsync(ex.ExpiredEndpoint);
+                        await _pushRepo.SaveChangesAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Lỗi gửi Bulk Push tới endpoint {sub.Endpoint}");
+                    }
+                }
             }
+        }
+
+        public async Task SubscribeAsync(SubscribeRequestDto request)
+        {
+            var accountId = _currentUser.UserId;
+            if (accountId == Guid.Empty) throw new UnauthorizedAccessException();
+
+            var existing = await _pushRepo.GetByEndpointAsync(request.Endpoint);
+
+            if (existing != null)
+            {
+                existing.P256dh = request.P256dh;
+                existing.Auth = request.Auth;
+                existing.DeviceName = request.DeviceName;
+                existing.AccountId = accountId; // Cập nhật lại accountId nếu đổi user
+
+                await _pushRepo.UpdateAsync(existing);
+            }
+            else
+            {
+                var newSub = new PushSubscription
+                {
+                    SubscriptionId = Guid.NewGuid(),
+                    AccountId = accountId,
+                    Endpoint = request.Endpoint,
+                    P256dh = request.P256dh,
+                    Auth = request.Auth,
+                    DeviceName = request.DeviceName,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _pushRepo.AddAsync(newSub);
+            }
+
+            await _pushRepo.SaveChangesAsync();
+        }
+
+        public async Task UnsubscribeAsync(string endpoint)
+        {
+            await _pushRepo.DeleteByEndpointAsync(endpoint);
+            await _pushRepo.SaveChangesAsync();
         }
 
         public async Task<Guid?> GetAccountIdByStudentIdAsync(Guid studentId)

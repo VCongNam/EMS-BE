@@ -601,5 +601,18 @@ namespace EMS.Infrastructure.Repositories
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
         }
+
+        public async Task<Transaction?> GetTransactionStudentAndInvoiceId(Guid invoiceId, Guid studentId)
+        {
+            return await context.Transactions
+                .FirstOrDefaultAsync(t => t.InvoiceId == invoiceId && t.Invoice.StudentId == studentId);
+
+        }
+
+        public async Task UpdateTransactionAsync(Transaction transaction)
+        {
+            context.Transactions.Update(transaction);
+            await context.SaveChangesAsync();
+        }
     }
 }
