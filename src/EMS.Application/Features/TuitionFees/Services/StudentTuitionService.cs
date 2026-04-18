@@ -271,6 +271,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             var result = transactions.Select(t => new StudentTransactionViewDto
             {
                 TransactionId = t.TransactionId,
+                InvoiceId = t.InvoiceId,
                 InvoiceContent = !string.IsNullOrWhiteSpace(t.Invoice.Description)
                              ? t.Invoice.Description
                              : $"Học phí tháng {t.Invoice.PeriodMonth}/{t.Invoice.PeriodYear}",
