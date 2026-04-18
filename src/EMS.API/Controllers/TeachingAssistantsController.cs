@@ -4,6 +4,7 @@ using EMS.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace EMS.API.Controllers
 {
@@ -70,6 +71,20 @@ namespace EMS.API.Controllers
                 await _classTAService.ReviewTaskAsync(taskId, request.IsApproved, request.Feedback);
                 string msg = request.IsApproved ? "Đã duyệt nhiệm vụ." : "Đã từ chối nhiệm vụ.";
                 return Ok(new { message = msg });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("{classTaId}/permission")]
+        public async Task<IActionResult> GetTAPermission(Guid classTaId)
+        {
+            try
+            {
+                string permisison = await _classTAService.GetTAPermissionAsync(classTaId);
+                return Ok(permisison);
             }
             catch (Exception ex)
             {

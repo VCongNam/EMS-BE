@@ -461,5 +461,20 @@ namespace EMS.Application.Features.Classes.Services
             }
             catch (Exception ex) { _logger.LogError(ex.Message); }
         }
+
+        public async Task<string> GetTAPermissionAsync(Guid classTaId)
+        {
+            Guid taId = _currentUser.UserId;
+
+            var permisison = await _taRepository.GetClassTAByIdAsync(classTaId);
+
+            if( string.IsNullOrEmpty(permisison.Permission))
+            {
+                throw new Exception("Giáo viên chưa phân quyền cho bạn trong lớp này.");
+            }
+
+            return permisison.Permission;
+
+        }
     }
 }
