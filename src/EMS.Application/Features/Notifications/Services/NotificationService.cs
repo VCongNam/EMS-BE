@@ -117,7 +117,8 @@ namespace EMS.Application.Features.Notifications.Services
                     badgeCount = unreadCount
                 }
             };
-            string payloadJson = JsonSerializer.Serialize(payloadObj);
+            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            string payloadJson = JsonSerializer.Serialize(payloadObj, options);
 
             var subscriptions = await _pushRepo.GetSubscriptionsByAccountIdAsync(targetAccountId);
 
@@ -179,7 +180,8 @@ namespace EMS.Application.Features.Notifications.Services
                         relevantStudentIds = relevantStudentIds
                     }
                 };
-                string payloadJson = JsonSerializer.Serialize(payloadObj);
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                string payloadJson = JsonSerializer.Serialize(payloadObj, options);
 
                 var subscriptions = await _pushRepo.GetSubscriptionsByAccountIdAsync(accId);
 
