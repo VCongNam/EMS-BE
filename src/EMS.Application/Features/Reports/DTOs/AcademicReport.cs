@@ -23,6 +23,7 @@ namespace EMS.Application.Features.Reports.DTOs
         public Guid ClassId { get; set; }
         public string ClassName { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
 
         public OverviewMetrics Overview { get; set; } = new();
         public StudentGrowthMetrics StudentGrowth { get; set; } = new();
@@ -46,5 +47,20 @@ namespace EMS.Application.Features.Reports.DTOs
     public class AcademicPerformanceMetrics
     {
         public double AttendanceRatePercent { get; set; }
+        public GradingDistributionDto Grading { get; set; } = new();
+    }
+
+    public class GradingDistributionDto
+    {
+        public int ExcellentCount { get; set; } // Giỏi (>= 8.0)
+        public int GoodCount { get; set; }      // Khá (6.5 - 7.9)
+        public int AverageCount { get; set; }   // Trung bình (5.0 - 6.4)
+        public int WeakCount { get; set; }      // Yếu (< 5.0)
+
+        public int TotalGradedStudents => ExcellentCount + GoodCount + AverageCount + WeakCount;
+        public int AboveAverageCount => ExcellentCount + GoodCount + AverageCount; // Điểm >= 5.0
+        public double AboveAveragePercent => TotalGradedStudents > 0
+            ? Math.Round((double)AboveAverageCount / TotalGradedStudents * 100, 2)
+            : 0;
     }
 }

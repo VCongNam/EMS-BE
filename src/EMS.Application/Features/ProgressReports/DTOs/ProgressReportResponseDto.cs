@@ -20,12 +20,13 @@ namespace EMS.Application.Features.ProgressReports.DTOs
         public int? PeriodYear { get; set; }
         public string? Title { get; set; }
         public string? Content { get; set; }
-        public string Status { get; set; }
+        public string Status { get; set; } = "Draft";
         public decimal? Gpa { get; set; }
         public decimal? AttendanceRate { get; set; }
 
         public DateTime? CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }    
-
+        public DateTime? UpdatedAt { get; set; }
+        public List<GradeHistoryDto> GradeHistory { get; set; } = new();
+        public List<AttendanceHistoryDto> AttendanceHistory { get; set; } = new();
     }
 }
