@@ -441,7 +441,7 @@ namespace EMS.Application.Features.Classes.Services
             }
             else
             {
-                task.Status = "InProgress"; 
+                task.Status = "Rejected"; 
                 task.Feedback = teacherFeedback; 
             }
 

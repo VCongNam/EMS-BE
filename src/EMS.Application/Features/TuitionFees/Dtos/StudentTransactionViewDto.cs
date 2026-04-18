@@ -9,6 +9,7 @@ namespace EMS.Application.Features.TuitionFees.Dtos
     public class StudentTransactionViewDto
     {
         public Guid TransactionId { get; set; }
+        public Guid InvoiceId { get; set; }
 
         public string InvoiceContent { get; set; }
 
