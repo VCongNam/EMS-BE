@@ -39,7 +39,14 @@ namespace EMS.Application.Features.Gradebook.Services
         {
             var classroom = await _classRepository.GetByIdAsync(classId);
             if (classroom == null) throw new Exception("Class not found.");
-            if (classroom.TeacherId != _currentUserService.UserId) throw new Exception("You do not have access to this class's gradebook.");
+            var tas = await _classRepository.GetTAsByClassIdAsync(classId);
+            bool isAssigned = false;
+            if (_currentUserService.Role == "TA")
+            {
+                isAssigned = tas.Any(ta => ta.Taid == _currentUserService.UserId);
+            }
+
+            if (classroom.TeacherId != _currentUserService.UserId && !isAssigned) throw new Exception("You do not have access to this class's gradebook.");
         }
 
         public async Task<IEnumerable<GradeCategoryDto>> GetGradeCategoriesByClassAsync(Guid classId)
