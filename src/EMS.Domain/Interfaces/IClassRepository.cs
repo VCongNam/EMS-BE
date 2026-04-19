@@ -14,6 +14,7 @@ namespace EMS.Domain.Interfaces
         Task<IEnumerable<ClassEnrollment>> GetClassMemberAsync(Guid classId);
         Task<IEnumerable<Class>> GetClassesByTeacherIdAsync(Guid teacherId);
         Task<Class?> GetByIdAsync(Guid classId);
+        Task<Class?> GetClassDetailByIdAsync(Guid classId);
         Task UpdateAsync(Class classroom);
 
         Task<Subject?> GetSubjectByNameAndGradeAsync(string subjectName, short gradeLevel);

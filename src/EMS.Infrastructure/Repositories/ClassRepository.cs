@@ -32,6 +32,16 @@ namespace EMS.Infrastructure.Repositories
                 .FirstOrDefaultAsync(c => c.ClassId == classId && (c.IsDeleted == null || c.IsDeleted == false));
         }
 
+        public async Task<Class?> GetClassDetailByIdAsync(Guid classId)
+        {
+            return await _context.Classes
+                .AsNoTracking()
+                .Include(c => c.Subject)
+                .Include(c => c.ClassSchedules)
+                .Include(c => c.ClassEnrollments)
+                .FirstOrDefaultAsync(c => c.ClassId == classId && (c.IsDeleted == null || c.IsDeleted == false));
+        }
+
         public async Task<IEnumerable<Class>> GetClassesByTeacherIdAsync(Guid teacherId)
         {
             return await _context.Classes
