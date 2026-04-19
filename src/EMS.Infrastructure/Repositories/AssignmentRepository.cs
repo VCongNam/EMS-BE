@@ -80,7 +80,7 @@ namespace EMS.Infrastructure.Repositories
             Guid classId, Guid studentId, int page, int size)
         {
             var query = _context.Assignments
-                .Where(a => a.ClassId == classId && a.IsDeleted == false)
+                .Where(a => a.ClassId == classId && a.IsDeleted == false && a.Status == "Published")
                 .AsNoTracking();
 
             int totalCount = await query.CountAsync();

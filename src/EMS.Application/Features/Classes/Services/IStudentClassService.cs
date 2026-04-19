@@ -12,6 +12,5 @@ namespace EMS.Application.Features.Classes.Services
     {
         Task<PagedResult<EnrolledClassDto>> GetMyClassesAsync(EnrolledClassFilter filter);
         Task<EnrolledClassDetailDto> GetClassDetailAsync(Guid classId);
-        
     }
 }

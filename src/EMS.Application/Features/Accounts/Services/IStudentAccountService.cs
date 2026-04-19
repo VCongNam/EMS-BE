@@ -14,5 +14,7 @@ namespace EMS.Application.Features.Accounts.Services
         Task<ImportResultDto> ImportStudentsFromExcelAsync(IFormFile excelFile);
 
         byte[] ExportImportResultToExcel(ImportResultDto result);
+
+        Task<bool> ResetStudentPasswordAsync(Guid studentId, string newPassword);
     }
 }
