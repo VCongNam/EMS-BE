@@ -39,7 +39,11 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Class?> GetClassByIdAsync(Guid classId)
         {
-            return await context.Classes.Include(c => c.Subject).Include(c => c.ClassEnrollments)
+            return await context.Classes
+                .Include(c => c.Subject)
+                .Include(c => c.ClassEnrollments)
+                    .ThenInclude(e => e.Student) 
+                .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.ClassId == classId && c.IsDeleted != true);
         }
 
@@ -61,7 +65,8 @@ namespace EMS.Infrastructure.Repositories
                     New = g.Count(x => x.EnrolledDate >= start && x.EnrolledDate <= end),
                     Drop = g.Count(x => x.DroppedDate >= start && x.DroppedDate <= end)
                 }).ToListAsync();
-            return data.ToDictionary(x => x.ClassId, x => (x.New, x.Drop));
+
+            return data.ToDictionary(x => x.ClassId, x => (NewCount: x.New, DropoutCount: x.Drop));
         }
 
         public async Task<Dictionary<Guid, (int TotalSlots, int PresentCount)>> GetAttendanceStatsAsync(List<Guid> classIds, DateOnly start, DateOnly end)
@@ -74,7 +79,8 @@ namespace EMS.Infrastructure.Repositories
                     Total = g.Count(),
                     Present = g.Count(x => x.Status == "Present")
                 }).ToListAsync();
-            return data.ToDictionary(x => x.ClassId, x => (x.Total, x.Present));
+
+            return data.ToDictionary(x => x.ClassId, x => (TotalSlots: x.Total, PresentCount: x.Present));
         }
     }
 }

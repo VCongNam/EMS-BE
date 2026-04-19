@@ -123,10 +123,9 @@ namespace EMS.Application.Features.Reports.Services
             var cls = await reportRepository.GetClassByIdAsync(classId);
             if (cls == null) throw new NotFoundException("Lớp học", classId);
 
-            if (cls.TeacherId != currentUserService.UserId)
+            var teacherId = currentUserService.UserId;
+            if (cls.TeacherId != teacherId)
                 throw new ForbiddenAccessException("Bạn không có quyền truy cập báo cáo của lớp này.");
-
-            if (startDate >= endDate) throw new BadRequestException("Ngày bắt đầu phải trước ngày kết thúc.");
 
             var startOnly = DateOnly.FromDateTime(startDate);
             var endOnly = DateOnly.FromDateTime(endDate);
@@ -137,19 +136,39 @@ namespace EMS.Application.Features.Reports.Services
             var submissions = await reportRepository.GetSubmissionsForClassesAsync(classIds, startDate, endDate);
 
             var classGrading = new GradingDistributionDto();
+            var studentGradeList = new List<StudentGradeSummaryDto>();
+
             var studentGroups = submissions.GroupBy(s => s.StudentId);
 
             foreach (var group in studentGroups)
             {
+                var studentId = group.Key;
+                var studentName = cls.ClassEnrollments
+                    .FirstOrDefault(e => e.StudentId == studentId)?.Student?.FullName ?? "Học sinh ẩn danh";
+
                 decimal gpa = CalculateGpa(group.ToList());
-                if (gpa >= 8.0m) classGrading.ExcellentCount++;
-                else if (gpa >= 6.5m) classGrading.GoodCount++;
-                else if (gpa >= 5.0m) classGrading.AverageCount++;
-                else classGrading.WeakCount++;
+                string rank;
+
+                if (gpa >= 8.0m) { rank = "Giỏi"; classGrading.ExcellentCount++; }
+                else if (gpa >= 6.5m) { rank = "Khá"; classGrading.GoodCount++; }
+                else if (gpa >= 5.0m) { rank = "Trung bình"; classGrading.AverageCount++; }
+                else { rank = "Yếu"; classGrading.WeakCount++; }
+
+                studentGradeList.Add(new StudentGradeSummaryDto
+                {
+                    StudentId = studentId,
+                    StudentName = studentName,
+                    Gpa = gpa,
+                    Rank = rank
+                });
             }
 
-            (int NewCount, int DropoutCount) eStat = enrollStats.GetValueOrDefault(classId, (0, 0));
-            (int TotalSlots, int PresentCount) aStat = attendStats.GetValueOrDefault(classId, (0, 0));
+            // 4. Map dữ liệu vào DTO cuối cùng
+
+
+
+            (int NewCount, int DropoutCount)eStat = enrollStats.GetValueOrDefault(classId, (0, 0));
+            (int TotalSlots, int PresentCount)aStat = attendStats.GetValueOrDefault(classId, (0, 0));
             int activeInClass = cls.ClassEnrollments.Count(x => x.Status == "Active");
 
             return new ClassBreakdownDto
@@ -173,7 +192,9 @@ namespace EMS.Application.Features.Reports.Services
                 {
                     AttendanceRatePercent = aStat.TotalSlots > 0 ? Math.Round((double)aStat.PresentCount / aStat.TotalSlots * 100, 2) : 0,
                     Grading = classGrading
-                }
+                },
+                // Đổ danh sách học sinh đã tính toán vào đây
+                StudentGrades = studentGradeList.OrderByDescending(x => x.Gpa).ToList()
             };
         }
 
