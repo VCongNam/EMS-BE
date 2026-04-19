@@ -148,5 +148,19 @@ namespace EMS.API.Controllers
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
+
+        //Reset student password
+        [HttpPut("student/reset-password")]
+        public async Task<IActionResult> ResetStudentPassword([FromBody] ResetStudentPasswordDto request)
+        {
+            try
+            {
+                await _studentAccountService.ResetStudentPasswordAsync(request.StudentId, request.NewPassword);
+
+                return Ok(new { Message = "Đã cấp lại mật khẩu thành công cho học sinh!" });
+            }
+            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
+        }
+
     }
 }

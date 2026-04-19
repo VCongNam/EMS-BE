@@ -49,5 +49,12 @@ namespace EMS.Infrastructure.Repositories
         {
             await _context.SaveChangesAsync();
         }
+
+        public async Task<bool> IsTeacherHasStudent(Guid studentId, Guid teacherId)
+        {
+            return await _context.ClassEnrollments
+                .Where(ce => ce.Class.TeacherId == teacherId)
+                .AnyAsync(ce => ce.StudentId == studentId);
+        }
     }
 }
