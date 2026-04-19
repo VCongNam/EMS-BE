@@ -368,7 +368,7 @@ namespace EMS.Application.Features.Classes.Services
 
         public async Task<ClassDetailDto> GetClassDetailAsync(Guid classId)
         {
-            var classroom = await _classRepository.GetByIdAsync(classId);
+            var classroom = await _classRepository.GetClassDetailByIdAsync(classId);
 
             if (classroom == null)
             {
@@ -380,12 +380,29 @@ namespace EMS.Application.Features.Classes.Services
                 ClassId = classroom.ClassId,
                 TeacherId = classroom.TeacherId,
                 ClassName = classroom.ClassName,
+                SubjectName = classroom.Subject?.SubjectName ?? string.Empty,
                 Room = classroom.Room,
+                MaxStudents = classroom.MaxStudents,
+                CurrentStudents = classroom.ClassEnrollments.Count(ce => ce.Status == "Active"),
                 TuitionFee = classroom.TuitionFee,
+                BillingMethod = classroom.BillingMethod ?? string.Empty,
+                BillingCycle = classroom.BillingCycle ?? string.Empty,
+                PaymentDeadlineDays = classroom.PaymentDeadlineDays ?? 0,
+                TuitionNote = classroom.TuitionNote,
                 StartDate = classroom.StartDate,
                 EndDate = classroom.EndDate,
                 Status = classroom.Status,
-                CreatedAt = (DateTime)classroom.CreatedAt
+                CreatedAt = (DateTime)classroom.CreatedAt!,
+                Schedules = classroom.ClassSchedules
+                    .OrderBy(s => s.DayOfWeek)
+                    .ThenBy(s => s.StartTime)
+                    .Select(s => new ScheduleDto
+                    {
+                        DayOfWeek = s.DayOfWeek,
+                        StartTime = s.StartTime,
+                        EndTime = s.EndTime
+                    })
+                    .ToList()
             };
         }
 
@@ -570,7 +587,6 @@ namespace EMS.Application.Features.Classes.Services
                 throw new Exception("Không thể thay đổi danh sách học sinh của lớp đã kết thúc hoặc lưu trữ.");
             }
 
-            // 2. Phân quyền (Authorization): Chỉ Admin hoặc đúng Giáo viên chủ nhiệm mới được đuổi
             if (currentUserRole != "Teacher" && classroom.TeacherId != currentUserId)
             {
                 throw new UnauthorizedAccessException("Bạn không có quyền đuổi học sinh khỏi lớp này. Chỉ Giáo viên phụ trách mới được phép thao tác.");
