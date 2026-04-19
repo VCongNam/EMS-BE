@@ -1,6 +1,7 @@
 ﻿using ClosedXML.Excel;
 using DocumentFormat.OpenXml.VariantTypes;
 using EMS.Application.Common.Helpers;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Accounts.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
@@ -17,11 +18,13 @@ namespace EMS.Application.Features.Accounts.Services
     {
         private readonly IAccountRepository _accountRepository;
         private readonly IStudentRepository _studentRepository;
+        private readonly ICurrentUserService _currentUser;
         private static readonly Random _random = new Random();
-        public StudentAccountService(IAccountRepository accountRepository, IStudentRepository studentRepository)
+        public StudentAccountService(IAccountRepository accountRepository, IStudentRepository studentRepository, ICurrentUserService currentUser)
         {
             _accountRepository = accountRepository;
             _studentRepository = studentRepository;
+            _currentUser = currentUser;
         }
         public async Task<(Guid StudentId, string? InitialPassword, bool IsNewAccount)> CreateStudentAsync(CreateStudentDto request)
         {
@@ -296,6 +299,21 @@ namespace EMS.Application.Features.Accounts.Services
                     return stream.ToArray();
                 }
             }
+        }
+
+        public async Task<bool> ResetStudentPasswordAsync(Guid studentId, string newPassword)
+        {
+            var teacherId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            if (currentUserRole != "Teacher") throw new Exception("Bạn phải là giáo viên để thực hiện hành động này");
+
+            var student = await _studentRepository.GetByIdAsync(studentId);
+            if (student == null)
+            {
+                throw new KeyNotFoundException("Không tìm thấy hồ sơ học sinh.");
+            }
+            return true;
+
         }
     }
 }

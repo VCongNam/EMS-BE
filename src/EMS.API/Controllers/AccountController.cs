@@ -106,6 +106,7 @@ namespace EMS.API.Controllers
                 {
                     message = "Create student account successfully!",
                     studentId = result.StudentId,
+                    password = result.InitialPassword,
                     isNewAccount = result.IsNewAccount
                 });
             }
@@ -145,7 +146,5 @@ namespace EMS.API.Controllers
             }
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
-
-
     }
 }

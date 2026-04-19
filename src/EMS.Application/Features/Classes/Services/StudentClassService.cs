@@ -102,5 +102,6 @@ namespace EMS.Application.Features.Classes.Services
                 CurrentPage = filter.Page
             };
         }
+
     }
 }

@@ -27,6 +27,7 @@ namespace EMS.Infrastructure.Repositories
         public async Task<Student?> GetByIdAsync(Guid studentId)
         {
             return await _context.Students
+                .Include(x => x.Account)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.StudentId == studentId);
         }
