@@ -56,7 +56,6 @@ namespace EMS.API.Middlewares
                 case FluentValidation.ValidationException validationEx:
                     statusCode = (int)HttpStatusCode.BadRequest; // 400
                     message = "Dữ liệu đầu vào không hợp lệ.";
-                    // Gom các lỗi của FluentValidation lại
                     errors = validationEx.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
                     break;
                 // THÊM MỚI: Xử lý Forbidden
@@ -70,13 +69,11 @@ namespace EMS.API.Middlewares
                     message = conflictEx.Message;
                     break;
                 default:
-                    // Lỗi 500 (Lỗi code, sập DB...) thì giữ nguyên message mặc định để giấu lỗi thật
-                    // Nếu đang ở môi trường Development, có thể in lỗi thật ra để dễ debug:
-                    message = exception.Message; // Bật dòng này khi đang code, khi đem đi chấm đồ án thì tắt đi
+                  
+                    message = exception.Message;
                     break;
             }
 
-            // 2. Format lại cục JSON trả về cho Frontend
             var result = JsonSerializer.Serialize(new
             {
                 StatusCode = statusCode,

@@ -17,14 +17,30 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("growth")]
-        public async Task<IActionResult> GetTeacherGrowthReport([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        public async Task<IActionResult> GetTeacherGrowthReport(
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate,
+            [FromQuery] Guid? subjectId,
+            [FromQuery] string? status)
         {
+            var result = await reportService.GetGrowthReportAsync(startDate, endDate, subjectId, status);
+            return Ok(result);
+        }
 
-            var result = await reportService.GetGrowthReportAsync(startDate, endDate);
+
+        [HttpGet("classes/{classId}/growth")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetSingleClassGrowthReport(
+            Guid classId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
+        {
+            var result = await reportService.GetSingleClassGrowthReportAsync(classId, startDate, endDate);
+
             return Ok(new
             {
                 StatusCode = 200,
-                Message = "Lấy dữ liệu báo cáo thành công.",
+                Message = "Lấy báo cáo chi tiết lớp học thành công.",
                 Data = result
             });
         }

@@ -87,6 +87,12 @@ namespace EMS.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task DeleteSessionsAsync(IEnumerable<Session> sessions)
+        {
+            _context.Sessions.RemoveRange(sessions);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<IEnumerable<Attendance>> GetAttendancesBySessionIdAsync(Guid sessionId)
         {
             return await _context.Attendances

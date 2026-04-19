@@ -165,5 +165,20 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        // [GET] /api/session/class/{classId}/attendance-history
+        [HttpGet("class/{classId}/attendance-history")]
+        public async Task<IActionResult> GetClassAttendanceHistory(Guid classId)
+        {
+            try
+            {
+                var history = await _sessionService.GetClassAttendanceHistoryAsync(classId);
+                return Ok(history);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
     }
 }

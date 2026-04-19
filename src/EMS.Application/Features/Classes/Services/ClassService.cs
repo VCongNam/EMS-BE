@@ -432,11 +432,68 @@ namespace EMS.Application.Features.Classes.Services
                 {
                     ScheduleId = Guid.NewGuid(),
                     ClassId = classId,
-                    DayOfWeek = s.DayOfWeek,
+                    DayOfWeek = s.DayOfWeek == 0 ? (short)7 : s.DayOfWeek,
                     StartTime = s.StartTime,
                     EndTime = s.EndTime
                 });
                 await _classRepository.AddSchedulesAsync(schedules);
+
+                // 4. Update Sessions
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var currentTime = TimeOnly.FromDateTime(DateTime.UtcNow);
+
+                var existingSessions = (await _sessionRepository.GetSessionsByClassIdAsync(classId)).ToList();
+                
+                var upcomingSessions = existingSessions.Where(s => 
+                    s.Status == "Scheduled" && 
+                    (s.Date > today || (s.Date == today && s.StartTime > currentTime))
+                ).ToList();
+
+                if (upcomingSessions.Any())
+                {
+                    await _sessionRepository.DeleteSessionsAsync(upcomingSessions);
+                }
+
+                var keptSessions = existingSessions.Except(upcomingSessions).ToList();
+                int lessonCount = keptSessions.Count + 1;
+
+                var newSessions = new List<Session>();
+
+                for (var d = request.StartDate; d <= request.EndDate; d = d.AddDays(1))
+                {
+                    short currentDayOfWeek = (short)d.DayOfWeek;
+                    if (currentDayOfWeek == 0) currentDayOfWeek = 7;
+
+                    var matchingSchedules = request.Schedules.Where(s => (s.DayOfWeek == 0 ? 7 : s.DayOfWeek) == currentDayOfWeek);
+                    
+                    foreach (var s in matchingSchedules)
+                    {
+                        var isFuture = d > today || (d == today && s.StartTime > currentTime);
+                        
+                        if (isFuture)
+                        {
+                            newSessions.Add(new Session
+                            {
+                                SessionId = Guid.NewGuid(),
+                                ClassId = classId,
+                                Title = $"Buổi {lessonCount}: {request.ClassName}",
+                                Date = d,
+                                StartTime = s.StartTime,
+                                EndTime = s.EndTime,
+                                Status = "Scheduled",
+                                IsDeleted = false,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
+                            });
+                            lessonCount++;
+                        }
+                    }
+                }
+
+                if (newSessions.Any())
+                {
+                    await _sessionRepository.AddSessionsAsync(newSessions);
+                }
             }
         }
 

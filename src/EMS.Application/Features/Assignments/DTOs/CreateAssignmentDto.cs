@@ -13,6 +13,7 @@ namespace EMS.Application.Features.Assignments.DTOs
         public DateTime DueDate { get; set; }
         public bool AllowLateSubmission { get; set; }
         public bool Isgraded { get; set; } = true;
+        public string Status { get; set; } = "Draft"; // "Draft" or "Published"
         public List<IFormFile>? Attachments { get; set; }
     }
 }

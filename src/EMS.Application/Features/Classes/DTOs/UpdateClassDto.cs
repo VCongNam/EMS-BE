@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,7 +13,7 @@ namespace EMS.Application.Features.Classes.DTOs
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
         public decimal TuitionFee { get; set; }
-        public short MaxStudents { get; set; }
+        public short? MaxStudents { get; set; }
         public string SubjectName { get; set; } = string.Empty;
         public short GradeLevel { get; set; }
         public List<ScheduleDto> Schedules { get; set; } = new();

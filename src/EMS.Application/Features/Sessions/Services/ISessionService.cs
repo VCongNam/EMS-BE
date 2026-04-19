@@ -17,5 +17,6 @@ namespace EMS.Application.Features.Sessions.Services
         Task<IEnumerable<AttendanceResponseDto>> GetAttendanceListAsync(Guid sessionId);
         Task TakeAttendanceBulkAsync(Guid sessionId, IEnumerable<TakeAttendanceDto> requests);
         Task UpdateAttendanceAsync(Guid attendanceId, UpdateAttendanceDto request);
+        Task<IEnumerable<ClassAttendanceHistoryDto>> GetClassAttendanceHistoryAsync(Guid classId);
     }
 }
