@@ -72,7 +72,7 @@ namespace EMS.Application.Features.Accounts.Services
                 accountIdToUse = isAccountExisted.AccountId;
             }
 
-            //Check stuednt in Account
+            //Check student in Account
             var dob = DateOnly.FromDateTime(request.DOB);
             var existingStudent = await _studentRepository.IsStudentExistAsync(accountIdToUse, fullName, dob);
             if (existingStudent != null)
@@ -312,8 +312,21 @@ namespace EMS.Application.Features.Accounts.Services
             {
                 throw new KeyNotFoundException("Không tìm thấy hồ sơ học sinh.");
             }
-            return true;
+            var canReset = await _studentRepository.IsTeacherHasStudent(studentId, teacherId);
+            if (canReset == false) throw new Exception("Học sinh này không thuộc các lớp của bạn. Bạn không thể sửa thông tin học sinh này.");
 
+            var account = await _accountRepository.GetByIdAsync(student.AccountId);
+            if (account == null)
+            {
+                throw new KeyNotFoundException("Không tìm thấy tài khoản liên kết với học sinh này.");
+            }
+
+            account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword.Trim());
+            account.Status = "Unverified";
+            account.UpdatedAt = DateTime.UtcNow;
+            await _accountRepository.UpdateAsync(account);
+
+            return true;
         }
     }
 }

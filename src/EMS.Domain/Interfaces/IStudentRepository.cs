@@ -14,5 +14,7 @@ namespace EMS.Domain.Interfaces
         Task AddAsync(Student student);
         Task UpdateAsync(Student student);
         Task SaveChangesAsync();
+
+        Task<bool> IsTeacherHasStudent(Guid studentId, Guid teacherId);
     }
 }
