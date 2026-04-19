@@ -20,8 +20,7 @@ namespace EMS.Application.Features.Classes.Validators
                 .NotEmpty().WithMessage("Tên môn học không được để trống.");
             RuleFor(x => x.GradeLevel)
                 .InclusiveBetween((short)1, (short)12).WithMessage("Khối lớp phải từ 1 đến 12.");
-            RuleFor(x => x.MaxStudents)
-                .GreaterThan((short)0).When(x => x.MaxStudents.HasValue).WithMessage("Số lượng học sinh tối đa phải lớn hơn 0.");
+         
             RuleFor(x => x.TuitionFee)
                 .NotNull().WithMessage("Học phí là bắt buộc.")
                 .GreaterThanOrEqualTo(0).WithMessage("Học phí không được âm.");

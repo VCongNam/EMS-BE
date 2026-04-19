@@ -69,7 +69,7 @@ namespace EMS.Application.Features.Assignments.Services
                 DueDate = request.DueDate,
                 AllowLateSubmission = request.AllowLateSubmission,
                 Isgraded = request.Isgraded,
-                Status = "Published",
+                Status = request.Status == "Published" ? "Published" : "Draft",
                 IsDeleted = false,
                 CreatedAt = DateTime.UtcNow
             };
@@ -99,24 +99,9 @@ namespace EMS.Application.Features.Assignments.Services
                 }
             }
 
-            //Notification
-            try
+            if (assignment.Status == "Published")
             {
-                var studentAccountIds = await _notificationService.GetStudentTargetsAsync(request.ClassId);
-                if (studentAccountIds.Any())
-                {
-                    await _notificationService.SendBulkNotificationWithStudentAsync(
-                            targets: studentAccountIds,
-                            title: "Bài tập mới",
-                            content: $"Giáo viên đã giao bài tập mới: {request.Title}. Hạn nộp: {request.DueDate}",
-                            actionUrl:$"/student/classes/{request.ClassId}/assignment/{assignment.AssignmentId}",
-                            type:"Assignment"
-                        );
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Lỗi gửi thông báo bài tập mới: {ex.Message}");
+                await SendAssignmentNotificationAsync(assignment);
             }
 
             return assignment.AssignmentId;
@@ -254,6 +239,43 @@ namespace EMS.Application.Features.Assignments.Services
             });
         }
 
+        public async Task PublishAssignmentAsync(Guid assignmentId)
+        {
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            if (assignment == null) throw new Exception("Assignment not found.");
+
+            if (assignment.Status == "Published") return;
+
+            assignment.Status = "Published";
+            assignment.UpdatedAt = DateTime.UtcNow;
+
+            await _assignmentRepository.UpdateAsync(assignment);
+
+            await SendAssignmentNotificationAsync(assignment);
+        }
+
+        private async Task SendAssignmentNotificationAsync(Assignment assignment)
+        {
+            try
+            {
+                var studentAccountIds = await _notificationService.GetStudentTargetsAsync(assignment.ClassId);
+                if (studentAccountIds.Any())
+                {
+                    await _notificationService.SendBulkNotificationWithStudentAsync(
+                            targets: studentAccountIds,
+                            title: "Bài tập mới",
+                            content: $"Giáo viên đã giao bài tập mới: {assignment.Title}. Hạn nộp: {assignment.DueDate}",
+                            actionUrl: $"/student/classes/{assignment.ClassId}/assignment/{assignment.AssignmentId}",
+                            type: "Assignment"
+                        );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Lỗi gửi thông báo khi giao bài tập: {ex.Message}");
+            }
+        }
+
         public async Task<AssignmentSubmissionsDto> GetAssignmentSubmissionsAsync(Guid assignmentId)
         {
             var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
@@ -280,6 +302,7 @@ namespace EMS.Application.Features.Assignments.Services
         private string GetAssignmentStatus(Assignment assignment)
         {
             if (assignment.IsDeleted == true) return "Deleted";
+            if (assignment.Status == "Draft") return "Draft";
             if (assignment.DueDate < DateTime.UtcNow) return "Overdue";
             return "Published";
         }
