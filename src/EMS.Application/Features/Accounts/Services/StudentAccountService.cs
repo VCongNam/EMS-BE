@@ -189,6 +189,9 @@ namespace EMS.Application.Features.Accounts.Services
                     if (string.IsNullOrWhiteSpace(studentName))
                         throw new Exception("Tên học sinh không được để trống.");
 
+                    if (string.IsNullOrWhiteSpace(phone) || !DataValidator.IsValidPhoneNumber(phone))
+                        throw new Exception("Số điện thoại không được để trống và phải đúng định dạng.");
+
                     if (!DateTime.TryParse(dob, out DateTime birthDate))
                         throw new Exception("Ngày sinh không đúng định dạng.");
 
