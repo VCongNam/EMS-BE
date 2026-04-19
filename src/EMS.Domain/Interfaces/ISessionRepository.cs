@@ -16,6 +16,7 @@ namespace EMS.Domain.Interfaces
         Task AddSessionAsync(Session session);
         Task UpdateSessionAsync(Session session);
         Task DeleteSessionAsync(Session session);
+        Task DeleteSessionsAsync(IEnumerable<Session> sessions);
 
         Task<IEnumerable<Attendance>> GetAttendancesBySessionIdAsync(Guid sessionId);
         Task<Attendance?> GetAttendanceByIdAsync(Guid attendanceId);

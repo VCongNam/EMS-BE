@@ -31,8 +31,7 @@ namespace EMS.API.Controllers
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
         {
-            try
-            {
+          
                 var accountId = currentUserService.UserId;
 
                 if (accountId == Guid.Empty)
@@ -40,8 +39,7 @@ namespace EMS.API.Controllers
 
                 var profile = await accountService.GetProfileAsync(accountId);
                 return Ok(profile);
-            }
-            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
+           
         }
         
 
