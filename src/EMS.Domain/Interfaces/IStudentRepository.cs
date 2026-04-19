@@ -16,5 +16,6 @@ namespace EMS.Domain.Interfaces
         Task SaveChangesAsync();
 
         Task<bool> IsTeacherHasStudent(Guid studentId, Guid teacherId);
+        Task<IEnumerable<ClassEnrollment>> GetAllManagedStudentAsync(Guid teacherId);
     }
 }

@@ -363,6 +363,22 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
+        [HttpGet("my-students")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetMyStudents()
+        {
+            try
+            {
+                var result = await _studentClassService.GetStudentsManagedByTeacherAsync();
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Error = "Lỗi khi lấy danh sách học sinh: " + ex.Message });
+            }
+        }
     }
 
 }

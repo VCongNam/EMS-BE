@@ -18,12 +18,18 @@ namespace EMS.Application.Features.Classes.Services
         private readonly ICurrentUserService _currentUser;
         private readonly IClassRepository _classRepository;
         private readonly IAssignmentRepository _assignmentRepository;
+        private readonly IStudentRepository _studentRepository;
 
-        public StudentClassService(ICurrentUserService currentUser, IClassRepository classRepository, IAssignmentRepository assignmentRepository)
+        public StudentClassService(
+            ICurrentUserService currentUser,
+            IClassRepository classRepository,
+            IAssignmentRepository assignmentRepository,
+            IStudentRepository studentRepository)
         {
             _currentUser = currentUser;
             _classRepository = classRepository;
             _assignmentRepository = assignmentRepository;
+            _studentRepository = studentRepository;
         }
 
 
@@ -103,5 +109,29 @@ namespace EMS.Application.Features.Classes.Services
             };
         }
 
+        public async Task<List<ManagedStudentDto>> GetStudentsManagedByTeacherAsync()
+        {
+            var teacherId = _currentUser.UserId;
+            var currentUserRole = _currentUser.Role;
+            if (currentUserRole != "Teacher") throw new Exception("Bạn phải là giáo viên để thực hiện hành động này");
+            var rawData = await _studentRepository.GetAllManagedStudentAsync(teacherId);
+
+            var result = rawData
+                .GroupBy(ce => ce.StudentId)
+                .Select(group =>
+                {
+                    var firstEntry = group.First();
+                    return new ManagedStudentDto
+                    {
+                        StudentId = group.Key,
+                        FullName = firstEntry.Student.FullName,
+                        PhoneNumber = firstEntry.Student.Account?.PhoneNumber ?? "N/A",
+                        ClassNames = group.Select(ce => ce.Class.ClassName).Distinct().ToList()
+                    };
+                })
+                .OrderBy(s => s.FullName)
+                .ToList();
+            return result;
+        }
     }
 }

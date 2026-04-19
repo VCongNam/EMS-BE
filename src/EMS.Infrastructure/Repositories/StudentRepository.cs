@@ -56,5 +56,14 @@ namespace EMS.Infrastructure.Repositories
                 .Where(ce => ce.Class.TeacherId == teacherId)
                 .AnyAsync(ce => ce.StudentId == studentId);
         }
+
+        public async Task<IEnumerable<ClassEnrollment>> GetAllManagedStudentAsync(Guid teacherId)
+        {
+            return await _context.ClassEnrollments
+                .Include(ce => ce.Class)
+                .Include(ce => ce.Student)
+                    .ThenInclude(s => s.Account)
+                .Where(ce => ce.Class.TeacherId == teacherId && ce.Class.IsDeleted == false).ToListAsync();
+        }
     }
 }
