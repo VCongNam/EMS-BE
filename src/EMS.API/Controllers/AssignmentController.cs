@@ -25,7 +25,21 @@ namespace EMS.API.Controllers
             try
             {
                 var id = await _assignmentService.CreateAssignmentAsync(request);
-                return Ok(new { AssignmentId = id, Message = "Assignment created successfully!" });
+                return Ok(new { AssignmentId = id, Message = "Assignment created successfully (Draft)!" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("{id}/publish")]
+        public async Task<IActionResult> PublishAssignment(Guid id)
+        {
+            try
+            {
+                await _assignmentService.PublishAssignmentAsync(id);
+                return Ok(new { Message = "Assignment published successfully!" });
             }
             catch (Exception ex)
             {

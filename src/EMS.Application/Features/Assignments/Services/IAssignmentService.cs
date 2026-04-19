@@ -12,6 +12,7 @@ namespace EMS.Application.Features.Assignments.Services
         Task DeleteAssignmentAsync(Guid id);
         Task<AssignmentDetailDto> GetAssignmentDetailAsync(Guid assignmentId);
         Task<IEnumerable<AssignmentSummaryDto>> GetAssignmentsByClassIdAsync(Guid classId);
+        Task PublishAssignmentAsync(Guid assignmentId);
         Task<AssignmentSubmissionsDto> GetAssignmentSubmissionsAsync(Guid assignmentId);
 
         // Grading functionalities moved from Gradebook
