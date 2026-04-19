@@ -401,5 +401,52 @@ namespace EMS.Application.Features.Sessions.Services
                 _logger.LogError($"Lỗi gửi thông báo cập nhật điểm danh: {ex.Message}");
             }
         }
+        public async Task<IEnumerable<ClassAttendanceHistoryDto>> GetClassAttendanceHistoryAsync(Guid classId)
+        {
+            var sessions = await _sessionRepository.GetSessionsByClassIdAsync(classId);
+            var enrollments = await _classRepository.GetClassMemberAsync(classId); 
+
+            var attendancesBySession = new Dictionary<Guid, IEnumerable<Attendance>>();
+            foreach (var session in sessions)
+            {
+                attendancesBySession[session.SessionId] = await _sessionRepository.GetAttendancesBySessionIdAsync(session.SessionId);
+            }
+
+            var result = new List<ClassAttendanceHistoryDto>();
+
+            foreach (var enrollment in enrollments)
+            {
+                var historyDto = new ClassAttendanceHistoryDto
+                {
+                    StudentId = enrollment.StudentId,
+                    FullName = enrollment.Student?.FullName ?? enrollment.Student?.Account?.FullName ?? "Unknown",
+                    Avatar = enrollment.Student?.Account?.AvatarUrl,
+                    Attendances = new List<StudentAttendanceRecordDto>()
+                };
+
+                foreach (var session in sessions)
+                {
+                    var attendanceList = attendancesBySession[session.SessionId];
+                    var attendance = attendanceList.FirstOrDefault(a => a.StudentId == enrollment.StudentId);
+
+                    historyDto.Attendances.Add(new StudentAttendanceRecordDto
+                    {
+                        SessionId = session.SessionId,
+                        Date = session.Date,
+                        StartTime = session.StartTime,
+                        EndTime = session.EndTime,
+                        Title = session.Title,
+                        AttendanceId = attendance?.AttendanceId,
+                        Status = attendance?.Status ?? "Not Taken",
+                        IsExcused = attendance?.IsExcused,
+                        Note = attendance?.Note
+                    });
+                }
+
+                result.Add(historyDto);
+            }
+
+            return result;
+        }
     }
 }

@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Classes.Validators
 {
-    public class CreateClassDtoValidator : AbstractValidator<CreateClassDto>
+    public class UpdateClassDtoValidator : AbstractValidator<UpdateClassDto>
     {
-        public CreateClassDtoValidator()
+        public UpdateClassDtoValidator()
         {
             RuleFor(x => x.ClassName)
                 .NotEmpty().WithMessage("Tên lớp không được để trống.")
@@ -21,7 +21,7 @@ namespace EMS.Application.Features.Classes.Validators
             RuleFor(x => x.GradeLevel)
                 .InclusiveBetween((short)1, (short)12).WithMessage("Khối lớp phải từ 1 đến 12.");
             RuleFor(x => x.MaxStudents)
-                .GreaterThan((short)0).When(x => x.MaxStudents.HasValue).WithMessage("Số lượng học sinh tối đa phải lớn hơn 0.");
+                .GreaterThan((short)0).WithMessage("Số lượng học sinh tối đa phải lớn hơn 0.");
             RuleFor(x => x.TuitionFee)
                 .NotNull().WithMessage("Học phí là bắt buộc.")
                 .GreaterThanOrEqualTo(0).WithMessage("Học phí không được âm.");
@@ -37,23 +37,4 @@ namespace EMS.Application.Features.Classes.Validators
             RuleForEach(x => x.Schedules).SetValidator(new ScheduleDtoValidator());
         }
     }
-
-    public class ScheduleDtoValidator : AbstractValidator<ScheduleDto>
-    {
-        public ScheduleDtoValidator()
-        {
-            RuleFor(x => x.DayOfWeek)
-                .InclusiveBetween((short)0, (short)7).WithMessage("Ngày trong tuần không hợp lệ (0-7).");
-
-            RuleFor(x => x.StartTime)
-                .NotEmpty().WithMessage("Giờ bắt đầu không được để trống.");
-
-            RuleFor(x => x.EndTime)
-                .NotEmpty().WithMessage("Giờ kết thúc không được để trống.")
-                .GreaterThan(x => x.StartTime).WithMessage("Giờ kết thúc phải sau giờ bắt đầu.");
-        }
-    }
-
 }
-
-
