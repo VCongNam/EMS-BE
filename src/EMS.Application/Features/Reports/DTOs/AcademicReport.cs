@@ -10,11 +10,9 @@ namespace EMS.Application.Features.Reports.DTOs
     {
         public Guid TeacherId { get; set; }
         public string Period { get; set; } = string.Empty;
-
         public OverviewMetrics TotalOverview { get; set; } = new();
         public StudentGrowthMetrics TotalStudentGrowth { get; set; } = new();
         public AcademicPerformanceMetrics TotalAcademicPerformance { get; set; } = new();
-
         public List<ClassBreakdownDto> ClassBreakdowns { get; set; } = new();
     }
 
@@ -24,10 +22,18 @@ namespace EMS.Application.Features.Reports.DTOs
         public string ClassName { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-
         public OverviewMetrics Overview { get; set; } = new();
         public StudentGrowthMetrics StudentGrowth { get; set; } = new();
         public AcademicPerformanceMetrics AcademicPerformance { get; set; } = new();
+        public List<StudentGradeSummaryDto> StudentGrades { get; set; } = new();
+    }
+
+    public class StudentGradeSummaryDto
+    {
+        public Guid StudentId { get; set; }
+        public string StudentName { get; set; } = string.Empty;
+        public decimal Gpa { get; set; }
+        public string Rank { get; set; } = string.Empty;
     }
 
     public class OverviewMetrics
@@ -52,15 +58,12 @@ namespace EMS.Application.Features.Reports.DTOs
 
     public class GradingDistributionDto
     {
-        public int ExcellentCount { get; set; } // Giỏi (>= 8.0)
-        public int GoodCount { get; set; }      // Khá (6.5 - 7.9)
-        public int AverageCount { get; set; }   // Trung bình (5.0 - 6.4)
-        public int WeakCount { get; set; }      // Yếu (< 5.0)
-
+        public int ExcellentCount { get; set; }
+        public int GoodCount { get; set; }
+        public int AverageCount { get; set; }
+        public int WeakCount { get; set; }
         public int TotalGradedStudents => ExcellentCount + GoodCount + AverageCount + WeakCount;
-        public int AboveAverageCount => ExcellentCount + GoodCount + AverageCount; // Điểm >= 5.0
-        public double AboveAveragePercent => TotalGradedStudents > 0
-            ? Math.Round((double)AboveAverageCount / TotalGradedStudents * 100, 2)
-            : 0;
+        public int AboveAverageCount => ExcellentCount + GoodCount + AverageCount;
+        public double AboveAveragePercent => TotalGradedStudents > 0 ? Math.Round((double)AboveAverageCount / TotalGradedStudents * 100, 2) : 0;
     }
 }
