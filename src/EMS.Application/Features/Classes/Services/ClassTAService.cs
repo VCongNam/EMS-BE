@@ -207,7 +207,7 @@ namespace EMS.Application.Features.Classes.Services
                         studentId: null,
                         title: "Nhiệm vụ mới",
                         content: $"Bạn vừa được giao nhiệm vụ: '{request.Title}' cho lớp {className}. Hạn hoàn thành: {request.DueDate:dd/MM/yyyy}.",
-                        actionUrl: $" /ta/tasks/{newTask.TataskId}", 
+                        actionUrl: $"/ta/tasks", 
                         type: "Task"
                     );
                 }
