@@ -11,10 +11,6 @@ namespace EMS.Application.Features.TuitionFees.Services
 {
     public interface ITuitionFeeService
     {
-
- 
-
-
         Task GenerateInvoicesForClassAsync(Guid classId, GenerateInvoiceDto request, Guid teacherId);
 
         Task ReconcilePrepaidClassAsync(Guid classId, int month, int year, Guid teacherId);
@@ -23,9 +19,6 @@ namespace EMS.Application.Features.TuitionFees.Services
 
         Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId);
 
-
-
-
         Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync(Guid teacherId);
 
         Task ReviewTransactionAsync(Guid transactionId, bool isApproved, Guid approverId, string? note);
@@ -33,13 +26,6 @@ namespace EMS.Application.Features.TuitionFees.Services
         Task<IEnumerable<TransactionHistoryDto>> GetTransactionHistoryAsync(Guid teacherId, DateTime? from, DateTime? to);
 
         Task UndoTransactionAsync(Guid transactionId, Guid teacherId);
-
-
-
-
-
-
-
 
         Task<IEnumerable<GlobalInvoiceRecordDto>> GetInvoicesListAsync(Guid? classId, int month, int year);
 
@@ -51,10 +37,10 @@ namespace EMS.Application.Features.TuitionFees.Services
         Task ExtendClassInvoicesAsync(Guid classId, ExtendClassInvoicesDto dto);
         Task<IEnumerable<Class>> GetClassesOverviewEntitiesAsync(Guid teacherId, int month, int year);
         Task<IEnumerable<ClassTuitionReportDto>> GetClassesOverviewAsync(int month, int year);
-        // Hàm cho 3 Card tổng quan
+
         Task<TuitionSummaryDto> GetTuitionSummaryAsync(Guid? classId, int month, int year);
 
-        Task<List<ClassInvoiceReminderDto>> GetPendingInvoiceRemindersAsync();
+        Task<List<ClassInvoiceReminderDto>> GetPendingInvoiceRemindersAsync(int month, int year);
 
         Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync();
 
