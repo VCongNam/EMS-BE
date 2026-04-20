@@ -290,26 +290,40 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             var invoices = await tuitionFeeRepository.GetInvoicesByFilterAsync(teacherId, classId, month, year);
 
-            return invoices.Select(i => new GlobalInvoiceRecordDto
+            return invoices.Select(i =>
             {
-                InvoiceId = i.InvoiceId,
-                ClassId = i.ClassId,
-                ClassName = i.Class?.ClassName ?? "N/A",
-                BillingMethod = i.Class?.BillingMethod ?? "Postpaid",
-                UnitPrice = i.UnitPrice,
-                Description = i.Description,
-                StudentId = i.StudentId,
-                StudentName = i.Student?.FullName ?? "N/A",
-                AvatarUrl = i.Student?.Account?.AvatarUrl,
+                // 1. Tính "Học phí gốc" = Đơn giá x Số buổi
+                decimal original = (decimal)((i.UnitPrice ?? 0) * i.SessionCount);
 
-                SessionCount = (int)i.SessionCount,
-                TotalAmount = i.Amount,
-                PaidAmount = i.Transactions?.Sum(t => t.AmountPaid) ?? 0m,
+                // 2. Tính "Ví học phí" (Tiền cấn trừ) = Học phí gốc - Tiền thực tế trên hóa đơn
+                // Giả sử học phí gốc 1tr2, hóa đơn thu 1tr050 -> Đã dùng 150k trong ví.
+                decimal creditUsed = Math.Max(0, original - i.Amount);
 
-                DueDate = i.DueDate,
-                Status = i.Status,
-                PeriodMonth = i.PeriodMonth,
-                PeriodYear = i.PeriodYear
+                return new GlobalInvoiceRecordDto
+                {
+                    InvoiceId = i.InvoiceId,
+                    ClassId = i.ClassId,
+                    ClassName = i.Class?.ClassName ?? "N/A",
+                    BillingMethod = i.Class?.BillingMethod ?? "Postpaid",
+                    UnitPrice = i.UnitPrice,
+                    Description = i.Description,
+                    StudentId = i.StudentId,
+                    StudentName = i.Student?.FullName ?? "N/A",
+                    AvatarUrl = i.Student?.Account?.AvatarUrl,
+
+                    SessionCount = (int)i.SessionCount,
+
+                    // --- ĐƯA 3 CỘT NÀY RA FRONTEND ---
+                    OriginalAmount = original,      // Map vào cột "Học phí gốc"
+                    CreditBalance = creditUsed,     // Map vào cột "Ví học phí"
+                    TotalAmount = i.Amount,         // Map vào cột "Cần đóng"
+
+                    PaidAmount = i.Transactions?.Sum(t => t.AmountPaid) ?? 0m,
+                    DueDate = i.DueDate,
+                    Status = i.Status,
+                    PeriodMonth = i.PeriodMonth,
+                    PeriodYear = i.PeriodYear
+                };
             }).ToList();
         }
 

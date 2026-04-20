@@ -436,17 +436,5 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
-
-
-        [HttpGet("issuance-status")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> GetIssuanceStatus([FromQuery] int month, [FromQuery] int year)
-        {
-            int targetMonth = month > 0 ? month : DateTime.Now.Month;
-            int targetYear = year > 0 ? year : DateTime.Now.Year;
-
-            var result = await tuitionFeeService.GetIssuanceStatusAsync(targetMonth, targetYear);
-            return Ok(result);
-        }
     }
 }

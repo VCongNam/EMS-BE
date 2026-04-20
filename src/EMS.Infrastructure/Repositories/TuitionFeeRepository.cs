@@ -342,10 +342,6 @@ namespace EMS.Infrastructure.Repositories
         }
 
 
-        // =========================================================
-        // ⚙️ HỆ THỐNG & BACKGROUND SERVICE (System)
-        // =========================================================
-
         public async Task<IEnumerable<Class>> GetAllClassesWithStudentsAsync()
         {
             return await context.Classes
@@ -354,24 +350,18 @@ namespace EMS.Infrastructure.Repositories
         }
 
 
-
-
-
-
         public async Task<IEnumerable<Invoice>> GetInvoicesByFilterAsync(Guid teacherId, Guid? classId, int month, int year)
         {
             var query = context.Invoices
                 .Include(i => i.Class)
                 .Include(i => i.Student)
                     .ThenInclude(s => s.Account)
-                // Kéo theo các giao dịch để tính số tiền đã nộp
                 .Include(i => i.Transactions.Where(t => t.Status == "Successful" || t.Status == "Completed"))
                 .Where(i => i.Class.TeacherId == teacherId
                          && i.PeriodMonth == month
                          && i.PeriodYear == year
                          && i.IsDeleted != true);
 
-            // Lọc theo ClassId nếu có truyền vào từ FE
             if (classId.HasValue && classId != Guid.Empty)
             {
                 query = query.Where(i => i.ClassId == classId.Value);
