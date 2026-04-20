@@ -436,6 +436,5 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
-
     }
 }
