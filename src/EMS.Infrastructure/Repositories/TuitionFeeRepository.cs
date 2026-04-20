@@ -487,13 +487,19 @@ namespace EMS.Infrastructure.Repositories
         }
 
 
-        
-       public async Task<IEnumerable<Class>> GetClassesWithDataAsync(Guid teacherId, int month, int year)
+
+        public async Task<IEnumerable<Class>> GetClassesWithDataAsync(Guid teacherId, int month, int year)
         {
+            var periodStart = new DateOnly(year, month, 1);
+            var periodEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+
             return await context.Classes
                 .Include(c => c.ClassEnrollments.Where(ce => ce.Status == "Active"))
                 .Include(c => c.Invoices.Where(i => i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true))
-                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Archived")
+                .Where(c => c.TeacherId == teacherId
+                         && c.IsDeleted != true
+                         && c.StartDate <= periodEnd
+                         && (c.EndDate == null || c.EndDate >= periodStart))
                 .ToListAsync();
         }
 
@@ -615,5 +621,35 @@ namespace EMS.Infrastructure.Repositories
             context.Transactions.Update(transaction);
             await context.SaveChangesAsync();
         }
+
+        public async Task<bool> CheckAllSessionsAttendedAsync(Guid classId, int month, int year)
+        {
+            var sessions = await context.Sessions
+                .Where(s => s.ClassId == classId && s.Date.Month == month && s.Date.Year == year && s.IsDeleted != true)
+                .ToListAsync();
+
+            if (!sessions.Any()) return false;
+
+            foreach (var session in sessions)
+            {
+                var hasAttendance = await context.Attendances.AnyAsync(a => a.SessionId == session.SessionId);
+                if (!hasAttendance) return false;
+            }
+            return true;
+        }
+        public async Task<bool> IsPreviousPeriodReconciledAsync(Guid classId, int month, int year)
+        {
+            var currentPeriod = new DateOnly(year, month, 1);
+            var prev = currentPeriod.AddMonths(-1);
+
+            var prevInvoices = await context.Invoices
+                .Where(i => i.ClassId == classId && i.PeriodMonth == prev.Month && i.PeriodYear == prev.Year && i.IsDeleted != true)
+                .ToListAsync();
+
+            if (!prevInvoices.Any()) return true; // Lớp mới mở, không có tháng trước để chốt
+
+            return prevInvoices.Any(i => i.Description != null && i.Description.Contains("[Đã chốt sổ vắng]"));
+        }
+
     }
 }
