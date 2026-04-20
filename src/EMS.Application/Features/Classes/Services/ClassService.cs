@@ -419,6 +419,12 @@ namespace EMS.Application.Features.Classes.Services
                 throw new Exception($"Class with ID {classId} not found.");
             }
 
+            var currentActiveStudentCount = await _classRepository.GetActiveStudentCountAsync(classId);
+            if (request.MaxStudents.HasValue && request.MaxStudents.Value < currentActiveStudentCount)
+            {
+                throw new BadRequestException($"Khong the cap nhat si so toi da xuong {request.MaxStudents.Value} vi lop hien dang co {currentActiveStudentCount} hoc sinh.");
+            }
+
             // 1. Xử lý Subject (Tìm hoặc Tạo mới)
             var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, request.GradeLevel);
             if (subject == null)
