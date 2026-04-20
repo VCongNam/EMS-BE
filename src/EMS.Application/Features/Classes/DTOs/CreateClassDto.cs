@@ -16,6 +16,10 @@ namespace EMS.Application.Features.Classes.DTOs
         public short? MaxStudents { get; set; }
         public string SubjectName { get; set; } = string.Empty;
         public short GradeLevel { get; set; }
+        public string? BillingMethod { get; set; }
+        public string? BillingCycle { get; set; } = "Monthly";
+        public int? PaymentDeadlineDays { get; set; }
+        public string? TuitionNote { get; set; }
         public List<ScheduleDto> Schedules { get; set; } = new();
     }
 
