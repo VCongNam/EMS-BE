@@ -1,3 +1,4 @@
+using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Assignments.DTOs;
 using EMS.Application.Features.Notifications.Services;
@@ -58,12 +59,17 @@ namespace EMS.Application.Features.Assignments.Services
 
         public async Task<Guid> CreateAssignmentAsync(CreateAssignmentDto request)
         {
+            if (request.Isgraded && (!request.GradeCategoryId.HasValue || request.GradeCategoryId.Value == Guid.Empty))
+            {
+                throw new BadRequestException("Grade category là bắt buộc khi bài tập được chấm điểm.");
+            }
+
             var assignment = new Assignment
             {
                 AssignmentId = Guid.NewGuid(),
                 ClassId = request.ClassId,
                 AuthorId = _currentUserService.UserId,
-                GradeCategoryId = request.GradeCategoryId,
+                GradeCategoryId = request.Isgraded ? request.GradeCategoryId : null,
                 Title = request.Title,
                 Description = request.Description,
                 DueDate = request.DueDate,
@@ -113,10 +119,15 @@ namespace EMS.Application.Features.Assignments.Services
             if (assignment == null)
                 throw new Exception($"Assignment with ID {id} not found.");
 
+            if (request.Isgraded && (!request.GradeCategoryId.HasValue || request.GradeCategoryId.Value == Guid.Empty))
+            {
+                throw new BadRequestException("Grade category là bắt buộc khi bài tập được chấm điểm.");
+            }
+
             assignment.Title = request.Title;
             assignment.Description = request.Description;
             assignment.DueDate = request.DueDate;
-            assignment.GradeCategoryId = request.GradeCategoryId;
+            assignment.GradeCategoryId = request.Isgraded ? request.GradeCategoryId : null;
             assignment.AllowLateSubmission = request.AllowLateSubmission;
             assignment.Isgraded = request.Isgraded;
             assignment.UpdatedAt = DateTime.UtcNow;
@@ -203,8 +214,8 @@ namespace EMS.Application.Features.Assignments.Services
                 AssignmentId = assignment.AssignmentId,
                 ClassId = assignment.ClassId,
                 AuthorName = assignment.Author?.FullName ?? "Unknown",
-                GradeCategoryId = assignment.GradeCategoryId.Value,
-                GradeCategoryName = assignment.GradeCategory?.Name ?? "Unknown",
+                GradeCategoryId = assignment.GradeCategoryId,
+                GradeCategoryName = assignment.GradeCategory?.Name,
                 Title = assignment.Title,
                 Description = assignment.Description,
                 DueDate = assignment.DueDate,
