@@ -98,5 +98,10 @@ namespace EMS.Domain.Interfaces
 
         Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId);
         Task<IEnumerable<Transaction>> GetTransactionsByClassAndPeriodAsync(Guid classId, Guid teacherId, int month, int year);
-    }
+
+        Task<bool> CheckAllSessionsAttendedAsync(Guid classId, int month, int year);
+
+        Task<bool> IsPreviousPeriodReconciledAsync(Guid classId, int month, int year);
+
+ }
 }

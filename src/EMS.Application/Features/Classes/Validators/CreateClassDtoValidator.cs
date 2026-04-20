@@ -33,6 +33,15 @@ namespace EMS.Application.Features.Classes.Validators
                 .GreaterThanOrEqualTo(x => x.StartDate).WithMessage("Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.")
                 .Must((dto, endDate) => endDate.DayNumber - dto.StartDate.DayNumber <= 730)
                 .WithMessage("Khóa học không được kéo dài quá 2 năm (730 ngày).");
+            RuleFor(x => x.BillingMethod)
+                .Must(x => string.IsNullOrWhiteSpace(x) || x == "Prepaid" || x == "Postpaid")
+                .WithMessage("BillingMethod chỉ nhận 'Prepaid' hoặc 'Postpaid'.");
+
+            RuleFor(x => x.PaymentDeadlineDays)
+                .GreaterThan(0)
+                .When(x => x.PaymentDeadlineDays.HasValue)
+                .WithMessage("PaymentDeadlineDays phải lớn hơn 0.");
+
             RuleForEach(x => x.Schedules).SetValidator(new ScheduleDtoValidator());
         }
     }

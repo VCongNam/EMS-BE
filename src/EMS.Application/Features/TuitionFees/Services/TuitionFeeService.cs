@@ -412,12 +412,15 @@ namespace EMS.Application.Features.TuitionFees.Services
             var teacherId = currentUserService.UserId;
             var classes = await tuitionFeeRepository.GetClassesWithDataAsync(teacherId, month, year);
 
-            return classes.Select(c => {
+            var report = new List<ClassTuitionReportDto>();
+
+            foreach (var c in classes)
+            {
                 var invs = c.Invoices.ToList();
                 var exp = invs.Where(i => i.Status != "Cancelled").Sum(i => i.Amount);
                 var act = invs.Where(i => i.Status == "Paid").Sum(i => i.Amount);
 
-                return new ClassTuitionReportDto
+                var item = new ClassTuitionReportDto
                 {
                     ClassId = c.ClassId,
                     ClassName = c.ClassName,
@@ -426,7 +429,34 @@ namespace EMS.Application.Features.TuitionFees.Services
                     StudentCount = c.ClassEnrollments.Count,
                     CollectionRate = exp > 0 ? (double)Math.Round((act / exp) * 100, 2) : 0
                 };
-            }).ToList();
+
+                bool isIssued = invs.Any();
+
+                if (isIssued)
+                {
+                    item.ConditionCode = "ISSUED";
+                    item.StatusMessage = "Đã phát hành";
+                    item.IsIssuable = false;
+                }
+                else if (item.BillingMethod == "Postpaid")
+                {
+                    bool isDone = await tuitionFeeRepository.CheckAllSessionsAttendedAsync(c.ClassId, month, year);
+                    item.ConditionCode = isDone ? "READY" : "INCOMPLETE";
+                    item.StatusMessage = isDone ? "Đã điểm danh đủ" : "Chưa đủ điểm danh";
+                    item.IsIssuable = isDone;
+                }
+                else
+                { 
+                    bool isReconciled = await tuitionFeeRepository.IsPreviousPeriodReconciledAsync(c.ClassId, month, year);
+                    item.ConditionCode = isReconciled ? "READY" : "NOT_RECONCILED";
+                    item.StatusMessage = isReconciled ? "Sẵn sàng" : "Chưa chốt tháng trước";
+                    item.IsIssuable = isReconciled;
+                }
+
+                report.Add(item);
+            }
+
+            return report;
         }
 
         public Task<IEnumerable<Class>> GetClassesOverviewEntitiesAsync(Guid teacherId, int month, int year)
