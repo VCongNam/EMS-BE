@@ -146,7 +146,9 @@ namespace EMS.Infrastructure.Repositories
         {
             var query = _context.ClassEnrollments
                 .Include(ce => ce.Class)
-                .ThenInclude(c => c.Teacher.TeacherNavigation)
+                    .ThenInclude(c => c.Teacher.TeacherNavigation)
+                .Include(ce => ce.Class) 
+                    .ThenInclude(c => c.ClassSchedules)
                 .Where(ce => ce.StudentId == studentId)
                 .AsNoTracking();
                 query = query.Where(ce => ce.Status != "Archive");

@@ -48,7 +48,14 @@ namespace EMS.Application.Features.Classes.Services
                 TeacherName = ce.Class?.Teacher.TeacherNavigation.FullName,
                 EnrollmentStatus = ce.Status,
                 EnrolledDate = (DateOnly)ce.EnrolledDate,
-               
+                Schedules = ce.Class.ClassSchedules.Select(s => new ScheduleDto
+                {
+                    DayOfWeek = s.DayOfWeek,
+                    StartTime = s.StartTime,
+                    EndTime = s.EndTime
+                }).ToList(),
+
+
                 ClassStatus = now < ce.Class.StartDate ? "Scheduled"
                           : now > ce.Class.EndDate ? "Completed"
                           : "Ongoing",
