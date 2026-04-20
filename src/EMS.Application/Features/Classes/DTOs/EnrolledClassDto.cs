@@ -16,6 +16,7 @@ namespace EMS.Application.Features.Classes.DTOs
         public string EnrollmentStatus { get; set; }
         public DateOnly EnrolledDate { get; set; }
         public string ClassStatus { get; set; }
+        public List<ScheduleDto> Schedules { get; set; } = new();
     }
 
     public class EnrolledClassFilter
