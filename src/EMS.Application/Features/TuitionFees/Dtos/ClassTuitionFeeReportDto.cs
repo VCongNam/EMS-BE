@@ -10,9 +10,13 @@ namespace EMS.Application.Features.TuitionFees.Dtos
     {
         public Guid ClassId { get; set; }
         public string ClassName { get; set; } = string.Empty;
-        public string BillingMethod { get; set; } = string.Empty; // Thu trước / Thu sau
-        public decimal TuitionFee { get; set; } // Đơn giá buổi học
-        public int StudentCount { get; set; }   // Sĩ số (Số học sinh đang Active)
-        public double CollectionRate { get; set; } // Tỉ lệ thu (%) của kỳ này
+        public string BillingMethod { get; set; } = string.Empty; 
+        public decimal TuitionFee { get; set; } 
+        public int StudentCount { get; set; }   
+        public double CollectionRate { get; set; }
+
+        public string ConditionCode { get; set; } 
+        public string StatusMessage { get; set; }
+        public bool IsIssuable { get; set; }
     }
 }
