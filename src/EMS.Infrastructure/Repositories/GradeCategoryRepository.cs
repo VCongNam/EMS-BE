@@ -58,7 +58,7 @@ namespace EMS.Infrastructure.Repositories
         {
             return await _context.GradeCategories
                 .Where(gc => gc.ClassId == classId)
-                .Include(gc => gc.Assignments.Where(a => a.IsDeleted != true && a.Submissions.Any(s => s.StudentId == studentId)))
+                .Include(gc => gc.Assignments.Where(a => a.IsDeleted != true && a.Submissions.Any(s => s.StudentId == studentId) && a.Status == "Published"))
                     .ThenInclude(a => a.Submissions.Where(s => s.StudentId == studentId))
                         .ThenInclude(s => s.SubmissionFeedbacks)
                 .AsNoTracking()
