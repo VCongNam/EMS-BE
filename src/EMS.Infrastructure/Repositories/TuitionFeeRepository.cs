@@ -382,7 +382,6 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<(decimal Expected, decimal Actual)> GetClassPeriodRevenueAsync(Guid classId, int month, int year)
         {
-            // 1. Tính tổng Doanh thu dự kiến (Expected) từ tất cả hóa đơn hợp lệ trong kỳ
             var expected = await context.Invoices
                 .Where(i => i.ClassId == classId
                          && i.PeriodMonth == month
@@ -390,13 +389,12 @@ namespace EMS.Infrastructure.Repositories
                          && i.IsDeleted != true)
                 .SumAsync(i => i.Amount);
 
-            // 2. Tính tổng Doanh thu đã thu (Actual) từ các giao dịch thành công của các hóa đơn đó
             var actual = await context.Transactions
                 .Where(t => t.Invoice.ClassId == classId
                          && t.Invoice.PeriodMonth == month
                          && t.Invoice.PeriodYear == year
                          && t.Invoice.IsDeleted != true
-                         && (t.Status == "Successful" || t.Status == "Completed"))
+                         && (t.Status == "Successful"))
                 .SumAsync(t => t.AmountPaid);
 
             return (expected, actual);
@@ -517,13 +515,19 @@ namespace EMS.Infrastructure.Repositories
             throw new NotImplementedException();
         }
 
-        public async Task<List<Class>> GetActiveClassesAsync(Guid teacherId)
+        public async Task<List<Class>> GetClassesActiveInPeriodAsync(Guid teacherId, int month, int year)
         {
+            var periodStart = new DateOnly(year, month, 1);
+            var periodEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+
             return await context.Classes
-                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Archived")
+                .Where(c => c.TeacherId == teacherId
+                         && c.IsDeleted != true
+                         // Logic DateOnly: Bắt đầu trước khi hết tháng AND (Chưa kết thúc OR kết thúc sau khi tháng bắt đầu)
+                         && c.StartDate <= periodEnd
+                         && (c.EndDate == null || c.EndDate >= periodStart))
                 .ToListAsync();
         }
-
         public async Task<bool> HasInvoicesForPeriodAsync(Guid classId, int month, int year)
         {
             return await context.Invoices
@@ -540,7 +544,7 @@ namespace EMS.Infrastructure.Repositories
                 .Include(t => t.Invoice)
                     .ThenInclude(i => i.Class)
                 .Where(t => t.Invoice.Class.TeacherId == teacherId && t.Invoice.IsDeleted != true)
-                .OrderByDescending(t => t.CreatedAt) // Mới nhất lên đầu
+                .OrderByDescending(t => t.CreatedAt) 
                 .ToListAsync();
         }
 
@@ -551,9 +555,7 @@ namespace EMS.Infrastructure.Repositories
                 .Where(i => i.Class.TeacherId == teacherId
                          && i.PeriodMonth == month
                          && i.PeriodYear == year
-                         // Lọc hóa đơn hợp lệ (Không tính hóa đơn đã hủy)
                          && i.Status != "Cancelled"
-                         && i.Class.Status != "Archived"
                          && i.IsDeleted != true)
                 .ToListAsync();
         }
@@ -566,7 +568,6 @@ namespace EMS.Infrastructure.Repositories
                 .Where(t => t.Invoice.Class.TeacherId == teacherId
                          && t.Invoice.PeriodMonth == month
                          && t.Invoice.PeriodYear == year
-                         // CHỈ lấy các giao dịch nộp tiền THÀNH CÔNG
                          && t.Status == "Successful"
                          && t.Invoice.IsDeleted != true)
                 .ToListAsync();

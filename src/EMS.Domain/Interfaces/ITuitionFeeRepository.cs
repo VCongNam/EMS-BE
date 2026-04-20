@@ -9,8 +9,6 @@ namespace EMS.Domain.Interfaces
 {
     public interface ITuitionFeeRepository
     {
-
-
         Task<bool> IsTeacherOwnsClassAsync(Guid classId, Guid teacherId);
 
         Task<Class?> GetClassByIdAsync(Guid classId);
@@ -23,7 +21,6 @@ namespace EMS.Domain.Interfaces
 
         Task UpdateInvoiceAsync(Invoice invoice);
 
-        // --- Thống kê & Kiểm tra kỳ học ---
         Task<IEnumerable<ClassEnrollment>> GetActiveStudentsInClassAsync(Guid classId);
 
         Task<int> CountScheduledSessionsAsync(Guid classId, int month, int year);
@@ -38,7 +35,6 @@ namespace EMS.Domain.Interfaces
 
         Task<Dictionary<Guid, int>> GetAttendanceCountsForClassPeriodAsync(Guid classId, DateTime startDate, DateTime endDate);
 
-        // --- Phát hành & Truy vấn hóa đơn ---
         Task AddInvoicesAsync(IEnumerable<Invoice> invoices);
 
         Task<bool> AddInvoicesWithEnrollmentsAsync(IEnumerable<Invoice> invoices, IEnumerable<ClassEnrollment> enrollments, Guid classId, int periodMonth, int periodYear);
@@ -53,8 +49,6 @@ namespace EMS.Domain.Interfaces
 
         Task<(List<Invoice> Items, int TotalCount)> GetInvoicesByClassAndPeriodPagedAsync(Guid classId, int month, int year, int page, int size, string? status = null, Guid? studentId = null);
 
-
-
         Task<IEnumerable<Transaction>> GetPendingTransactionsByTeacherAsync(Guid teacherId);
 
         Task<Transaction?> GetTransactionWithInvoiceAsync(Guid transactionId);
@@ -64,8 +58,6 @@ namespace EMS.Domain.Interfaces
         Task<bool> UpdateTransactionStatusAsync(Transaction transaction, Invoice? invoice);
 
         Task<IEnumerable<Transaction>> GetTransactionHistoryByTeacherAsync(Guid teacherId, DateTime? fromDate, DateTime? toDate);
-
-
 
         Task<(List<(Invoice Invoice, Transaction? LatestTransaction)> Items, int TotalCount)> GetStudentInvoicesAsync(Guid studentId, int page, int size, Guid? classId);
 
@@ -83,38 +75,22 @@ namespace EMS.Domain.Interfaces
         Task<Transaction?> GetTransactionDetailAsync(Guid transactionId, Guid studentId);
         Task<Transaction?> GetTransactionStudentAndInvoiceId(Guid invoiceId, Guid studentId);
 
-
-        // =========================================================
-        // ⚙️ HỆ THỐNG & BACKGROUND SERVICE (System)
-        // =========================================================
-
         Task<IEnumerable<Class>> GetAllClassesWithStudentsAsync();
 
-
-
-
-
         Task<IEnumerable<Invoice>> GetInvoicesByFilterAsync(Guid teacherId, Guid? classId, int month, int year);
-
-
-       
 
         Task<IEnumerable<Class>> GetTeacherClassesConfigAsync(Guid teacherId);
         Task UpdateClassFeeConfigAsync(Guid classId, string billingMethod, decimal fee, int deadlineDays);
 
         Task<Class?> GetClassConfigByIdAsync(Guid classId, Guid teacherId);
-
-
         Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
         Task ExtendClassInvoicesDueDateAsync(Guid classId, int month, int year, int additionalDays);
 
-        // Lấy danh sách lớp kèm Enrollment và Invoice để tính toán
         Task<IEnumerable<Class>> GetClassesWithDataAsync(Guid teacherId, int month, int year);
 
-        // Lấy danh sách Invoice trực tiếp để tính Summary
         Task<IEnumerable<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, Guid? classId, int month, int year);
 
-        Task<List<Class>> GetActiveClassesAsync(Guid teacherId);
+        Task<List<Class>> GetClassesActiveInPeriodAsync(Guid teacherId, int month, int year);
 
         Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId);
         Task<List<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, int month, int year);

@@ -31,11 +31,6 @@ namespace EMS.Application.Features.TuitionFees.Services
             this.currentUserService = currentUserService;
         }
 
-
-
-
-
-        // --- Tab Cấu hình & Phát hành ---
         public async Task<IEnumerable<TuitionFeeConfigDto>> GetTuitionFeeConfigsAsync(Guid teacherId)
         {
             var currentMonth = DateTime.UtcNow.Month;
@@ -64,30 +59,21 @@ namespace EMS.Application.Features.TuitionFees.Services
 
         public async Task GenerateInvoicesForClassAsync(Guid classId, GenerateInvoiceDto req, Guid teacherId)
         {
-            // --- BƯỚC 1: CÁC LỚP BẢO VỆ (VALIDATION) ---
-
-            // 1.1. Kiểm tra quyền sở hữu
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
-           
-
-            // 1.3. Kiểm tra kỳ này đã phát hành chưa
             if (await tuitionFeeRepository.HasInvoicesForPeriodAsync(classId, req.PeriodMonth, req.PeriodYear))
                 throw new Exception("Kỳ này đã phát hành hóa đơn rồi, không thể phát hành thêm.");
 
             var classObj = await tuitionFeeRepository.GetClassByIdAsync(classId);
             if (classObj == null) throw new Exception("Lớp học không tồn tại.");
 
-            // 1.4. Kiểm tra logic theo BillingMethod (Postpaid không được gen cho tương lai/hiện tại khi chưa hết tháng)
             var now = DateTime.UtcNow;
             if (string.Equals(classObj.BillingMethod, "Postpaid", StringComparison.OrdinalIgnoreCase))
             {
                 if (req.PeriodYear > now.Year || (req.PeriodYear == now.Year && req.PeriodMonth >= now.Month))
                     throw new InvalidOperationException("Lớp Thu sau chỉ được phát hành hóa đơn khi tháng học đã kết thúc để đảm bảo đủ dữ liệu điểm danh.");
             }
-
-            // --- BƯỚC 2: CHUẨN BỊ DỮ LIỆU ---
             var students = (await tuitionFeeRepository.GetActiveStudentsInClassAsync(classId)).ToList();
             var invoices = new List<Invoice>();
             decimal currentUnitPrice = classObj.TuitionFee; 
@@ -97,7 +83,6 @@ namespace EMS.Application.Features.TuitionFees.Services
             var periodEnd = new DateTime(req.PeriodYear, req.PeriodMonth, DateTime.DaysInMonth(req.PeriodYear, req.PeriodMonth), 23, 59, 59, DateTimeKind.Utc);
             var attendanceCounts = await tuitionFeeRepository.GetAttendanceCountsForClassPeriodAsync(classId, periodStart, periodEnd);
 
-            // --- BƯỚC 3: LOGIC TÍNH TOÁN THEO LOẠI LỚP ---
             foreach (var enrollment in students)
             {
                 decimal amountToPay = 0;
@@ -112,10 +97,9 @@ namespace EMS.Application.Features.TuitionFees.Services
                     sessionCount = scheduledSessions;
                     description = $"Học phí dự kiến {scheduledSessions} buổi. Đơn giá: {currentUnitPrice:N0}đ. Cấn trừ: {discount:N0}đ.";
 
-                    // Cập nhật CreditBalance của enrollment về 0 vì đã dùng cấn trừ
                     enrollment.CreditBalance = 0;
                 }
-                else // Postpaid
+                else 
                 {
                     attendanceCounts.TryGetValue(enrollment.StudentId, out int attended);
                     amountToPay = attended * currentUnitPrice;
@@ -123,7 +107,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                     description = $"Học phí thực tế {attended} buổi. Đơn giá: {currentUnitPrice:N0}đ.";
                 }
 
-                // Chỉ tạo hóa đơn nếu có tiền hoặc là lớp Prepaid (để lưu vết kỳ học)
                 if (amountToPay > 0 || string.Equals(classObj.BillingMethod, "Prepaid", StringComparison.OrdinalIgnoreCase))
                 {
                     invoices.Add(new Invoice
@@ -134,7 +117,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                         PeriodMonth = (short)req.PeriodMonth,
                         PeriodYear = req.PeriodYear,
 
-                        // LƯU VẾT QUAN TRỌNG
                         UnitPrice = currentUnitPrice,
                         SessionCount = sessionCount,
 
@@ -147,11 +129,9 @@ namespace EMS.Application.Features.TuitionFees.Services
                 }
             }
 
-            // --- BƯỚC 4: LƯU DATABASE ---
             var persisted = await tuitionFeeRepository.AddInvoicesWithEnrollmentsAsync(invoices, students, classId, req.PeriodMonth, req.PeriodYear);
             if (!persisted) throw new Exception("Lỗi khi lưu dữ liệu hóa đơn vào hệ thống.");
 
-            // --- BƯỚC 5: GỬI NOTIFICATION (GIỮ NGUYÊN LOGIC CŨ CỦA KHUÊ) ---
             try
             {
                 var targetStudents = await _notificationService.GetStudentTargetsAsync(classId);
@@ -186,7 +166,6 @@ namespace EMS.Application.Features.TuitionFees.Services
             await tuitionFeeRepository.UpdateClassEnrollmentsAsync(enrollments);
         }
 
-        // --- Thao tác trên Hóa đơn ---
         public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId)
         {
             var invoice = await tuitionFeeRepository.GetInvoiceByIdAsync(invoiceId);
@@ -216,13 +195,6 @@ namespace EMS.Application.Features.TuitionFees.Services
             }
             await tuitionFeeRepository.UpdateInvoicesAsync(invoices);
         }
-
-
-
-
-        // =========================================================
-        // 🔍 MÀN 3: DUYỆT THANH TOÁN THỦ CÔNG (Queue & History)
-        // =========================================================
 
         public async Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync(Guid teacherId)
         {
@@ -265,7 +237,6 @@ namespace EMS.Application.Features.TuitionFees.Services
             t.UpdatedAt = DateTime.UtcNow;
             await tuitionFeeRepository.UpdateTransactionStatusAsync(t, inv);
 
-            // Notification gửi cho học sinh về kết quả duyệt
             try
             {
                 var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(t.Invoice.StudentId);
@@ -317,10 +288,8 @@ namespace EMS.Application.Features.TuitionFees.Services
         {
             var teacherId = currentUserService.UserId;
 
-            // 1. Lấy thực thể Invoice từ Repository
             var invoices = await tuitionFeeRepository.GetInvoicesByFilterAsync(teacherId, classId, month, year);
 
-            // 2. Map sang DTO
             return invoices.Select(i => new GlobalInvoiceRecordDto
             {
                 InvoiceId = i.InvoiceId,
@@ -335,7 +304,6 @@ namespace EMS.Application.Features.TuitionFees.Services
 
                 SessionCount = (int)i.SessionCount,
                 TotalAmount = i.Amount,
-                // Cộng tổng tiền từ các giao dịch đã Include ở Repo
                 PaidAmount = i.Transactions?.Sum(t => t.AmountPaid) ?? 0m,
 
                 DueDate = i.DueDate,
@@ -349,7 +317,7 @@ namespace EMS.Application.Features.TuitionFees.Services
 
         public async Task<IEnumerable<ClassFeeConfigDto>> GetClassFeeConfigsAsync()
         {
-            var teacherId = currentUserService.UserId; // Tự động lấy ID người đang đăng nhập
+            var teacherId = currentUserService.UserId; 
 
             var classes = await tuitionFeeRepository.GetTeacherClassesConfigAsync(teacherId);
 
@@ -367,11 +335,9 @@ namespace EMS.Application.Features.TuitionFees.Services
         {
             var teacherId = currentUserService.UserId;
 
-            // Chốt chặn bảo mật
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền sửa cấu hình lớp này.");
 
-            // Validate dữ liệu đầu vào
             if (dto.TuitionFee < 0) throw new InvalidOperationException("Học phí không được âm.");
             if (dto.PaymentDeadlineDays <= 0) throw new InvalidOperationException("Hạn nộp phải lớn hơn 0.");
             if (dto.BillingMethod != "Prepaid" && dto.BillingMethod != "Postpaid")
@@ -384,7 +350,6 @@ namespace EMS.Application.Features.TuitionFees.Services
         {
             var teacherId = currentUserService.UserId;
 
-            // Lấy dữ liệu từ Repo (đã bao gồm chốt chặn bảo mật teacherId)
             var c = await tuitionFeeRepository.GetClassConfigByIdAsync(classId, teacherId);
 
             if (c == null)
@@ -392,7 +357,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new KeyNotFoundException("Không tìm thấy lớp học hoặc bạn không có quyền truy cập.");
             }
 
-            // Map sang DTO (Lưu ý không dùng ?? cho TuitionFee và PaymentDeadlineDays như đã sửa lỗi trước đó)
             return new ClassFeeConfigDto
             {
                 ClassId = c.ClassId,
@@ -410,7 +374,6 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             var teacherId = currentUserService.UserId;
 
-            // Logic bảo mật đã được check bên trong hàm Repo
             await tuitionFeeRepository.ExtendInvoiceDueDateAsync(invoiceId, dto.AdditionalDays, teacherId);
         }
 
@@ -421,7 +384,6 @@ namespace EMS.Application.Features.TuitionFees.Services
 
             var teacherId = currentUserService.UserId;
 
-            // Chốt chặn bảo mật cho toàn lớp
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
@@ -474,43 +436,59 @@ namespace EMS.Application.Features.TuitionFees.Services
 
 
 
-        public async Task<List<ClassInvoiceReminderDto>> GetPendingInvoiceRemindersAsync()
+        public async Task<List<ClassInvoiceReminderDto>> GetPendingInvoiceRemindersAsync(int month, int year)
         {
             var teacherId = currentUserService.UserId;
-            var now = DateTime.UtcNow;
 
-            // 1. Lấy toàn bộ lớp đang hoạt động của giáo viên
-            var classes = await tuitionFeeRepository.GetActiveClassesAsync(teacherId);
+            TimeZoneInfo localZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            DateTime nowFull = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, localZone);
+            DateOnly today = DateOnly.FromDateTime(nowFull);
+
+            var classesInPeriod = await tuitionFeeRepository.GetClassesActiveInPeriodAsync(teacherId, month, year);
             var reminders = new List<ClassInvoiceReminderDto>();
 
-            foreach (var c in classes)
+            foreach (var c in classesInPeriod)
             {
-                // LOGIC KỲ CẦN KIỂM TRA:
-                // Lớp Prepaid: Kiểm tra tháng hiện tại (Phải thu rồi mới được học)
-                // Lớp Postpaid: Kiểm tra tháng trước (Học xong rồi phải thu ngay)
-                DateTime targetDate = string.Equals(c.BillingMethod, "Prepaid", StringComparison.OrdinalIgnoreCase)
-                                        ? now
-                                        : now.AddMonths(-1);
-
-                int targetMonth = targetDate.Month;
-                int targetYear = targetDate.Year;
-
-                // 2. Kiểm tra xem đã phát hành hóa đơn cho kỳ này chưa
-                bool hasInvoices = await tuitionFeeRepository.HasInvoicesForPeriodAsync(c.ClassId, targetMonth, targetYear);
+                bool hasInvoices = await tuitionFeeRepository.HasInvoicesForPeriodAsync(c.ClassId, month, year);
 
                 if (!hasInvoices)
                 {
-                    reminders.Add(new ClassInvoiceReminderDto
+                    DateOnly periodStart = new DateOnly(year, month, 1);
+                    DateOnly periodEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+
+                    bool needsReminder = false;
+                    string priority = "Medium";
+
+                    if (string.Equals(c.BillingMethod, "Prepaid", StringComparison.OrdinalIgnoreCase))
                     {
-                        ClassId = c.ClassId,
-                        ClassName = c.ClassName,
-                        BillingMethod = c.BillingMethod,
-                        TargetPeriod = $"{targetMonth:D2}/{targetYear}",
-                        Priority = string.Equals(c.BillingMethod, "Postpaid", StringComparison.OrdinalIgnoreCase) ? "High" : "Medium",
-                        Message = string.Equals(c.BillingMethod, "Prepaid", StringComparison.OrdinalIgnoreCase)
-                            ? $"Cần phát hành hóa đơn tháng {targetMonth} (Thu trước)."
-                            : $"Cần chốt sổ và thu học phí tháng {targetMonth} (Thu sau)."
-                    });
+                        DateOnly remindFrom = periodStart.AddMonths(-1).AddDays(19);
+                        if (today >= remindFrom)
+                        {
+                            needsReminder = true;
+                            priority = today >= periodStart ? "High" : "Medium";
+                        }
+                    }
+                    else 
+                    {
+                        if (today > periodEnd)
+                        {
+                            needsReminder = true;
+                            priority = "High";
+                        }
+                    }
+
+                    if (needsReminder)
+                    {
+                        reminders.Add(new ClassInvoiceReminderDto
+                        {
+                            ClassId = c.ClassId,
+                            ClassName = c.ClassName,
+                            BillingMethod = c.BillingMethod,
+                            TargetPeriod = $"{month:D2}/{year}",
+                            Priority = priority,
+                            Message = priority == "High" ? $"Quá hạn! Cần thu phí kỳ {month}/{year}" : $"Đến hạn phát hành kỳ {month}/{year}"
+                        });
+                    }
                 }
             }
             return reminders;
@@ -553,36 +531,24 @@ namespace EMS.Application.Features.TuitionFees.Services
         public async Task<TuitionDashboardDto> GetDashboardDataAsync(int month, int year)
         {
             var teacherId = currentUserService.UserId;
-
-            // Lấy dữ liệu thô từ Repository
             var invoices = await tuitionFeeRepository.GetInvoicesByPeriodAsync(teacherId, month, year);
             var successfulTransactions = await tuitionFeeRepository.GetSuccessfulTransactionsByPeriodAsync(teacherId, month, year);
 
-            // 1. Tổng doanh thu dự kiến (Tổng tiền của tất cả Invoice hợp lệ trong kỳ)
             var totalExpected = invoices.Sum(i => i.Amount);
-
-            // 2. Tổng thực thu (Tổng tiền từ các giao dịch Successful)
             var totalPaid = successfulTransactions.Sum(t => t.AmountPaid);
 
-            // 3. Biến động theo ngày (Daily Trend)
             var dailyTrend = new List<DailyRevenueDto>();
             int daysInMonth = DateTime.DaysInMonth(year, month);
 
             for (int day = 1; day <= daysInMonth; day++)
             {
-                // Cộng dồn tất cả giao dịch Successful của tất cả các lớp trong ngày này
                 var dayAmount = successfulTransactions
                     .Where(t => t.PaidDate.HasValue && t.PaidDate.Value.Day == day)
                     .Sum(t => t.AmountPaid);
 
-                dailyTrend.Add(new DailyRevenueDto
-                {
-                    Day = day,
-                    ReceivedAmount = dayAmount
-                });
+                dailyTrend.Add(new DailyRevenueDto { Day = day, ReceivedAmount = dayAmount });
             }
 
-            // 4. Tỷ trọng theo lớp (Pie Chart) - Dựa trên số tiền thực tế thu được
             var proportion = successfulTransactions
                 .GroupBy(t => t.Invoice.Class.ClassName)
                 .Select(g => new ClassRevenueDto
@@ -595,7 +561,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             {
                 TotalExpected = totalExpected,
                 TotalPaid = totalPaid,
-                TotalDebt = Math.Max(0, totalExpected - totalPaid), // Tổng nợ còn lại
+                TotalDebt = Math.Max(0, totalExpected - totalPaid),
                 DailyTrend = dailyTrend,
                 ProportionByClass = proportion
             };
