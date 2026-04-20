@@ -38,6 +38,20 @@ namespace EMS.API.Controllers
             }
         }
 
+        [HttpGet("{sessionId:guid}")]
+        public async Task<IActionResult> GetSessionDetail(Guid sessionId)
+        {
+            try
+            {
+                var session = await _sessionService.GetSessionDetailAsync(sessionId);
+                return Ok(session);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
         // [GET] /api/session/teacher-schedule
         [HttpGet("teacher-schedule")]
         public async Task<IActionResult> GetTeacherSchedule([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)

@@ -73,6 +73,39 @@ namespace EMS.Application.Features.Sessions.Services
             });
         }
 
+        public async Task<SessionDetailDto> GetSessionDetailAsync(Guid sessionId)
+        {
+            var session = await _sessionRepository.GetSessionByIdAsync(sessionId);
+            if (session == null)
+            {
+                throw new Exception($"Session with ID {sessionId} not found.");
+            }
+
+            var classObj = await _classRepository.GetByIdAsync(session.ClassId);
+            if (classObj == null)
+            {
+                throw new Exception($"Class with ID {session.ClassId} not found.");
+            }
+
+            return new SessionDetailDto
+            {
+                SessionId = session.SessionId,
+                ClassId = session.ClassId,
+                ClassName = classObj.ClassName,
+                Room = classObj.Room,
+                Title = session.Title,
+                Date = session.Date,
+                StartTime = session.StartTime,
+                EndTime = session.EndTime,
+                MeetingLink = session.MeetingLink,
+                Topic = session.Topic,
+                Note = session.Note,
+                Status = session.Status,
+                CreatedAt = session.CreatedAt,
+                UpdatedAt = session.UpdatedAt
+            };
+        }
+
         public async Task<IEnumerable<TeacherScheduleDto>> GetTeacherScheduleAsync(DateTime startDate, DateTime endDate)
         {
             var teacherId = _currentUserService.UserId;

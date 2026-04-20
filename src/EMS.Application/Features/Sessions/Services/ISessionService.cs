@@ -8,6 +8,7 @@ namespace EMS.Application.Features.Sessions.Services
     public interface ISessionService
     {
         Task<IEnumerable<SessionDto>> GetSessionsByClassIdAsync(Guid classId);
+        Task<SessionDetailDto> GetSessionDetailAsync(Guid sessionId);
         
         Task<IEnumerable<TeacherScheduleDto>> GetTeacherScheduleAsync(DateTime startDate, DateTime endDate);
         Task<SessionDto> CreateSessionAsync(CreateSessionDto request);
