@@ -114,6 +114,7 @@ namespace EMS.Application.Features.Assignments.Services
                     Status = submission.Status,
 
                     Attachments = submission.SubmissionAttachments?
+                    .Where(a => string.Equals(a.FileRole, "submission", StringComparison.OrdinalIgnoreCase) || string.Equals(a.FileRole, "offline_submission", StringComparison.OrdinalIgnoreCase))
                     .Select(sa => new StudentAttachmentDto
                     {
                         AttachmentID = sa.AttachmentId,
@@ -127,7 +128,19 @@ namespace EMS.Application.Features.Assignments.Services
                     Feedbacks = submission.SubmissionFeedbacks?
                         .OrderBy(f => f.CreatedAt)
                         .Select(f => f.Content)
-                        .ToList() ?? new List<string>()
+                        .ToList() ?? new List<string>(),
+
+                    Corrections = submission.SubmissionAttachments
+                    .Where(a => string.Equals(a.FileRole, "correction", StringComparison.OrdinalIgnoreCase))
+                    .Select(a => new StudentAttachmentDto
+                    {
+                        AttachmentID = a.AttachmentId,
+                        FileName = a.FileName,
+                        FileURL = a.FileUrl,
+                        FileType = a.FileType,
+                        FileSize = a.FileSize,
+                        FileRole = a.FileRole
+                    }).ToList(),
                 };
             }
 
