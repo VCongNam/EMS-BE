@@ -19,5 +19,7 @@ public partial class SubmissionAttachment
 
     public DateTime? CreatedAt { get; set; }
 
+    public string FileRole { get; set; } = null!;
+
     public virtual Submission Submission { get; set; } = null!;
 }

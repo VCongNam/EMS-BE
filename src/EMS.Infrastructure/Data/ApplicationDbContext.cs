@@ -111,13 +111,11 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
             entity.Property(e => e.PhoneNumber).HasMaxLength(15);
-            entity.Property(e => e.ResetPasswordToken).HasMaxLength(255);
             entity.Property(e => e.RoleId).HasColumnName("RoleID");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValueSql("'Active'::character varying");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
-            entity.Property(e => e.VerificationToken).HasMaxLength(255);
 
             entity.HasOne(d => d.Role).WithMany(p => p.Accounts)
                 .HasForeignKey(d => d.RoleId)
@@ -760,6 +758,7 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("AttachmentID");
             entity.Property(e => e.CreatedAt).HasColumnType("timestamp without time zone");
             entity.Property(e => e.FileName).HasColumnType("character varying");
+            entity.Property(e => e.FileRole).HasDefaultValueSql("'submission'::text");
             entity.Property(e => e.FileType).HasColumnType("character varying");
             entity.Property(e => e.FileUrl).HasColumnName("FileURL");
             entity.Property(e => e.SubmissionId)

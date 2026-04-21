@@ -24,5 +24,6 @@ namespace EMS.Application.Features.Assignments.DTOs
         public string FileURL { get; set; }
         public string FileType { get; set; }
         public long? FileSize { get; set; }
+        public string? FileRole { get; set; }
     }
 }

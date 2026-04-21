@@ -15,6 +15,9 @@ namespace EMS.Application.Features.Assignments.Services
 {
     public class AssignmentService : IAssignmentService
     {
+        private const string SubmissionFileRole = "submission";
+        private const string CorrectionFileRole = "correction";
+
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ISubmissionRepository _submissionRepository;
         private readonly ISupabaseStorageService _storageService;
@@ -221,6 +224,7 @@ namespace EMS.Application.Features.Assignments.Services
                 DueDate = assignment.DueDate,
                 Status = GetAssignmentStatus(assignment),
                 AllowLateSubmission = assignment.AllowLateSubmission,
+                IsOffline = assignment.Isoffline,
                 Isgraded = assignment.Isgraded,
                 CreatedAt = assignment.CreatedAt,
                 UpdatedAt = assignment.UpdatedAt,
@@ -365,12 +369,65 @@ namespace EMS.Application.Features.Assignments.Services
             var submission = await _submissionRepository.GetByIdAsync(submissionId);
             if (submission == null) throw new Exception("Submission not found.");
 
-        
             await RequireTeacherAccessByAssignmentAsync(submission.AssignmentId);
+
+            var oldCorrectionFileUrls = new List<string>();
+
+            if (request.CorrectionFiles != null && request.CorrectionFiles.Count > 0)
+            {
+                foreach (var file in request.CorrectionFiles)
+                {
+                    ValidateFile(file.FileName, file.Length, file.ContentType);
+                }
+
+                var oldCorrectionAttachments = submission.SubmissionAttachments
+                    .Where(a => string.Equals(a.FileRole, CorrectionFileRole, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                oldCorrectionFileUrls = oldCorrectionAttachments
+                    .Select(a => a.FileUrl)
+                    .Where(url => !string.IsNullOrWhiteSpace(url))
+                    .Cast<string>()
+                    .ToList();
+
+                var newCorrectionAttachments = new List<SubmissionAttachment>();
+                foreach (var file in request.CorrectionFiles)
+                {
+                    var fileUrl = await _storageService.UploadFileAsync(file, $"submissions/{submission.SubmissionId}/corrections");
+                    newCorrectionAttachments.Add(new SubmissionAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        SubmissionId = submission.SubmissionId,
+                        FileUrl = fileUrl,
+                        FileName = file.FileName,
+                        FileType = file.ContentType,
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow,
+                        FileRole = CorrectionFileRole
+                    });
+                }
+
+                if (oldCorrectionAttachments.Count > 0)
+                {
+                    await _submissionRepository.DeleteSubmissionAttachmentsAsync(oldCorrectionAttachments);
+                }
+
+                if (newCorrectionAttachments.Count > 0)
+                {
+                    await _submissionRepository.AddAttachmentsAsync(newCorrectionAttachments);
+                }
+
+            }
 
             submission.Grade = request.Grade;
             submission.Status = "Graded";
             await _submissionRepository.UpdateAsync(submission);
+
+            if (oldCorrectionFileUrls.Count > 0)
+            {
+                var deleteTasks = oldCorrectionFileUrls.Select(_storageService.DeleteFileByUrlAsync);
+                await Task.WhenAll(deleteTasks);
+            }
 
             //Notification
             try
@@ -447,7 +504,8 @@ namespace EMS.Application.Features.Assignments.Services
         public async Task<AssignmentSubmissionsListDto> GetSubmissionsForAssignmentAsync(Guid assignmentId)
         {
             await RequireTeacherAccessByAssignmentAsync(assignmentId);
-            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId)
+                ?? throw new KeyNotFoundException("Assignment not found.");
 
             var studentsInClass = await _classRepository.GetStudentsByClassIdAsync(assignment.ClassId);
 
@@ -455,11 +513,7 @@ namespace EMS.Application.Features.Assignments.Services
 
             var response = new AssignmentSubmissionsListDto
             {
-                AssignmentId = assignment.AssignmentId,
-                Title = assignment.Title,
-                DueDate = assignment.DueDate,
-                MaxScore = 10,
-                IsOffline = (bool)assignment.Isoffline
+                AssignmentId = assignment.AssignmentId
             };
 
             var currentTime = DateTime.UtcNow;
@@ -481,6 +535,17 @@ namespace EMS.Application.Features.Assignments.Services
                     studentDto.SubmissionId = sub.SubmissionId;
                     studentDto.SubmittedAt = sub.SubmittedAt;
                     studentDto.Grade = sub.Grade;
+                    studentDto.Attachments = sub.SubmissionAttachments
+                        .Where(a => string.Equals(a.FileRole, SubmissionFileRole, StringComparison.OrdinalIgnoreCase))
+                        .Select(MapSubmissionFile)
+                        .ToList();
+                    studentDto.CorrectionFiles = sub.SubmissionAttachments
+                        .Where(a => string.Equals(a.FileRole, CorrectionFileRole, StringComparison.OrdinalIgnoreCase))
+                        .Select(MapSubmissionFile)
+                        .ToList();
+                    studentDto.GradeStatus = sub.Grade.HasValue || string.Equals(sub.Status, "Graded", StringComparison.OrdinalIgnoreCase)
+                        ? "Graded"
+                        : "Not Graded";
 
                     // Xử lý status thông minh
                    if (sub.SubmittedAt > assignment.DueDate)
@@ -494,12 +559,9 @@ namespace EMS.Application.Features.Assignments.Services
                 }
                 else
                 {
-             
-                    if ((bool)assignment.Isoffline)
-                    {
-                        studentDto.Status = "Not Graded"; 
-                    }
-                    else if (currentTime > assignment.DueDate)
+                    studentDto.GradeStatus = "Not Graded";
+
+                    if (currentTime > assignment.DueDate && assignment.Isoffline != true)
                     {
                         studentDto.Status = "Missing";
                     }
@@ -516,6 +578,20 @@ namespace EMS.Application.Features.Assignments.Services
 
             return response;
         }
+
+        private static SubmissionFileDto MapSubmissionFile(SubmissionAttachment attachment)
+        {
+            return new SubmissionFileDto
+            {
+                AttachmentId = attachment.AttachmentId,
+                FileName = attachment.FileName,
+                FileUrl = attachment.FileUrl,
+                FileType = attachment.FileType,
+                FileSize = attachment.FileSize,
+                CreatedAt = attachment.CreatedAt
+            };
+        }
+
         public async Task<StudentSubmissionDetailDto> GetStudentSubmissionDetailAsync(Guid assignmentId, Guid studentId)
         {
             await RequireTeacherAccessByAssignmentAsync(assignmentId);
@@ -545,7 +621,8 @@ namespace EMS.Application.Features.Assignments.Services
                         FileUrl = a.FileUrl,
                         FileType = a.FileType,
                         FileSize = a.FileSize,
-                        CreatedAt = a.CreatedAt
+                        CreatedAt = a.CreatedAt,
+                        FileRole = a.FileRole
                     }).ToList(),
                 Feedbacks = submission.SubmissionFeedbacks
                     .OrderBy(f => f.CreatedAt)

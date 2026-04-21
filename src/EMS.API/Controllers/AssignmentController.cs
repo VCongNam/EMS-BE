@@ -100,7 +100,7 @@ namespace EMS.API.Controllers
    
 
         [HttpPut("submissions/{submissionId}/grade")]
-        public async Task<IActionResult> GradeSubmission(Guid submissionId, [FromBody] GradeSubmissionDto request)
+        public async Task<IActionResult> GradeSubmission(Guid submissionId, [FromForm] GradeSubmissionDto request)
         {
             try
             {

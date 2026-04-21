@@ -23,6 +23,7 @@ namespace EMS.Infrastructure.Repositories
         {
             return await _context.Set<Submission>()
                 .AsNoTracking()
+                .Include(s => s.SubmissionAttachments)
                 .Where(s => s.AssignmentId == assignmentId)
                 .OrderByDescending(s => s.SubmittedAt)
                 .ToListAsync();
@@ -55,8 +56,9 @@ namespace EMS.Infrastructure.Repositories
         public async Task<Submission?> GetByIdAsync(Guid submissionId)
         {
             return await _context.Submissions
-                .Include(s => s.Assignment).
-                FirstOrDefaultAsync(s => s.SubmissionId == submissionId);
+                .Include(s => s.Assignment)
+                .Include(s => s.SubmissionAttachments)
+                .FirstOrDefaultAsync(s => s.SubmissionId == submissionId);
         }
 
         public async Task<IEnumerable<Submission>> GetSubmissionsForClassAsync(Guid classId)

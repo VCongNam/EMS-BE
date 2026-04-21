@@ -16,6 +16,8 @@ namespace EMS.Application.Features.Assignments.Services
 {
     public class StudentAssignmentService : IStudentAssignmentService
     {
+        private const string SubmissionFileRole = "submission";
+
         private readonly ICurrentUserService _currentUser;
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ISupabaseStorageService _supabaseStorageService;
@@ -118,7 +120,8 @@ namespace EMS.Application.Features.Assignments.Services
                         FileName = sa.FileName,
                         FileURL = sa.FileUrl,
                         FileType = sa.FileType,
-                        FileSize = sa.FileSize
+                        FileSize = sa.FileSize,
+                        FileRole = sa.FileRole
                     }).ToList() ?? new List<StudentAttachmentDto>(),
 
                     Feedbacks = submission.SubmissionFeedbacks?
@@ -195,6 +198,7 @@ namespace EMS.Application.Features.Assignments.Services
                         FileType = Path.GetExtension(file.FileName),
                         FileSize = file.Length,
                         CreatedAt = DateTime.UtcNow,
+                        FileRole = SubmissionFileRole
                     });
                 }
                 await _submissionRepository.AddAsync(newSubmission);
@@ -224,6 +228,7 @@ namespace EMS.Application.Features.Assignments.Services
                         FileType = Path.GetExtension(file.FileName),
                         FileSize = file.Length,
                         CreatedAt = DateTime.UtcNow,
+                        FileRole = SubmissionFileRole
                     });
                 }
                 await _submissionRepository.AddAttachmentsAsync(newAttachments);

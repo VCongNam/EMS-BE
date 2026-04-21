@@ -30,6 +30,7 @@ namespace EMS.Application.Features.Assignments.DTOs
         public string? FileType { get; set; }
         public long? FileSize { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public string? FileRole { get; set; }
     }
 
     public class SubmissionFeedbackDto
