@@ -18,7 +18,7 @@ namespace EMS.Application.Features.Assignments.DTOs
         public decimal? Grade { get; set; }
 
         public List<SubmissionAttachmentDto> Attachments { get; set; } = new();
-
+        public List<SubmissionAttachmentDto> CorrectionFiles { get; set; } = new();
         public List<SubmissionFeedbackDto> Feedbacks { get; set; } = new();
     }
 
@@ -30,6 +30,7 @@ namespace EMS.Application.Features.Assignments.DTOs
         public string? FileType { get; set; }
         public long? FileSize { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public string? FileRole { get; set; }
     }
 
     public class SubmissionFeedbackDto
