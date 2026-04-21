@@ -18,7 +18,7 @@ namespace EMS.Application.Features.Assignments.DTOs
         public decimal? Grade { get; set; }
 
         public List<SubmissionAttachmentDto> Attachments { get; set; } = new();
-
+        public List<SubmissionAttachmentDto> CorrectionFiles { get; set; } = new();
         public List<SubmissionFeedbackDto> Feedbacks { get; set; } = new();
     }
 

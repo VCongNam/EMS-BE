@@ -24,5 +24,7 @@ namespace EMS.Application.Features.Assignments.Services
         Task<StudentSubmissionDetailDto> GetStudentSubmissionDetailAsync(Guid assignmentId, Guid studentId);
 
         Task<bool> HasStudentSubmittedAsync(Guid assignmentId, Guid studentId);
+        Task<Guid> CreateOfflineTestAsync(CreateOfflineTestDto request);
+        Task UploadOfflineSubmissionAsync(Guid assignmentId, UploadOfflineSubmissionDto request);
     }
 }

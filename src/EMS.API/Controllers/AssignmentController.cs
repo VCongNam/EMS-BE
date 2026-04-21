@@ -185,6 +185,30 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+        [HttpPost("offline-test")]
+        public async Task<IActionResult> CreateOfflineTest([FromForm] CreateOfflineTestDto request)
+        {
+            try
+            {
+                var id = await _assignmentService.CreateOfflineTestAsync(request);
+                return Ok(new { AssignmentId = id, Message = "Tạo bài kiểm tra offline thành công!" });
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, new { Error = ex.Message }); }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
+
+        [HttpPost("{assignmentId}/offline-submission")]
+        public async Task<IActionResult> UploadOfflineSubmission(Guid assignmentId, [FromForm] UploadOfflineSubmissionDto request)
+        {
+            try
+            {
+                await _assignmentService.UploadOfflineSubmissionAsync(assignmentId, request);
+                return Ok(new { Message = "Upload bài làm offline của học sinh thành công!" });
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, new { Error = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { Error = ex.Message }); }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
 
         // Student feature
 
@@ -268,5 +292,6 @@ namespace EMS.API.Controllers
                 return BadRequest(new { Error = ex.Message });
             }
         }
+
     }
 }

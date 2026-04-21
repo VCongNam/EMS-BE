@@ -17,6 +17,7 @@ namespace EMS.Application.Features.Assignments.Services
     {
         private const string SubmissionFileRole = "submission";
         private const string CorrectionFileRole = "correction";
+        private const string OfflineSubmissionFileRole = "offline_submission";
 
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ISubmissionRepository _submissionRepository;
@@ -373,22 +374,28 @@ namespace EMS.Application.Features.Assignments.Services
 
             var oldCorrectionFileUrls = new List<string>();
 
+            // Lấy correction cũ dù có file mới hay không
+            var oldCorrectionAttachments = submission.SubmissionAttachments
+                .Where(a => string.Equals(a.FileRole, CorrectionFileRole, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            oldCorrectionFileUrls = oldCorrectionAttachments
+                .Select(a => a.FileUrl)
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Cast<string>()
+                .ToList();
+
+            // Xóa correction cũ dù gửi file mới hay empty
+            if (oldCorrectionAttachments.Count > 0)
+            {
+                await _submissionRepository.DeleteSubmissionAttachmentsAsync(oldCorrectionAttachments);
+            }
+
+            // Chỉ upload mới nếu có file
             if (request.CorrectionFiles != null && request.CorrectionFiles.Count > 0)
             {
                 foreach (var file in request.CorrectionFiles)
-                {
                     ValidateFile(file.FileName, file.Length, file.ContentType);
-                }
-
-                var oldCorrectionAttachments = submission.SubmissionAttachments
-                    .Where(a => string.Equals(a.FileRole, CorrectionFileRole, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                oldCorrectionFileUrls = oldCorrectionAttachments
-                    .Select(a => a.FileUrl)
-                    .Where(url => !string.IsNullOrWhiteSpace(url))
-                    .Cast<string>()
-                    .ToList();
 
                 var newCorrectionAttachments = new List<SubmissionAttachment>();
                 foreach (var file in request.CorrectionFiles)
@@ -406,48 +413,40 @@ namespace EMS.Application.Features.Assignments.Services
                         FileRole = CorrectionFileRole
                     });
                 }
-
-                if (oldCorrectionAttachments.Count > 0)
-                {
-                    await _submissionRepository.DeleteSubmissionAttachmentsAsync(oldCorrectionAttachments);
-                }
-
-                if (newCorrectionAttachments.Count > 0)
-                {
-                    await _submissionRepository.AddAttachmentsAsync(newCorrectionAttachments);
-                }
-
+                await _submissionRepository.AddAttachmentsAsync(newCorrectionAttachments);
             }
+            // Nếu empty → không add gì → correction sẽ rỗng ✓
 
             submission.Grade = request.Grade;
             submission.Status = "Graded";
             await _submissionRepository.UpdateAsync(submission);
 
+            // Xóa file storage sau khi DB đã update
             if (oldCorrectionFileUrls.Count > 0)
             {
                 var deleteTasks = oldCorrectionFileUrls.Select(_storageService.DeleteFileByUrlAsync);
                 await Task.WhenAll(deleteTasks);
             }
 
-            //Notification
+            // Notification
             try
             {
                 var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(submission.StudentId);
-                if(targetAccountId != null)
+                if (targetAccountId != null)
                 {
                     await _notificationService.SendNotificationAsync(
-                            targetAccountId:targetAccountId.Value,
-                            studentId: submission.StudentId,
-                            title: "Bài tập đã được cho điểm",
-                            content: $"Giáo viên đã chấm bài tập: {submission.Assignment.Title} của bạn.",
-                            actionUrl: $"/student/classes/{submission.Assignment.ClassId}/assignment/{submission.Assignment.AssignmentId}",
-                            type: "Assignment"
-                        );
+                        targetAccountId: targetAccountId.Value,
+                        studentId: submission.StudentId,
+                        title: "Bài tập đã được cho điểm",
+                        content: $"Giáo viên đã chấm bài tập: {submission.Assignment.Title} của bạn.",
+                        actionUrl: $"/student/classes/{submission.Assignment.ClassId}/assignment/{submission.Assignment.AssignmentId}",
+                        type: "Assignment"
+                    );
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Lỗi gửi thông báo bài tập mới: {ex.Message}");
+                _logger.LogError($"Lỗi gửi thông báo: {ex.Message}");
             }
         }
 
@@ -536,7 +535,8 @@ namespace EMS.Application.Features.Assignments.Services
                     studentDto.SubmittedAt = sub.SubmittedAt;
                     studentDto.Grade = sub.Grade;
                     studentDto.Attachments = sub.SubmissionAttachments
-                        .Where(a => string.Equals(a.FileRole, SubmissionFileRole, StringComparison.OrdinalIgnoreCase))
+                       .Where(a => string.Equals(a.FileRole, SubmissionFileRole, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(a.FileRole, OfflineSubmissionFileRole, StringComparison.OrdinalIgnoreCase))
                         .Select(MapSubmissionFile)
                         .ToList();
                     studentDto.CorrectionFiles = sub.SubmissionAttachments
@@ -614,6 +614,19 @@ namespace EMS.Application.Features.Assignments.Services
                 Status = submission.Status ?? string.Empty,
                 Grade = submission.Grade,
                 Attachments = submission.SubmissionAttachments
+                    .Where(a => string.Equals(a.FileRole, SubmissionFileRole, StringComparison.OrdinalIgnoreCase))
+                    .Select(a => new SubmissionAttachmentDto
+                    {
+                        AttachmentId = a.AttachmentId,
+                        FileName = a.FileName,
+                        FileUrl = a.FileUrl,
+                        FileType = a.FileType,
+                        FileSize = a.FileSize,
+                        CreatedAt = a.CreatedAt,
+                        FileRole = a.FileRole
+                    }).ToList(),
+                CorrectionFiles = submission.SubmissionAttachments
+                    .Where(a => string.Equals(a.FileRole, CorrectionFileRole, StringComparison.OrdinalIgnoreCase))
                     .Select(a => new SubmissionAttachmentDto
                     {
                         AttachmentId = a.AttachmentId,
@@ -635,7 +648,134 @@ namespace EMS.Application.Features.Assignments.Services
                     }).ToList()
             };
         }
+       
 
+        public async Task<Guid> CreateOfflineTestAsync(CreateOfflineTestDto request)
+        {
+            var classroom = await _classRepository.GetByIdAsync(request.ClassId)
+                ?? throw new KeyNotFoundException("Class not found.");
+
+            var tas = await _classRepository.GetTAsByClassIdAsync(request.ClassId);
+            bool isAssigned = _currentUserService.Role == "TA" &&
+                              tas.Any(ta => ta.Taid == _currentUserService.UserId);
+
+            if (classroom.TeacherId != _currentUserService.UserId && !isAssigned)
+                throw new UnauthorizedAccessException("Bạn không có quyền tạo bài kiểm tra cho lớp này.");
+
+            var assignment = new Assignment
+            {
+                AssignmentId = Guid.NewGuid(),
+                ClassId = request.ClassId,
+                AuthorId = _currentUserService.UserId,
+                GradeCategoryId = request.GradeCategoryId,
+                Title = request.Title,
+                Description = request.Description,
+                DueDate = request.TestDate,         
+                Isoffline = true,
+                Isgraded = true,
+                AllowLateSubmission = false,
+                Status = "Published",
+                IsDeleted = false,
+                CreatedAt = request.TestDate       
+            };
+
+            await _assignmentRepository.AddAsync(assignment);
+
+            if (request.Attachments != null && request.Attachments.Count > 0)
+            {
+                foreach (var file in request.Attachments)
+                {
+                    ValidateFile(file.FileName, file.Length, file.ContentType);
+                    var fileUrl = await _storageService.UploadFileAsync(file, $"assignments/{assignment.AssignmentId}");
+                    await _assignmentRepository.AddAttachmentAsync(new AssignmentAttachment
+                    {
+                        AttachmentId = Guid.NewGuid(),
+                        AssignmentId = assignment.AssignmentId,
+                        FileName = file.FileName,
+                        FileUrl = fileUrl,
+                        FileType = file.ContentType,
+                        FileSize = file.Length,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            var students = await _classRepository.GetStudentsByClassIdAsync(request.ClassId);
+            var submissions = students.Select(s => new Submission
+            {
+                SubmissionId = Guid.NewGuid(),
+                AssignmentId = assignment.AssignmentId,
+                StudentId = s.StudentId,
+                Status = "Submitted",
+                SubmittedAt = null,
+                Grade = null
+            }).ToList();
+
+            if (submissions.Count > 0)
+                await _submissionRepository.AddRangeAsync(submissions);
+
+            return assignment.AssignmentId;
+        }
+        public async Task UploadOfflineSubmissionAsync(Guid assignmentId, UploadOfflineSubmissionDto request)
+        {
+            await RequireTeacherAccessByAssignmentAsync(assignmentId);
+
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId)
+                ?? throw new KeyNotFoundException("Assignment not found.");
+
+            if (assignment.Isoffline != true)
+                throw new BadRequestException("Bài tập này không phải bài kiểm tra offline.");
+
+            if (request.Files == null || request.Files.Count == 0)
+                throw new BadRequestException("Vui lòng đính kèm ít nhất 1 file.");
+
+            var submission = await _submissionRepository.GetSubmissionWithAttachmentsAsync(assignmentId, request.StudentId)
+                ?? throw new KeyNotFoundException("Không tìm thấy submission của học sinh này.");
+
+            var oldAttachments = submission.SubmissionAttachments
+                .Where(a => string.Equals(a.FileRole, OfflineSubmissionFileRole, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var oldUrls = oldAttachments
+                .Select(a => a.FileUrl)
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Cast<string>()
+                .ToList();
+
+            if (oldAttachments.Count > 0)
+                await _submissionRepository.DeleteSubmissionAttachmentsAsync(oldAttachments);
+
+            var newAttachments = new List<SubmissionAttachment>();
+            foreach (var file in request.Files)
+            {
+                ValidateFile(file.FileName, file.Length, file.ContentType);
+                var fileUrl = await _storageService.UploadFileAsync(
+                    file, $"submissions/{submission.SubmissionId}/offline");
+
+                newAttachments.Add(new SubmissionAttachment
+                {
+                    AttachmentId = Guid.NewGuid(),
+                    SubmissionId = submission.SubmissionId,
+                    FileUrl = fileUrl,
+                    FileName = file.FileName,
+                    FileType = file.ContentType,
+                    FileSize = file.Length,
+                    CreatedAt = DateTime.UtcNow,
+                    FileRole = OfflineSubmissionFileRole
+                });
+            }
+
+            await _submissionRepository.AddAttachmentsAsync(newAttachments);
+
+            submission.SubmittedAt = DateTime.UtcNow;
+            submission.Status = string.Equals(submission.Status, "Graded", StringComparison.OrdinalIgnoreCase)
+                ? "Graded"
+                : "Submitted";
+            await _submissionRepository.UpdateAsync(submission);
+
+            if (oldUrls.Count > 0)
+                await Task.WhenAll(oldUrls.Select(_storageService.DeleteFileByUrlAsync));
+        }
         public async Task<bool> HasStudentSubmittedAsync(Guid assignmentId, Guid studentId)
         {
             // Xác minh assignment tồn tại
