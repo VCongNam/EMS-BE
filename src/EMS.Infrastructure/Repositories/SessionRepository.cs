@@ -159,7 +159,7 @@ namespace EMS.Infrastructure.Repositories
             }
 
             query = query.Where(s =>_context.ClassEnrollments.Any(ce =>
-                ce.ClassId == s.ClassId && ce.StudentId == studentId));
+                ce.ClassId == s.ClassId && ce.StudentId == studentId && ce.Status == "Active"));
 
             var dbResult = await query
                 .OrderBy(s => s.Date) 

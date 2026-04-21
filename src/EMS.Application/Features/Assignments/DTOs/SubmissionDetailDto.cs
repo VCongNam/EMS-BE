@@ -11,10 +11,13 @@ namespace EMS.Application.Features.Assignments.DTOs
     {
         public Guid SubmissionID { get; set; }
         public List<StudentAttachmentDto> Attachments { get; set; } = new List<StudentAttachmentDto>();
+        public List<StudentAttachmentDto> Corrections { get; set; } = new List<StudentAttachmentDto>();
         public DateTime SubmittedAt { get; set; }
         public decimal? Grade { get; set; }
         public string Status { get; set; }
         public List<string> Feedbacks { get; set; } = new List<string>();
+
+
     }
 
     public class SubmitAssignmentRequest
