@@ -38,10 +38,39 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
             if (await tuitionFeeRepository.HasInvoicesForPeriodAsync(classId, month, year))
-                throw new InvalidOperationException($"Kỳ {month}/{year} đã phát hành hóa đơn rồi.");
+                throw new BadRequestException($"Kỳ {month}/{year} đã phát hành hóa đơn rồi.");
 
             var classObj = await tuitionFeeRepository.GetClassByIdAsync(classId);
             if (classObj == null) throw new NotFoundException("Lớp học không tồn tại.");
+
+
+            if (year < classObj.StartDate.Year || (year == classObj.StartDate.Year && month < classObj.StartDate.Month))
+            {
+                throw new BadRequestException($"Lớp học này bắt đầu từ tháng {classObj.StartDate.Month}/{classObj.StartDate.Year}. Không thể phát hành hóa đơn cho kỳ {month}/{year}.");
+            }
+
+            if (classObj.EndDate != null)
+            {
+                var endYear = classObj.EndDate.Year;
+                var endMonth = classObj.EndDate.Month;
+
+                if (year > endYear || (year == endYear && month > endMonth))
+                {
+                    throw new BadRequestException($"Lớp học này đã kết thúc vào tháng {endMonth}/{endYear}. Không thể phát hành hóa đơn cho kỳ {month}/{year}.");
+                }
+            }
+
+            TimeZoneInfo vnZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            DateTime nowVn = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnZone);
+
+            DateTime firstDayOfNextMonth = new DateTime(year, month, 1).AddMonths(1);
+
+            if (nowVn < firstDayOfNextMonth)
+            {
+                throw new BadRequestException($"Chưa thể phát hành hóa đơn kỳ {month}/{year}. " +
+                    $"Vui lòng đợi đến ngày 01/{firstDayOfNextMonth.Month}/{firstDayOfNextMonth.Year} khi kỳ học kết thúc.");
+            }
+
 
             var periodStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
             var periodEnd = new DateTime(year, month, DateTime.DaysInMonth(year, month), 23, 59, 59, DateTimeKind.Utc);
@@ -67,7 +96,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                     StudentName = enrollment.Student?.FullName ?? "Unknown",
                     StudentStatus = enrollment.Status ?? "Active",
                     EnrollmentDate = enrollment.CreatedAt,
-
                     TotalSessionsInMonth = totalSessions,
                     AttendedSessions = stats.Attended,
                     ExcusedAbsences = stats.Excused,
@@ -87,7 +115,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
             if (await tuitionFeeRepository.HasInvoicesForPeriodAsync(classId, dto.PeriodMonth, dto.PeriodYear))
-                throw new InvalidOperationException("Kỳ này đã phát hành hóa đơn rồi, không thể phát hành thêm.");
+                throw new BadRequestException("Kỳ này đã phát hành hóa đơn rồi, không thể phát hành thêm.");
 
             var classObj = await tuitionFeeRepository.GetClassByIdAsync(classId);
             var invoices = new List<Invoice>();
@@ -117,10 +145,10 @@ namespace EMS.Application.Features.TuitionFees.Services
                 });
             }
 
-            if (!invoices.Any()) throw new InvalidOperationException("Không có hóa đơn nào hợp lệ để tạo.");
+            if (!invoices.Any()) throw new BadRequestException("Không có hóa đơn nào hợp lệ để tạo.");
 
             var persisted = await tuitionFeeRepository.AddInvoicesWithEnrollmentsAsync(invoices, null, classId, dto.PeriodMonth, dto.PeriodYear);
-            if (!persisted) throw new Exception("Lỗi khi lưu dữ liệu hóa đơn vào hệ thống.");
+            if (!persisted) throw new BadRequestException("Lỗi khi lưu dữ liệu hóa đơn vào hệ thống.");
 
             try
             {
@@ -138,6 +166,98 @@ namespace EMS.Application.Features.TuitionFees.Services
             catch (Exception ex) { _logger.LogError($"Lỗi gửi thông báo: {ex.Message}"); }
         }
 
+
+        public async Task<InvoicePreviewDto> GetStudentFinalInvoicePreviewAsync(Guid classId, Guid studentId, int month, int year, Guid teacherId)
+        {
+            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
+                throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
+
+            var existingInvoices = await tuitionFeeRepository.GetStudentInvoicesAsync(studentId, 1, 10, classId);
+            if (existingInvoices.Items.Any(i => i.Invoice.PeriodMonth == month && i.Invoice.PeriodYear == year && i.Invoice.IsDeleted != true))
+                throw new BadRequestException($"Học sinh này đã được phát hành hóa đơn kỳ {month}/{year} rồi.");
+
+            var classObj = await tuitionFeeRepository.GetClassByIdAsync(classId);
+            if (classObj == null) throw new NotFoundException("Lớp học không tồn tại.");
+
+            if (year < classObj.StartDate.Year || (year == classObj.StartDate.Year && month < classObj.StartDate.Month))
+                throw new BadRequestException("Lớp chưa bắt đầu vào thời điểm này.");
+
+            var studentsToBill = await tuitionFeeRepository.GetStudentsForBillingAsync(classId, month, year);
+            var targetStudent = studentsToBill.FirstOrDefault(s => s.StudentId == studentId);
+
+            if (targetStudent == null)
+                throw new NotFoundException("Học sinh không tồn tại trong danh sách thu tiền của tháng này.");
+
+            var periodStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var periodEnd = new DateTime(year, month, DateTime.DaysInMonth(year, month), 23, 59, 59, DateTimeKind.Utc);
+            var attendanceDetails = await tuitionFeeRepository.GetDetailedAttendanceCountsAsync(classId, periodStart, periodEnd);
+            int totalSessions = await tuitionFeeRepository.CountScheduledSessionsAsync(classId, month, year);
+
+            var stats = attendanceDetails.TryGetValue(studentId, out var detail) ? detail : (Attended: 0, Excused: 0, Unexcused: 0);
+
+            return new InvoicePreviewDto
+            {
+                StudentId = targetStudent.StudentId,
+                StudentName = targetStudent.Student?.FullName ?? "Unknown",
+                StudentStatus = targetStudent.Status ?? "Active",
+                EnrollmentDate = targetStudent.CreatedAt,
+                TotalSessionsInMonth = totalSessions,
+                AttendedSessions = stats.Attended,
+                ExcusedAbsences = stats.Excused,
+                UnexcusedAbsences = stats.Unexcused,
+                UnitPrice = classObj.TuitionFee,
+                Amount = stats.Attended * classObj.TuitionFee
+            };
+        }
+        public async Task ConfirmStudentFinalInvoiceAsync(Guid classId, Guid studentId, ConfirmSingleInvoiceDto dto, Guid teacherId)
+        {
+            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
+                throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
+
+            var existingInvoices = await tuitionFeeRepository.GetInvoicesByClassAndPeriodAsync(classId, dto.PeriodMonth, dto.PeriodYear);
+            if (existingInvoices.Any(i => i.StudentId == studentId && i.IsDeleted != true))
+                throw new BadRequestException($"Học sinh này đã được tất toán hóa đơn kỳ {dto.PeriodMonth}/{dto.PeriodYear} rồi.");
+
+            var classObj = await tuitionFeeRepository.GetClassByIdAsync(classId);
+            if (classObj == null) throw new NotFoundException("Lớp học không tồn tại.");
+
+            decimal unitPrice = classObj.TuitionFee;
+            decimal amount = dto.AttendedSessions * unitPrice;
+
+            string description = $"Tất toán học phí tháng {dto.PeriodMonth}/{dto.PeriodYear} (Nghỉ ngang). Thực tế học: {dto.AttendedSessions} buổi.";
+
+            var invoice = new Invoice
+            {
+                InvoiceId = Guid.NewGuid(),
+                StudentId = studentId,
+                ClassId = classId,
+                PeriodMonth = (short)dto.PeriodMonth,
+                PeriodYear = dto.PeriodYear,
+                UnitPrice = unitPrice,
+                SessionCount = dto.AttendedSessions,
+                Amount = amount,
+                Description = description,
+                DueDate = dto.DueDate.ToUniversalTime(),
+                Status = amount == 0 ? "Paid" : "Pending", 
+                CreatedAt = DateTime.UtcNow
+            };
+
+          
+            await tuitionFeeRepository.AddInvoicesAsync(new List<Invoice> { invoice });
+
+            try
+            {
+                var targetStudents = await _notificationService.GetStudentTargetsAsync(classId);
+                var target = targetStudents.FirstOrDefault(t => t.StdId == studentId);
+
+                if (target != default && amount > 0)
+                {
+                    string content = $"Đã phát hành hóa đơn tất toán tháng {dto.PeriodMonth}/{dto.PeriodYear}. Số tiền cần nộp: {amount:N0}đ.";
+                    await _notificationService.SendNotificationAsync(target.AccId, studentId, "Thông báo học phí", content, $"/student/classes/{classId}/tuition", "Invoice");
+                }
+            }
+            catch (Exception ex) { _logger.LogError($"Lỗi gửi thông báo tất toán: {ex.Message}"); }
+        }
         public async Task<IEnumerable<ClassTuitionReportDto>> GetClassesOverviewAsync(int month, int year)
         {
             var teacherId = currentUserService.UserId;

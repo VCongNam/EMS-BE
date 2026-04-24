@@ -13,6 +13,8 @@ namespace EMS.Application.Features.TuitionFees.Services
     {
         Task<List<InvoicePreviewDto>> GetInvoicesPreviewAsync(Guid classId, int month, int year, Guid teacherId);
         Task ConfirmAndGenerateInvoicesAsync(Guid classId, ConfirmInvoicesDto dto, Guid teacherId);
+        Task<InvoicePreviewDto> GetStudentFinalInvoicePreviewAsync(Guid classId, Guid studentId, int month, int year, Guid teacherId);
+        Task ConfirmStudentFinalInvoiceAsync(Guid classId, Guid studentId, ConfirmSingleInvoiceDto dto, Guid teacherId);
         Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
         Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId);
 

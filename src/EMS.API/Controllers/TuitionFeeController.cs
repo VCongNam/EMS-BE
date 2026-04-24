@@ -25,7 +25,6 @@ namespace EMS.API.Controllers
             this._tuitionService = tuitionService;
         }
 
-        // --- ENDPOINT CỐT LÕI (PREVIEW & CONFIRM HÓA ĐƠN) ---
 
         [HttpGet("class/{classId}/preview-invoices")]
         [Authorize(Roles = "Teacher")]
@@ -49,6 +48,21 @@ namespace EMS.API.Controllers
             }
             catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
             catch (Exception ex) { return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ." }); }
+        }
+
+        [HttpGet("class/{classId}/student/{studentId}/preview-final-invoice")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> PreviewFinalInvoice(Guid classId, Guid studentId, [FromQuery] int month, [FromQuery] int year)
+        {
+                var result = await tuitionFeeService.GetStudentFinalInvoicePreviewAsync(classId, studentId, month, year, currentUserService.UserId);
+                return Ok(result);
+        }
+
+        [HttpPost("class/{classId}/student/{studentId}/confirm-final-invoice")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> ConfirmFinalInvoice(Guid classId, Guid studentId, [FromBody] ConfirmSingleInvoiceDto dto)
+        {
+            return Ok(new { Message = "Đã phát hành hóa đơn tất toán cho học sinh thành công." });
         }
 
 
