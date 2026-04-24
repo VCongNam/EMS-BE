@@ -58,12 +58,10 @@ namespace EMS.API.Middlewares
                     message = "Dữ liệu đầu vào không hợp lệ.";
                     errors = validationEx.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
                     break;
-                // THÊM MỚI: Xử lý Forbidden
                 case ForbiddenAccessException forbiddenEx:
                     statusCode = (int)HttpStatusCode.Forbidden; // 403
                     message = forbiddenEx.Message;
                     break;
-                // THÊM MỚI: Xử lý Conflict
                 case ConflictException conflictEx:
                     statusCode = (int)HttpStatusCode.Conflict; // 409
                     message = conflictEx.Message;

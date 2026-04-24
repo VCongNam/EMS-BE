@@ -8,9 +8,9 @@ namespace EMS.Application.Features.Accounts.DTOs
 {
     public class UpdateTeacherProfileRequest
     {
-        public string FullName { get; set; } // Trường chung
-        public string? PhoneNumber { get; set; } // Trường chung
-        public string? Bio { get; set; } // Trường riêng
+        public string FullName { get; set; } 
+        public string? PhoneNumber { get; set; } 
+        public string? Bio { get; set; }
         public string? Specialization { get; set; }
         public string? BankName { get; set; }
         public string? BankAccount { get; set; }

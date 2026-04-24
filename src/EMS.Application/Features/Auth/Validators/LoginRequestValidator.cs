@@ -18,7 +18,7 @@ namespace EMS.Application.Features.Auth.Validators
 
             RuleFor(x => x.Password)
                 .NotEmpty().WithMessage("Mật khẩu không được để trống")
-                .MinimumLength(6).WithMessage("Mật khẩu phải từ 6 ký tự trở lên");
+                .MinimumLength(8).WithMessage("Mật khẩu phải từ 8 ký tự trở lên");
 
             RuleFor(x => x.SelectedRole)
                 .NotEmpty().WithMessage("Vui lòng chọn vai trò đăng nhập")

@@ -21,15 +21,9 @@ namespace EMS.Infrastructure.Repositories
             this.context = context;
         }
 
-
-        // =========================================================
-        // 🎯 MÀN 2: QUẢN LÝ LỚP & HÓA ĐƠN (Class Hub & Invoices)
-        // =========================================================
-
         public async Task<bool> IsTeacherOwnsClassAsync(Guid classId, Guid teacherId)
         {
-            return await context.Classes
-                .AnyAsync(c => c.ClassId == classId && c.TeacherId == teacherId && c.IsDeleted != true);
+            return await context.Classes.AnyAsync(c => c.ClassId == classId && c.TeacherId == teacherId && c.IsDeleted != true);
         }
 
         public async Task<Class?> GetClassByIdAsync(Guid classId)
@@ -72,13 +66,27 @@ namespace EMS.Infrastructure.Repositories
         public async Task<IEnumerable<ClassEnrollment>> GetActiveStudentsInClassAsync(Guid classId)
         {
             return await context.ClassEnrollments
+                .Include(e => e.Student)
                 .Where(e => e.ClassId == classId && e.Status == "Active").ToListAsync();
+        }
+
+        // HÀM MỚI: Lấy học sinh để chốt hóa đơn (bao gồm cả hs đã nghỉ ngang trong tháng)
+        public async Task<IEnumerable<ClassEnrollment>> GetStudentsForBillingAsync(Guid classId, int month, int year)
+        {
+            return await context.ClassEnrollments
+                .Include(e => e.Student)
+                .Where(e => e.ClassId == classId &&
+                           (e.Status == "Active" ||
+                            context.Attendances.Any(a => a.StudentId == e.StudentId &&
+                                                         a.Session.ClassId == classId &&
+                                                         a.Session.Date.Month == month &&
+                                                         a.Session.Date.Year == year)))
+                .ToListAsync();
         }
 
         public async Task<int> CountScheduledSessionsAsync(Guid classId, int month, int year)
         {
-            return await context.Sessions
-                .CountAsync(s => s.ClassId == classId && s.Date.Month == month && s.Date.Year == year && s.IsDeleted != true);
+            return await context.Sessions.CountAsync(s => s.ClassId == classId && s.Date.Month == month && s.Date.Year == year && s.IsDeleted != true);
         }
 
         public async Task<int> CountStudentAttendanceAsync(Guid studentId, Guid classId, int month, int year)
@@ -99,7 +107,6 @@ namespace EMS.Infrastructure.Repositories
                 .AnyAsync(a => a.Session.ClassId == classId && a.Session.Date.Month == month && a.Session.Date.Year == year);
         }
 
-
         public async Task<Dictionary<Guid, int>> GetAttendanceCountsForClassPeriodAsync(Guid classId, DateTime startDate, DateTime endDate)
         {
             var query = context.Attendances
@@ -112,13 +119,33 @@ namespace EMS.Infrastructure.Repositories
             return list.ToDictionary(x => x.StudentId, x => x.Count);
         }
 
+        // HÀM MỚI: Lấy chi tiết điểm danh 3 trạng thái
+        public async Task<Dictionary<Guid, (int Attended, int Excused, int Unexcused)>> GetDetailedAttendanceCountsAsync(Guid classId, DateTime startDate, DateTime endDate)
+        {
+            var attendances = await context.Attendances
+                .Include(a => a.Session)
+                .Where(a => a.Session.ClassId == classId &&
+                            a.Session.Date >= DateOnly.FromDateTime(startDate) &&
+                            a.Session.Date <= DateOnly.FromDateTime(endDate))
+                .ToListAsync();
+
+            return attendances.GroupBy(a => a.StudentId).ToDictionary(
+                g => g.Key,
+                g => (
+                    Attended: g.Count(a => a.Status == "Present"),
+                    Excused: g.Count(a => a.Status == "Absent" && a.IsExcused == true),
+                    Unexcused: g.Count(a => a.Status == "Absent" && (a.IsExcused == null || a.IsExcused == false))
+                )
+            );
+        }
+
         public async Task AddInvoicesAsync(IEnumerable<Invoice> invoices)
         {
             await context.Invoices.AddRangeAsync(invoices);
             await context.SaveChangesAsync();
         }
 
-        public async Task<bool> AddInvoicesWithEnrollmentsAsync(IEnumerable<Invoice> invoices, IEnumerable<ClassEnrollment> enrollments, Guid classId, int periodMonth, int periodYear)
+        public async Task<bool> AddInvoicesWithEnrollmentsAsync(IEnumerable<Invoice> invoices, IEnumerable<ClassEnrollment>? enrollments, Guid classId, int periodMonth, int periodYear)
         {
             using var dbTrans = await context.Database.BeginTransactionAsync();
             try
@@ -162,23 +189,17 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Invoice?> GetInvoicesWithClassAsync(Guid invoiceId)
         {
-            return await context.Invoices
-                .Include(i => i.Class)
-                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.IsDeleted != true);
+            return await context.Invoices.Include(i => i.Class).FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.IsDeleted != true);
         }
 
         public async Task<Invoice?> GetInvoiceByIdAsync(Guid invoiceId)
         {
-            return await context.Invoices
-                .Include(i => i.Class)
-                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
+            return await context.Invoices.Include(i => i.Class).FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
         }
 
         public async Task<IEnumerable<Invoice>> GetInvoicesByClassAndPeriodAsync(Guid classId, int month, int year)
         {
-            return await context.Invoices
-               .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true)
-               .ToListAsync();
+            return await context.Invoices.Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true).ToListAsync();
         }
 
         public async Task<(List<Invoice> Items, int TotalCount)> GetInvoicesByClassAndPeriodPagedAsync(Guid classId, int month, int year, int page, int size, string? status = null, Guid? studentId = null)
@@ -186,41 +207,25 @@ namespace EMS.Infrastructure.Repositories
             if (page < 1) page = 1;
             if (size < 1) size = 20;
 
-            var query = context.Invoices
-                .AsNoTracking()
+            var query = context.Invoices.AsNoTracking()
                 .Include(i => i.Student).ThenInclude(s => s.Account)
-                .Include(i => i.Transactions)
-                .Include(i => i.Class)
+                .Include(i => i.Transactions).Include(i => i.Class)
                 .Where(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
 
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                query = query.Where(i => i.Status != null && i.Status.ToLower() == status.ToLower());
-            }
-
-            if (studentId.HasValue)
-            {
-                query = query.Where(i => i.StudentId == studentId.Value);
-            }
+            if (!string.IsNullOrWhiteSpace(status)) query = query.Where(i => i.Status != null && i.Status.ToLower() == status.ToLower());
+            if (studentId.HasValue) query = query.Where(i => i.StudentId == studentId.Value);
 
             var total = await query.CountAsync();
             var items = await query.OrderBy(i => i.DueDate).Skip((page - 1) * size).Take(size).ToListAsync();
-
             return (items, total);
         }
-
-
-        // =========================================================
-        // 🔍 MÀN 3: DUYỆT GIAO DỊCH & LỊCH SỬ (Queue & History)
-        // =========================================================
 
         public async Task<IEnumerable<Transaction>> GetPendingTransactionsByTeacherAsync(Guid teacherId)
         {
             return await context.Transactions
                 .Include(t => t.Invoice).ThenInclude(i => i.Student).ThenInclude(s => s.Account)
                 .Include(t => t.Invoice).ThenInclude(i => i.Class)
-                .Where(t => t.Status == "Pending" && t.Invoice.Class.TeacherId == teacherId)
-                .ToListAsync();
+                .Where(t => t.Status == "Pending" && t.Invoice.Class.TeacherId == teacherId).ToListAsync();
         }
 
         public async Task<Transaction?> GetTransactionWithInvoiceAsync(Guid transactionId)
@@ -233,8 +238,7 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<decimal> GetTotalPaidAmountAsync(Guid invoiceId)
         {
-            return await context.Transactions
-                .Where(t => t.InvoiceId == invoiceId && t.Status == "Successful").SumAsync(t => t.AmountPaid);
+            return await context.Transactions.Where(t => t.InvoiceId == invoiceId && t.Status == "Successful").SumAsync(t => t.AmountPaid);
         }
 
         public async Task<bool> UpdateTransactionStatusAsync(Transaction t, Invoice? i)
@@ -268,18 +272,9 @@ namespace EMS.Infrastructure.Repositories
             return await query.OrderByDescending(t => t.UpdatedAt).ToListAsync();
         }
 
-
-        // =========================================================
-        // 🎓 PHẦN DÀNH CHO HỌC SINH (Student Portal)
-        // =========================================================
-
         public async Task<(List<(Invoice Invoice, Transaction? LatestTransaction)> Items, int TotalCount)> GetStudentInvoicesAsync(Guid studentId, int page, int size, Guid? classId)
         {
-            var query = context.Invoices
-                .Include(i => i.Class)
-                .Where(i => i.StudentId == studentId)
-                .AsNoTracking();
-
+            var query = context.Invoices.Include(i => i.Class).Where(i => i.StudentId == studentId).AsNoTracking();
             if (classId.HasValue) query = query.Where(i => i.ClassId == classId.Value);
 
             int totalCount = await query.CountAsync();
@@ -293,30 +288,22 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<(Invoice? Invoice, Transaction? LatestTransaction, List<Attendance> Attendances)> GetInvoiceDetailAsync(Guid invoiceId, Guid studentId)
         {
-            var invoice = await context.Invoices.Include(i => i.Class).AsNoTracking()
-                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
-
+            var invoice = await context.Invoices.Include(i => i.Class).AsNoTracking().FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
             if (invoice == null) return (null, null, new List<Attendance>());
 
-            var latestTransaction = await context.Transactions.AsNoTracking()
-                .Where(t => t.InvoiceId == invoiceId).OrderByDescending(t => t.CreatedAt).FirstOrDefaultAsync();
-
-            var attendances = await context.Attendances.Include(a => a.Session).AsNoTracking()
-                .Where(a => a.InvoiceId == invoiceId && a.StudentId == studentId).OrderBy(a => a.Session.Date).ToListAsync();
-
+            var latestTransaction = await context.Transactions.AsNoTracking().Where(t => t.InvoiceId == invoiceId).OrderByDescending(t => t.CreatedAt).FirstOrDefaultAsync();
+            var attendances = await context.Attendances.Include(a => a.Session).AsNoTracking().Where(a => a.InvoiceId == invoiceId && a.StudentId == studentId).OrderBy(a => a.Session.Date).ToListAsync();
             return (invoice, latestTransaction, attendances);
         }
 
         public async Task<Invoice?> GetInvoiceWithTeacherBankInfoAsync(Guid invoiceId, Guid studentId)
         {
-            return await context.Invoices.Include(i => i.Class).ThenInclude(c => c.Teacher).AsNoTracking()
-                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
+            return await context.Invoices.Include(i => i.Class).ThenInclude(c => c.Teacher).AsNoTracking().FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.StudentId == studentId);
         }
 
         public async Task<bool> HasPendingTransactionAsync(Guid invoiceId)
         {
-            return await context.Transactions
-                    .AnyAsync(t => t.InvoiceId == invoiceId && t.Status == "Pending");
+            return await context.Transactions.AnyAsync(t => t.InvoiceId == invoiceId && t.Status == "Pending");
         }
 
         public async Task AddTransactionAsync(Transaction transaction)
@@ -327,76 +314,47 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<List<Transaction>> GetTransactionsByStudentIdAsync(Guid studentId, Guid? classId)
         {
-            var result = await context.Transactions.Include(t => t.Invoice)
-                .Where(t => t.Invoice.StudentId == studentId).OrderByDescending(t => t.CreatedAt).ToListAsync();
-
+            var result = await context.Transactions.Include(t => t.Invoice).Where(t => t.Invoice.StudentId == studentId).OrderByDescending(t => t.CreatedAt).ToListAsync();
             if (classId.HasValue) result = result.Where(i => i.Invoice.ClassId == classId.Value).ToList();
             return result;
         }
 
         public async Task<Transaction?> GetTransactionDetailAsync(Guid transactionId, Guid studentId)
         {
-            return await context.Transactions.Include(t => t.Invoice)
-                .Where(t => t.TransactionId == transactionId && t.Invoice.StudentId == studentId && t.Invoice.IsDeleted == false)
-                .FirstOrDefaultAsync();
+            return await context.Transactions.Include(t => t.Invoice).Where(t => t.TransactionId == transactionId && t.Invoice.StudentId == studentId && t.Invoice.IsDeleted == false).FirstOrDefaultAsync();
         }
 
+        public async Task<Transaction?> GetTransactionStudentAndInvoiceId(Guid invoiceId, Guid studentId)
+        {
+            return await context.Transactions.FirstOrDefaultAsync(t => t.InvoiceId == invoiceId && t.Invoice.StudentId == studentId);
+        }
+
+        public async Task UpdateTransactionAsync(Transaction transaction)
+        {
+            context.Transactions.Update(transaction);
+            await context.SaveChangesAsync();
+        }
 
         public async Task<IEnumerable<Class>> GetAllClassesWithStudentsAsync()
         {
-            return await context.Classes
-                .Include(c => c.ClassEnrollments.Where(e => e.Status == "Active"))
-                .ToListAsync();
+            return await context.Classes.Include(c => c.ClassEnrollments.Where(e => e.Status == "Active")).ToListAsync();
         }
-
 
         public async Task<IEnumerable<Invoice>> GetInvoicesByFilterAsync(Guid teacherId, Guid? classId, int month, int year)
         {
             var query = context.Invoices
                 .Include(i => i.Class)
-                .Include(i => i.Student)
-                    .ThenInclude(s => s.Account)
+                .Include(i => i.Student).ThenInclude(s => s.Account)
                 .Include(i => i.Transactions.Where(t => t.Status == "Successful" || t.Status == "Completed"))
-                .Where(i => i.Class.TeacherId == teacherId
-                         && i.PeriodMonth == month
-                         && i.PeriodYear == year
-                         && i.IsDeleted != true);
+                .Where(i => i.Class.TeacherId == teacherId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
 
-            if (classId.HasValue && classId != Guid.Empty)
-            {
-                query = query.Where(i => i.ClassId == classId.Value);
-            }
-
+            if (classId.HasValue && classId != Guid.Empty) query = query.Where(i => i.ClassId == classId.Value);
             return await query.ToListAsync();
         }
 
-        public async Task<(decimal Expected, decimal Actual)> GetClassPeriodRevenueAsync(Guid classId, int month, int year)
-        {
-            var expected = await context.Invoices
-                .Where(i => i.ClassId == classId
-                         && i.PeriodMonth == month
-                         && i.PeriodYear == year
-                         && i.IsDeleted != true)
-                .SumAsync(i => i.Amount);
-
-            var actual = await context.Transactions
-                .Where(t => t.Invoice.ClassId == classId
-                         && t.Invoice.PeriodMonth == month
-                         && t.Invoice.PeriodYear == year
-                         && t.Invoice.IsDeleted != true
-                         && (t.Status == "Successful"))
-                .SumAsync(t => t.AmountPaid);
-
-            return (expected, actual);
-        }
-
-
         public async Task<IEnumerable<Class>> GetTeacherClassesConfigAsync(Guid teacherId)
         {
-            // Chỉ lấy các lớp đang hoạt động của giáo viên đó
-            return await context.Classes
-                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Completed")
-                .ToListAsync();
+            return await context.Classes.Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Completed").ToListAsync();
         }
 
         public async Task UpdateClassFeeConfigAsync(Guid classId, string billingMethod, decimal fee, int deadlineDays)
@@ -408,45 +366,24 @@ namespace EMS.Infrastructure.Repositories
                 classEntity.TuitionFee = fee;
                 classEntity.PaymentDeadlineDays = deadlineDays;
                 classEntity.UpdatedAt = DateTime.UtcNow;
-
                 await context.SaveChangesAsync();
             }
         }
 
         public async Task<Class?> GetClassConfigByIdAsync(Guid classId, Guid teacherId)
         {
-            // Tìm lớp theo ID, đồng thời check luôn quyền sở hữu của giáo viên đó
-            return await context.Classes
-                .FirstOrDefaultAsync(c => c.ClassId == classId
-                                       && c.TeacherId == teacherId
-                                       && c.IsDeleted != true);
+            return await context.Classes.FirstOrDefaultAsync(c => c.ClassId == classId && c.TeacherId == teacherId && c.IsDeleted != true);
         }
 
         public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId)
         {
-            // Tìm hóa đơn kèm theo thông tin Lớp để check quyền của giáo viên
-            var invoice = await context.Invoices
-                .Include(i => i.Class)
-                .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.IsDeleted != true);
+            var invoice = await context.Invoices.Include(i => i.Class).FirstOrDefaultAsync(i => i.InvoiceId == invoiceId && i.IsDeleted != true);
+            if (invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn này.");
+            if (invoice.Class.TeacherId != teacherId) throw new UnauthorizedAccessException("Bạn không có quyền thao tác.");
+            if (invoice.Status == "Paid" || invoice.Status == "Cancelled") throw new InvalidOperationException($"Không thể gia hạn hóa đơn {invoice.Status}.");
 
-            if (invoice == null)
-                throw new KeyNotFoundException("Không tìm thấy hóa đơn này.");
-
-            if (invoice.Class.TeacherId != teacherId)
-                throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên hóa đơn của giáo viên khác.");
-
-            if (invoice.Status == "Paid" || invoice.Status == "Cancelled")
-                throw new InvalidOperationException($"Không thể gia hạn hóa đơn đang ở trạng thái {invoice.Status}.");
-
-            // Xóa bỏ đoạn (invoice.DueDate ?? DateTime.UtcNow) đi
             invoice.DueDate = invoice.DueDate.AddDays(additionalDays);
-
-            // Nếu đang quá hạn thì chuyển lại thành Pending
-            if (invoice.Status == "Overdue")
-            {
-                invoice.Status = "Pending";
-            }
-
+            if (invoice.Status == "Overdue") invoice.Status = "Pending";
             invoice.UpdatedAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
         }
@@ -454,29 +391,19 @@ namespace EMS.Infrastructure.Repositories
         public async Task ExtendClassInvoicesDueDateAsync(Guid classId, int month, int year, int additionalDays)
         {
             var pendingInvoices = await context.Invoices
-                .Where(i => i.ClassId == classId
-                         // Đã xóa i.DueDate != null và đuôi .Value
-                         && i.DueDate.Month == month
-                         && i.DueDate.Year == year
-                         && i.IsDeleted != true
-                         && (i.Status == "Pending" || i.Status == "Overdue"))
+                .Where(i => i.ClassId == classId && i.DueDate.Month == month && i.DueDate.Year == year && i.IsDeleted != true && (i.Status == "Pending" || i.Status == "Overdue"))
                 .ToListAsync();
 
-            if (!pendingInvoices.Any())
-                throw new InvalidOperationException("Không có hóa đơn nào đang nợ trong kỳ này để gia hạn.");
+            if (!pendingInvoices.Any()) throw new InvalidOperationException("Không có hóa đơn nợ để gia hạn.");
 
             foreach (var inv in pendingInvoices)
             {
-                // Đã xóa .Value ở đây
                 inv.DueDate = inv.DueDate.AddDays(additionalDays);
                 if (inv.Status == "Overdue") inv.Status = "Pending";
                 inv.UpdatedAt = DateTime.UtcNow;
             }
-
             await context.SaveChangesAsync();
         }
-
-
 
         public async Task<IEnumerable<Class>> GetClassesWithDataAsync(Guid teacherId, int month, int year)
         {
@@ -486,29 +413,15 @@ namespace EMS.Infrastructure.Repositories
             return await context.Classes
                 .Include(c => c.ClassEnrollments.Where(ce => ce.Status == "Active"))
                 .Include(c => c.Invoices.Where(i => i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true))
-                .Where(c => c.TeacherId == teacherId
-                         && c.IsDeleted != true
-                         && c.StartDate <= periodEnd
-                         && (c.EndDate == null || c.EndDate >= periodStart))
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.StartDate <= periodEnd && (c.EndDate == null || c.EndDate >= periodStart))
                 .ToListAsync();
         }
 
         public async Task<IEnumerable<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, Guid? classId, int month, int year)
         {
-            var query = context.Invoices
-                .Where(i => i.Class.TeacherId == teacherId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
-
-            if (classId.HasValue && classId != Guid.Empty)
-                query = query.Where(i => i.ClassId == classId.Value);
-
+            var query = context.Invoices.Where(i => i.Class.TeacherId == teacherId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
+            if (classId.HasValue && classId != Guid.Empty) query = query.Where(i => i.ClassId == classId.Value);
             return await query.ToListAsync();
-        }
-
-
-
-        public Task<IEnumerable<(Guid ClassId, string ClassName, string BillingMethod, Guid StudentId, string StudentName, string? AvatarUrl, Guid? InvoiceId, int SessionCount, decimal CreditBalance, decimal TotalAmount, decimal PaidAmount, DateTime? DueDate, string Status)>> GetAllStudentsInvoicesByMonthAsync(Guid teacherId, int month, int year)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<List<Class>> GetClassesActiveInPeriodAsync(Guid teacherId, int month, int year)
@@ -517,109 +430,60 @@ namespace EMS.Infrastructure.Repositories
             var periodEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
 
             return await context.Classes
-                .Where(c => c.TeacherId == teacherId
-                         && c.IsDeleted != true
-                         // Logic DateOnly: Bắt đầu trước khi hết tháng AND (Chưa kết thúc OR kết thúc sau khi tháng bắt đầu)
-                         && c.StartDate <= periodEnd
-                         && (c.EndDate == null || c.EndDate >= periodStart))
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.StartDate <= periodEnd && (c.EndDate == null || c.EndDate >= periodStart))
                 .ToListAsync();
         }
+
         public async Task<bool> HasInvoicesForPeriodAsync(Guid classId, int month, int year)
         {
-            return await context.Invoices
-                .AnyAsync(i => i.ClassId == classId
-                            && i.PeriodMonth == month
-                            && i.PeriodYear == year
-                            && i.IsDeleted != true);
+            return await context.Invoices.AnyAsync(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
         }
+
         public async Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId)
         {
             return await context.Transactions
-                .Include(t => t.Invoice)
-                    .ThenInclude(i => i.Student)
-                .Include(t => t.Invoice)
-                    .ThenInclude(i => i.Class)
+                .Include(t => t.Invoice).ThenInclude(i => i.Student)
+                .Include(t => t.Invoice).ThenInclude(i => i.Class)
                 .Where(t => t.Invoice.Class.TeacherId == teacherId && t.Invoice.IsDeleted != true)
-                .OrderByDescending(t => t.CreatedAt) 
-                .ToListAsync();
+                .OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 
         public async Task<List<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, int month, int year)
         {
-            return await context.Invoices
-                .Include(i => i.Class)
-                .Where(i => i.Class.TeacherId == teacherId
-                         && i.PeriodMonth == month
-                         && i.PeriodYear == year
-                         && i.Status != "Cancelled"
-                         && i.IsDeleted != true)
+            return await context.Invoices.Include(i => i.Class)
+                .Where(i => i.Class.TeacherId == teacherId && i.PeriodMonth == month && i.PeriodYear == year && i.Status != "Cancelled" && i.IsDeleted != true)
                 .ToListAsync();
         }
 
         public async Task<List<Transaction>> GetSuccessfulTransactionsByPeriodAsync(Guid teacherId, int month, int year)
         {
-            return await context.Transactions
-                .Include(t => t.Invoice)
-                    .ThenInclude(i => i.Class)
-                .Where(t => t.Invoice.Class.TeacherId == teacherId
-                         && t.Invoice.PeriodMonth == month
-                         && t.Invoice.PeriodYear == year
-                         && t.Status == "Successful"
-                         && t.Invoice.IsDeleted != true)
+            return await context.Transactions.Include(t => t.Invoice).ThenInclude(i => i.Class)
+                .Where(t => t.Invoice.Class.TeacherId == teacherId && t.Invoice.PeriodMonth == month && t.Invoice.PeriodYear == year && t.Status == "Successful" && t.Invoice.IsDeleted != true)
                 .ToListAsync();
         }
 
         public async Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId)
         {
             return await context.Transactions
-                .Include(t => t.Invoice)
-                    .ThenInclude(i => i.Student)
-                .Include(t => t.Invoice)
-                    .ThenInclude(i => i.Class)
-                .Where(t => t.Invoice.ClassId == classId
-                         && t.Invoice.Class.TeacherId == teacherId
-                         && t.Invoice.IsDeleted != true)
-                .OrderByDescending(t => t.CreatedAt) // Giao dịch mới nhất lên đầu
-                .ToListAsync();
+                .Include(t => t.Invoice).ThenInclude(i => i.Student)
+                .Include(t => t.Invoice).ThenInclude(i => i.Class)
+                .Where(t => t.Invoice.ClassId == classId && t.Invoice.Class.TeacherId == teacherId && t.Invoice.IsDeleted != true)
+                .OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 
         public async Task<IEnumerable<Transaction>> GetTransactionsByClassAndPeriodAsync(Guid classId, Guid teacherId, int month, int year)
         {
             return await context.Transactions
-                .Include(t => t.Invoice)
-                    .ThenInclude(i => i.Student)
-                .Include(t => t.Invoice)
-                    .ThenInclude(i => i.Class)
-                .Where(t => t.Invoice.ClassId == classId
-                         && t.Invoice.Class.TeacherId == teacherId
-                         && t.Invoice.PeriodMonth == month
-                         && t.Invoice.PeriodYear == year
-                         && t.Invoice.IsDeleted != true)
-                .OrderByDescending(t => t.CreatedAt)
-                .ToListAsync();
-        }
-
-        public async Task<Transaction?> GetTransactionStudentAndInvoiceId(Guid invoiceId, Guid studentId)
-        {
-            return await context.Transactions
-                .FirstOrDefaultAsync(t => t.InvoiceId == invoiceId && t.Invoice.StudentId == studentId);
-
-        }
-
-        public async Task UpdateTransactionAsync(Transaction transaction)
-        {
-            context.Transactions.Update(transaction);
-            await context.SaveChangesAsync();
+                .Include(t => t.Invoice).ThenInclude(i => i.Student)
+                .Include(t => t.Invoice).ThenInclude(i => i.Class)
+                .Where(t => t.Invoice.ClassId == classId && t.Invoice.Class.TeacherId == teacherId && t.Invoice.PeriodMonth == month && t.Invoice.PeriodYear == year && t.Invoice.IsDeleted != true)
+                .OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 
         public async Task<bool> CheckAllSessionsAttendedAsync(Guid classId, int month, int year)
         {
-            var sessions = await context.Sessions
-                .Where(s => s.ClassId == classId && s.Date.Month == month && s.Date.Year == year && s.IsDeleted != true)
-                .ToListAsync();
-
+            var sessions = await context.Sessions.Where(s => s.ClassId == classId && s.Date.Month == month && s.Date.Year == year && s.IsDeleted != true).ToListAsync();
             if (!sessions.Any()) return false;
-
             foreach (var session in sessions)
             {
                 var hasAttendance = await context.Attendances.AnyAsync(a => a.SessionId == session.SessionId);
@@ -627,19 +491,5 @@ namespace EMS.Infrastructure.Repositories
             }
             return true;
         }
-        public async Task<bool> IsPreviousPeriodReconciledAsync(Guid classId, int month, int year)
-        {
-            var currentPeriod = new DateOnly(year, month, 1);
-            var prev = currentPeriod.AddMonths(-1);
-
-            var prevInvoices = await context.Invoices
-                .Where(i => i.ClassId == classId && i.PeriodMonth == prev.Month && i.PeriodYear == prev.Year && i.IsDeleted != true)
-                .ToListAsync();
-
-            if (!prevInvoices.Any()) return true; // Lớp mới mở, không có tháng trước để chốt
-
-            return prevInvoices.Any(i => i.Description != null && i.Description.Contains("[Đã chốt sổ vắng]"));
-        }
-
     }
 }

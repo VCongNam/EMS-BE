@@ -131,7 +131,6 @@ builder.Services.AddValidatorsFromAssemblyContaining<UpdateTuitionFeeValidator>(
 builder.Services.AddValidatorsFromAssemblyContaining<CreateClassDtoValidator>();
 
 // Đăng ký Worker tự động hóa
-builder.Services.AddHostedService<InvoiceAutomationWorker>();
 builder.Services.AddHostedService<SessionReminderWorker>();
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
