@@ -1,4 +1,5 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using EMS.Application.Common.Exceptions;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Auth.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
@@ -28,33 +29,28 @@ namespace EMS.Application.Features.Auth.Services
             this.currentUserService = currentUserService;
         }
 
-        // Đăng ký
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
-
-            // 2. Logic kiểm tra trùng Email và lưu DB bên dưới giữ nguyên...
             var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
-            if (existingAccount != null) throw new Exception("Email đã được sử dụng!");
+            if (existingAccount != null) throw new ConflictException("Email đã được sử dụng!");
 
             var allowedRoles = new List<string> { "Teacher", "TA" };
             string requestedRole = request.RoleName;
 
             if (!allowedRoles.Contains(requestedRole))
             {
-                throw new Exception("Quyền đăng ký không hợp lệ. Chỉ được chọn Giáo viên hoặc Trợ giảng.");
+                throw new NotFoundException("Quyền đăng ký không hợp lệ. Chỉ được chọn Giáo viên hoặc Trợ giảng.");
             }
 
             var roleEntity = await accountRepository.GetRoleByNameAsync(requestedRole);
             if (roleEntity == null)
             {
-                throw new Exception($"Lỗi hệ thống: Role '{requestedRole}' chưa được cấu hình trong DB.");
+                throw new NotFoundException($"Lỗi hệ thống: Role '{requestedRole}' chưa được cấu hình trong DB.");
             }
-            // Example of logic to add at the beginning of RegisterAsync
             
 
             string plainOtp = otpService.GenerateOtp();
 
-            // ĐÃ SỬA: Gọi SendEmailAsync thay vì QueueEmailAsync
             await emailService.SendEmailAsync(new EmailMessage
             {
                 To = request.Email,
@@ -127,14 +123,14 @@ namespace EMS.Application.Features.Auth.Services
         public async Task<bool> VerifyEmailAsync(VerifyEmailRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) throw new Exception("Tài khoản không tồn tại!");
-            if (account.Status == "Active") throw new Exception("Tài khoản đã được xác thực!");
+            if (account == null) throw new NotFoundException("Tài khoản không tồn tại!");
+            if (account.Status == "Active") throw new BadRequestException("Tài khoản đã được xác thực!");
 
             if (!otpService.VerifyOtp(request.OtpCode, account.VerificationToken ?? ""))
-                throw new Exception("Mã OTP không chính xác!");
+                throw new BadRequestException("Mã OTP không chính xác!");
 
             if (account.VerificationTokenExpiresAt < DateTime.UtcNow)
-                throw new Exception("Mã OTP đã hết hạn!");
+                throw new BadRequestException("Mã OTP đã hết hạn!");
 
             account.Status = "Active";
             account.VerificationToken = null;
@@ -149,26 +145,17 @@ namespace EMS.Application.Features.Auth.Services
 
             var account = await accountRepository.GetByPhoneAsync(request.PhoneNumber);
             if (account == null)
-                throw new Exception("Số điện thoại này chưa được đăng ký trong hệ thống.");
+                throw new  NotFoundException("Số điện thoại này chưa được đăng ký trong hệ thống.");
             if (account.Status == "Active")
-                throw new Exception("Tài khoản đã được xác thực!");
-            if(request.NewPassword == null || request.NewPassword == "")
-            {
-                throw new Exception("Mật khẩu mới không được để trống và phải có ít nhất 6 ký tự!");
-            }
-            string strongPassPattern = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$";
+                throw new BadRequestException("Tài khoản đã được xác thực!");
 
-            if (string.IsNullOrEmpty(request.NewPassword) || !Regex.IsMatch(request.NewPassword, strongPassPattern))
-            {
-                throw new Exception("Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt!");
-            }
             if (request.NewPassword != request.ConfirmPassword)
             {
-                throw new Exception("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+                throw new BadRequestException("Mật khẩu mới và xác nhận mật khẩu không khớp!");
             }
 
             bool isOldPasswordValid = BCrypt.Net.BCrypt.Verify(request.OldPassword, account.PasswordHash);
-            if (!isOldPasswordValid) throw new Exception("Mật khẩu cũ không chính xác!");
+            if (!isOldPasswordValid) throw new BadRequestException("Mật khẩu cũ không chính xác!");
 
 
             account.Status = "Active";
@@ -191,18 +178,16 @@ namespace EMS.Application.Features.Auth.Services
                 account = await accountRepository.GetByEmailAsync(request.Identifier);
 
             if (account == null || account.Role.RoleName != request.SelectedRole)
-                throw new Exception("Thông tin đăng nhập không chính xác!");
+                throw new BadRequestException("Thông tin đăng nhập không chính xác!");
 
             if (!BCrypt.Net.BCrypt.Verify(request.Password, account.PasswordHash))
-                throw new Exception("Mật khẩu không chính xác!");
+                throw new BadRequestException("Mật khẩu không chính xác!");
 
             if (account.Status == "Unverified")
             {
-                throw new Exception("Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực mã OTP!");
+                throw new BadRequestException("Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực mã OTP!");
             }
 
-            if (account.Status == "Banned")
-                throw new Exception("Tài khoản đã bị khóa!");
 
             if (request.SelectedRole == "Student")
             {
@@ -235,7 +220,7 @@ namespace EMS.Application.Features.Auth.Services
         public async Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) return true;
+            if (account == null) throw new NotFoundException("Email này chưa được đăng ký");
 
             string plainOtp = otpService.GenerateOtp();
 
@@ -256,13 +241,13 @@ namespace EMS.Application.Features.Auth.Services
         public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account == null) throw new Exception("Yêu cầu không hợp lệ!");
+            if (account == null) throw new NotFoundException("Email này không tồn tại trong hệ thống !");
 
             if (!otpService.VerifyOtp(request.OtpCode, account.ResetPasswordToken))
-                throw new Exception("Mã OTP không chính xác!");
+                throw new BadRequestException("Mã OTP không chính xác!");
 
             if (account.ResetPasswordTokenExpiresAt < DateTime.UtcNow)
-                throw new Exception("Mã OTP đã hết hạn!");
+                throw new BadRequestException("Mã OTP đã hết hạn!");
 
             account.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
             account.ResetPasswordToken = null;
@@ -279,7 +264,7 @@ namespace EMS.Application.Features.Auth.Services
             var account = await accountRepository.GetByIdAsync(accountId);
             var student = account?.Students.FirstOrDefault(s => s.StudentId == studentId);
 
-            if (student == null) throw new Exception("Profile học sinh không hợp lệ!");
+            if (student == null) throw new BadRequestException("Profile học sinh không hợp lệ!");
 
             return new AuthResponse
             {
@@ -294,11 +279,10 @@ namespace EMS.Application.Features.Auth.Services
         public async Task<bool> ResendOtpAsync(ResendOtpRequest request)
         {
             var account = await accountRepository.GetByEmailAsync(request.Email);
-            if (account.Status == "Active")
-                throw new Exception("Tài khoản đã được xác thực!");
-
             if (account == null)
-                throw new Exception("Email này chưa được đăng ký trong hệ thống.");
+                throw new  NotFoundException("Email này chưa được đăng ký trong hệ thống.");
+            if (account.Status == "Active")
+                throw new BadRequestException("Tài khoản đã được xác thực!");
 
             string plainOtp = otpService.GenerateOtp();
 

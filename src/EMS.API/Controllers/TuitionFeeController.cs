@@ -22,29 +22,43 @@ namespace EMS.API.Controllers
         {
             this.tuitionFeeService = tuitionFeeService;
             this.currentUserService = currentUserService;
-            _tuitionService = tuitionService;
+            this._tuitionService = tuitionService;
         }
 
-        [HttpPost("class/{classId}/reconcile")]
+        // --- ENDPOINT CỐT LÕI (PREVIEW & CONFIRM HÓA ĐƠN) ---
+
+        [HttpGet("class/{classId}/preview-invoices")]
         [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> ReconcilePrepaid(Guid classId, [FromQuery] int month, [FromQuery] int year)
+        public async Task<IActionResult> PreviewInvoices(Guid classId, [FromQuery] int month, [FromQuery] int year)
         {
             try
             {
                 var teacherId = currentUserService.UserId;
-                await tuitionFeeService.ReconcilePrepaidClassAsync(classId, month, year, teacherId);
-                return Ok(new { Message = "Đã chốt sổ và cộng tiền cấn trừ cho tháng sau." });
+                var result = await tuitionFeeService.GetInvoicesPreviewAsync(classId, month, year, teacherId);
+                return Ok(result);
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau." });
-            }
+            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (KeyNotFoundException ex) { return NotFound(new { Message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { Message = "Đã xảy ra lỗi: " + ex.Message }); }
         }
 
+        [HttpPost("class/{classId}/confirm-invoices")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> ConfirmInvoices(Guid classId, [FromBody] ConfirmInvoicesDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            try
+            {
+                var teacherId = currentUserService.UserId;
+                await tuitionFeeService.ConfirmAndGenerateInvoicesAsync(classId, dto, teacherId);
+                return Ok(new { Message = "Đã chốt và phát hành hóa đơn thành công." });
+            }
+            catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ." }); }
+        }
+
+
+        // --- ENDPOINT QUẢN LÝ GIAO DỊCH ---
 
         [HttpGet("transactions/pending")]
         [Authorize(Roles = "Teacher")]
@@ -56,14 +70,8 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetPendingTransactionsAsync(teacherId);
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau." });
-            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception) { return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ." }); }
         }
 
         [HttpPost("transaction/{id}/review")]
@@ -76,14 +84,8 @@ namespace EMS.API.Controllers
                 await tuitionFeeService.ReviewTransactionAsync(id, dto.IsApproved, currentUserService.UserId, dto.Note);
                 return Ok(new { Message = "Đã xử lý giao dịch thành công." });
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau." });
-            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception) { return StatusCode(500, new { Message = "Đã xảy ra lỗi nội bộ." }); }
         }
 
         [HttpGet("transactions/history")]
@@ -94,10 +96,7 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetTransactionHistoryAsync(currentUserService.UserId, fromDate, toDate);
                 return Ok(result);
             }
-            catch (Exception)
-            {
-                return StatusCode(500, new { Message = "Lỗi khi tải lịch sử giao dịch." });
-            }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi khi tải lịch sử giao dịch." }); }
         }
 
         [HttpGet("invoices/report")]
@@ -108,13 +107,11 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetInvoicesListAsync(classId, month, year);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải danh sách hóa đơn." });
-            }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống khi tải danh sách hóa đơn." }); }
         }
 
 
+        // --- ENDPOINT CẤU HÌNH & GIA HẠN ---
 
         [HttpGet("configs")]
         public async Task<IActionResult> GetFeeConfigs()
@@ -125,9 +122,8 @@ namespace EMS.API.Controllers
                 return Ok(result);
             }
             catch (UnauthorizedAccessException) { return Forbid(); }
-            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống khi tải cấu hình." }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
         }
-
 
         [HttpPut("class/{classId}/config")]
         public async Task<IActionResult> UpdateClassConfig(Guid classId, [FromBody] UpdateClassFeeConfigDto dto)
@@ -151,14 +147,8 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetClassFeeConfigAsync(classId);
                 return Ok(result);
             }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { Message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải cấu hình lớp." });
-            }
+            catch (KeyNotFoundException ex) { return NotFound(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
         }
 
         [HttpPut("invoice/{invoiceId}/extend-due-date")]
@@ -183,13 +173,15 @@ namespace EMS.API.Controllers
             try
             {
                 await tuitionFeeService.ExtendClassInvoicesAsync(classId, dto);
-                return Ok(new { Message = $"Đã gia hạn thành công thêm {dto.AdditionalDays} ngày cho toàn bộ hóa đơn đang nợ của lớp." });
+                return Ok(new { Message = $"Đã gia hạn thành công thêm {dto.AdditionalDays} ngày cho hóa đơn." });
             }
             catch (UnauthorizedAccessException) { return Forbid(); }
             catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
             catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
         }
 
+
+        // --- ENDPOINT DASHBOARD & THỐNG KÊ ---
 
         [HttpGet("invoices/summary")]
         public async Task<IActionResult> GetSummary([FromQuery] Guid? classId, [FromQuery] int month, [FromQuery] int year)
@@ -199,14 +191,8 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetTuitionSummaryAsync(classId, month, year);
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Lỗi hệ thống khi tính toán doanh thu tổng hợp kỳ này." });
-            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi tính toán doanh thu." }); }
         }
 
         [HttpGet("reports/classes-overview")]
@@ -217,35 +203,8 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetClassesOverviewAsync(month, year);
                 return Ok(result);
             }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải danh sách báo cáo tổng quan lớp học." });
-            }
-        }
-
-
-        [HttpPost("class/{classId}/generate-invoices")]
-        public async Task<IActionResult> Generate(Guid classId, [FromBody] GenerateInvoiceDto dto)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            try
-            {
-                var teacherId = currentUserService.UserId;
-                await tuitionFeeService.GenerateInvoicesForClassAsync(classId, dto, teacherId);
-                return Ok(new { Message = "Đã phát hành hóa đơn cho kỳ học thành công." });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Đã xảy ra lỗi: " + ex.Message });
-            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi tải báo cáo." }); }
         }
 
         [HttpGet("reminders")]
@@ -253,19 +212,13 @@ namespace EMS.API.Controllers
         {
             try
             {
-                // Mặc định lấy tháng hiện tại nếu FE không truyền
                 int targetMonth = month > 0 ? month : DateTime.Now.Month;
                 int targetYear = year > 0 ? year : DateTime.Now.Year;
-
                 var result = await tuitionFeeService.GetPendingInvoiceRemindersAsync(targetMonth, targetYear);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Lỗi khi tải danh sách nhắc nhở." });
-            }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi tải nhắc nhở." }); }
         }
-
 
         [HttpGet("transactions/full-history")]
         public async Task<IActionResult> GetFullHistory()
@@ -275,10 +228,7 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetHistoryFullAsync();
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Lỗi hệ thống khi tải lịch sử: " + ex.Message });
-            }
+            catch (Exception ex) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
         }
 
         [HttpGet("dashboard/overview")]
@@ -286,7 +236,6 @@ namespace EMS.API.Controllers
         {
             var targetMonth = month > 0 ? month : DateTime.Now.Month;
             var targetYear = year > 0 ? year : DateTime.Now.Year;
-
             var result = await tuitionFeeService.GetDashboardDataAsync(targetMonth, targetYear);
             return Ok(result);
         }
@@ -299,31 +248,24 @@ namespace EMS.API.Controllers
                 var result = await tuitionFeeService.GetTransactionsByClassAsync(classId);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Lỗi khi lấy lịch sử giao dịch của lớp: " + ex.Message });
-            }
+            catch (Exception ex) { return StatusCode(500, new { Message = "Lỗi lấy lịch sử." }); }
         }
-
 
         [HttpGet("class/{classId}/transactions-period")]
         public async Task<IActionResult> GetClassTransactions(Guid classId, [FromQuery] int month, [FromQuery] int year)
         {
             int targetMonth = month > 0 ? month : DateTime.Now.Month;
             int targetYear = year > 0 ? year : DateTime.Now.Year;
-
             try
             {
                 var result = await tuitionFeeService.GetClassTransactionsByPeriodAsync(classId, targetMonth, targetYear);
-
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Lỗi khi lọc giao dịch theo kỳ: " + ex.Message });
-            }
+            catch (Exception ex) { return StatusCode(500, new { Message = "Lỗi lọc giao dịch." }); }
         }
 
+
+        // --- ENDPOINT STUDENT PORTAL ---
 
         [HttpGet("student/myTuitions")]
         [Authorize(Roles = "Student")]
@@ -333,16 +275,9 @@ namespace EMS.API.Controllers
             {
                 var result = await _tuitionService.GetMyTuitionAsync(filter);
                 if (result == null) throw new Exception("Bạn chưa có khoản học phí nào.");
-                return Ok(new
-                {
-                    Message = "Lấy danh sách học phí thành công",
-                    Data = result
-                });
+                return Ok(new { Message = "Lấy danh sách học phí thành công", Data = result });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
 
         [HttpGet("student/{invoiceId}/detail")]
@@ -353,16 +288,9 @@ namespace EMS.API.Controllers
             {
                 var result = await _tuitionService.GetTuitionInvoiceDetailAsync(invoiceId);
                 if (result == null) throw new Exception("Không tìm thấy hóa đơn");
-                return Ok(new
-                {
-                    Message = "Lấy chi tiết hóa đơn thành công",
-                    Data = result
-                });
+                return Ok(new { Message = "Lấy chi tiết hóa đơn thành công", Data = result });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
 
         [HttpGet("{invoiceId}/paymentQr")]
@@ -371,16 +299,9 @@ namespace EMS.API.Controllers
             try
             {
                 var result = await _tuitionService.GetPaymentQrCodeAsync(invoiceId);
-                return Ok(new
-                {
-                    Message = "Tạo mã QR thanh toán thành công",
-                    Data = result
-                });
+                return Ok(new { Message = "Tạo mã QR thanh toán thành công", Data = result });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
 
         [HttpPost("{invoiceId}/proof")]
@@ -390,21 +311,12 @@ namespace EMS.API.Controllers
             try
             {
                 if (request.ProofImage == null || request.ProofImage.Length == 0)
-                {
                     return BadRequest(new { Message = "Vui lòng chọn ảnh minh chứng giao dịch." });
-                }
 
                 await _tuitionService.UploadPaymentProofAsync(invoiceId, request);
-
-                return Ok(new
-                {
-                    Message = "Nộp minh chứng thành công. Vui lòng chờ giáo viên xác nhận!"
-                });
+                return Ok(new { Message = "Nộp minh chứng thành công. Vui lòng chờ giáo viên xác nhận!" });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
 
         [HttpGet("student/myTransactions")]
@@ -416,10 +328,7 @@ namespace EMS.API.Controllers
                 var result = await _tuitionService.GetMyTransactionsAsync(classId);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
 
         [HttpGet("student/myTransactions/{transactionId}")]
@@ -431,10 +340,7 @@ namespace EMS.API.Controllers
                 var result = await _tuitionService.GetTransactionByIdAsync(transactionId);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
     }
 }
