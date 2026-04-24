@@ -50,66 +50,30 @@ namespace EMS.Application.Features.ProgressReports.Services
             return Math.Round((decimal)presentCount / totalClassSessions * 100, 2);
         }
 
-        private void ValidateClassStatus(Class? cls, Guid classId)
+
+
+        private void ValidateClassStatusAndPeriod(Class? cls, Guid classId, int month, int year)
         {
             if (cls == null || cls.IsDeleted == true)
                 throw new NotFoundException("Lớp học", classId);
 
             if (cls.Status == "Archived")
-                throw new BadRequestException($"Lớp học hiện đang ở trạng thái '{cls.Status}'. Chỉ có thể thao tác báo cáo với lớp đang 'Ongoing'.");
+                throw new BadRequestException($"Lớp học đang ở trạng thái '{cls.Status}'. Không thể thao tác báo cáo.");
+
+            var periodStart = new DateOnly(year, month, 1);
+            var periodEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+
+            if (cls.StartDate > periodEnd)
+                throw new BadRequestException($"Lớp chưa bắt đầu trong kỳ {month}/{year}. (Ngày bắt đầu: {cls.StartDate:dd/MM/yyyy})");
+
+            if (cls.EndDate < periodStart)
+                throw new BadRequestException($"Lớp đã kết thúc trước kỳ {month}/{year}. (Ngày kết thúc: {cls.EndDate:dd/MM/yyyy})");
         }
-
-
-        //public async Task<IEnumerable<ProgressReportResponseDto>> GetClassReportDetailsAsync(Guid classId, int month, int year)
-        //{
-        //    var enrollments = await reportRepository.GetActiveStudentsInClassAsync(classId);
-        //    var existingReports = await reportRepository.GetReportsByClassAndPeriodAsync(classId, month, year);
-
-        //    var startDateDt = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
-        //    var endDateDt = new DateTime(year, month, DateTime.DaysInMonth(year, month), 23, 59, 59, DateTimeKind.Utc);
-
-        //    var allSubs = await reportRepository.GetSubmissionsForCalcAsync(classId, startDateDt, endDateDt);
-        //    var allAtts = await reportRepository.GetAttendancesForCalcAsync(classId, DateOnly.FromDateTime(startDateDt), DateOnly.FromDateTime(endDateDt));
-
-        //    var result = new List<ProgressReportResponseDto>();
-
-        //    foreach (var e in enrollments)
-        //    {
-        //        var report = existingReports.FirstOrDefault(r => r.StudentId == e.StudentId);
-
-        //        decimal liveGpa = CalculateGpa(allSubs.Where(s => s.StudentId == e.StudentId).ToList());
-        //        decimal liveAtt = CalculateAttendance(allAtts.Where(a => a.StudentId == e.StudentId).ToList());
-
-        //        result.Add(new ProgressReportResponseDto
-        //        {
-        //            ReportId = report?.ReportId,
-        //            StudentId = e.StudentId,
-        //            StudentName = e.Student?.FullName ?? "Unknown",
-        //            ClassId = e.ClassId,
-        //            PeriodMonth = month,
-        //            PeriodYear = year,
-        //            Title = report?.Title,
-        //            Content = report?.Content,
-        //            Status = report?.Status ?? "Draft",
-        //            Gpa = report?.Gpa ?? liveGpa,
-        //            AttendanceRate = report?.AttendanceRate ?? liveAtt,
-        //            CreatedAt = report?.CreatedAt,
-        //            UpdatedAt = report?.UpdatedAt
-        //        });
-        //    }
-        //    return result;
-        //}
-
-
-        // Trong file ProgressReportService.cs
-
         public async Task<IEnumerable<ProgressReportResponseDto>> GetClassReportDetailsAsync(Guid classId, int month, int year)
         {
-            // 1. Kiểm tra lớp học
             var currentClass = await reportRepository.GetClassByIdAsync(classId);
-            ValidateClassStatus(currentClass, classId);
+            ValidateClassStatusAndPeriod(currentClass, classId, month, year);
 
-            // 2. Lấy dữ liệu
             var enrollments = await reportRepository.GetActiveStudentsInClassAsync(classId);
             var existingReports = await reportRepository.GetReportsByClassAndPeriodAsync(classId, month, year);
 
@@ -118,12 +82,9 @@ namespace EMS.Application.Features.ProgressReports.Services
 
             var allSubs = await reportRepository.GetSubmissionsForCalcAsync(classId, startDateDt, endDateDt);
             var allAtts = await reportRepository.GetAttendancesForCalcAsync(classId, DateOnly.FromDateTime(startDateDt), DateOnly.FromDateTime(endDateDt));
-
-
-
             int totalSessions = await reportRepository.GetTotalSessionsInPeriodAsync(classId, DateOnly.FromDateTime(startDateDt), DateOnly.FromDateTime(endDateDt));
-            var result = new List<ProgressReportResponseDto>();
 
+            var result = new List<ProgressReportResponseDto>();
             foreach (var e in enrollments)
             {
                 var report = existingReports.FirstOrDefault(r => r.StudentId == e.StudentId);
@@ -144,21 +105,16 @@ namespace EMS.Application.Features.ProgressReports.Services
                     Title = report?.Title ?? $"Báo cáo học tập tháng {month}/{year}",
                     Content = report?.Content,
                     Status = report?.Status ?? "Draft",
-
-                    // Luôn cập nhật điểm mới nhất nếu chưa gửi chính thức
                     Gpa = (report?.Status == "Published") ? (report.Gpa ?? liveGpa) : liveGpa,
                     AttendanceRate = (report?.Status == "Published") ? (report.AttendanceRate ?? liveAtt) : liveAtt,
-
-                    // --- CHI TIẾT LỊCH SỬ CHO HỌC SINH TỰ SOI CHIẾU ---
                     GradeHistory = studentSubs.Select(s => new GradeHistoryDto
                     {
                         AssignmentTitle = s.Assignment.Title,
                         CategoryName = s.Assignment.GradeCategory.Name,
-                        Weight = s.Assignment.GradeCategory.Weight, // Trọng số tại thời điểm này
+                        Weight = s.Assignment.GradeCategory.Weight,
                         Grade = s.Grade,
                         Date = s.Assignment.DueDate
                     }).OrderBy(x => x.Date).ToList(),
-
                     AttendanceHistory = studentAtts.Select(a => new AttendanceHistoryDto
                     {
                         Date = a.Session.Date,
@@ -166,7 +122,6 @@ namespace EMS.Application.Features.ProgressReports.Services
                         Note = a.Note,
                         Topic = a.Session.Topic
                     }).OrderBy(x => x.Date).ToList(),
-
                     CreatedAt = report?.CreatedAt,
                     UpdatedAt = report?.UpdatedAt
                 });
@@ -174,74 +129,27 @@ namespace EMS.Application.Features.ProgressReports.Services
             return result;
         }
 
-        //public async Task<Guid> CreateReportAsync(CreateProgressReportDto request)
-        //{
-        //    var exist = await reportRepository.IsReportExistAsync(request.StudentId, request.ClassId, request.PeriodMonth, request.PeriodYear);
-        //    if (exist) throw new Exception("Báo cáo tháng này của học sinh đã tồn tại.");
-
-        //    var startDateDt = new DateTime(request.PeriodYear, request.PeriodMonth, 1, 0, 0, 0, DateTimeKind.Utc);
-        //    var endDateDt = new DateTime(request.PeriodYear, request.PeriodMonth, DateTime.DaysInMonth(request.PeriodYear, request.PeriodMonth), 23, 59, 59, DateTimeKind.Utc);
-
-        //    var subs = await reportRepository.GetSubmissionsForCalcAsync(request.ClassId, startDateDt, endDateDt);
-        //    var atts = await reportRepository.GetAttendancesForCalcAsync(request.ClassId, DateOnly.FromDateTime(startDateDt), DateOnly.FromDateTime(endDateDt));
-
-        //    decimal gpa = CalculateGpa(subs.Where(s => s.StudentId == request.StudentId).ToList());
-        //    decimal attRate = CalculateAttendance(atts.Where(a => a.StudentId == request.StudentId).ToList());
-
-        //    var report = new ProgressReport
-        //    {
-        //        ReportId = Guid.NewGuid(),
-        //        StudentId = request.StudentId,
-        //        ClassId = request.ClassId,
-        //        TeacherId = currentUserService.UserId,
-        //        PeriodMonth = (short)request.PeriodMonth, 
-        //        PeriodYear = request.PeriodYear,
-        //        Title = request.Title,
-        //        Content = request.Content,
-        //        Status = request.Status,
-        //        Gpa = gpa,
-        //        AttendanceRate = attRate,
-        //        CreatedAt = DateTime.UtcNow
-        //    };
-
-        //    await reportRepository.AddAsync(report);
-        //    return report.ReportId;
-        //}
         public async Task<Guid> CreateReportAsync(CreateProgressReportDto request)
         {
-            // 1. Kiểm tra thời gian: Không cho tạo báo cáo cho tương lai
             var now = DateTime.UtcNow;
             if (request.PeriodYear > now.Year || (request.PeriodYear == now.Year && request.PeriodMonth > now.Month))
                 throw new BadRequestException("Không thể tạo báo cáo cho tháng trong tương lai.");
 
-            // 2. Kiểm tra trạng thái lớp
             var currentClass = await reportRepository.GetClassByIdAsync(request.ClassId);
-            ValidateClassStatus(currentClass, request.ClassId);
+            ValidateClassStatusAndPeriod(currentClass, request.ClassId, request.PeriodMonth, request.PeriodYear);
 
-            // 3. Kiểm tra tính đầy đủ: Nếu trạng thái là Ready thì BẮT BUỘC phải có nhận xét
             if (request.Status == "Ready" && string.IsNullOrWhiteSpace(request.Content))
-                throw new BadRequestException("Vui lòng nhập nội dung nhận xét (Content) trước khi đặt trạng thái Sẵn sàng (Ready).");
+                throw new BadRequestException("Vui lòng nhập nội dung nhận xét trước khi đặt trạng thái Sẵn sàng.");
 
-            // 4. Kiểm tra trùng lặp
             var exist = await reportRepository.IsReportExistAsync(request.StudentId, request.ClassId, request.PeriodMonth, request.PeriodYear);
-            if (exist) throw new BadRequestException($"Báo cáo tháng {request.PeriodMonth}/{request.PeriodYear} của học sinh này đã tồn tại.");
+            if (exist) throw new BadRequestException($"Báo cáo kỳ {request.PeriodMonth}/{request.PeriodYear} đã tồn tại.");
 
-            // 5. Chuẩn bị dữ liệu tính toán
             var startDate = new DateOnly(request.PeriodYear, request.PeriodMonth, 1);
             var endDate = new DateOnly(request.PeriodYear, request.PeriodMonth, DateTime.DaysInMonth(request.PeriodYear, request.PeriodMonth));
 
-            var startDateDt = startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            var endDateDt = endDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-
-            var subs = await reportRepository.GetSubmissionsForCalcAsync(request.ClassId, startDateDt, endDateDt);
+            var subs = await reportRepository.GetSubmissionsForCalcAsync(request.ClassId, startDate.ToDateTime(TimeOnly.MinValue), endDate.ToDateTime(TimeOnly.MaxValue));
             var atts = await reportRepository.GetAttendancesForCalcAsync(request.ClassId, startDate, endDate);
-
-            // Lấy tổng số buổi dạy thực tế của lớp trong khoảng thời gian này
             int totalSessions = await reportRepository.GetTotalSessionsInPeriodAsync(request.ClassId, startDate, endDate);
-
-            // 6. Tính toán điểm thực tế
-            decimal gpa = CalculateGpa(subs.Where(s => s.StudentId == request.StudentId).ToList());
-            decimal attRate = CalculateAttendance(atts.Where(a => a.StudentId == request.StudentId).ToList(), totalSessions);
 
             var report = new ProgressReport
             {
@@ -254,8 +162,8 @@ namespace EMS.Application.Features.ProgressReports.Services
                 Title = request.Title ?? $"Báo cáo học tập tháng {request.PeriodMonth}/{request.PeriodYear}",
                 Content = request.Content,
                 Status = request.Status,
-                Gpa = gpa,
-                AttendanceRate = attRate,
+                Gpa = CalculateGpa(subs.Where(s => s.StudentId == request.StudentId).ToList()),
+                AttendanceRate = CalculateAttendance(atts.Where(a => a.StudentId == request.StudentId).ToList(), totalSessions),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -264,43 +172,16 @@ namespace EMS.Application.Features.ProgressReports.Services
             return report.ReportId;
         }
 
-        //public async Task UpdateReportAsync(Guid id, UpdateProgressReportDto request)
-        //{
-        //    var report = await reportRepository.GetByIdAsync(id);
-        //    if (report == null) throw new Exception("Không tìm thấy báo cáo.");
-        //    if (report.TeacherId != currentUserService.UserId) throw new Exception("Bạn không có quyền sửa.");
-        //    if (report.Status == "Published") throw new Exception("Báo cáo đã gửi không thể chỉnh sửa.");
 
-        //    var startDateDt = new DateTime(report.PeriodYear!.Value, (int)report.PeriodMonth!.Value, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        //    var endDateDt = new DateTime(
-        //        report.PeriodYear!.Value,
-        //        (int)report.PeriodMonth!.Value,
-        //        DateTime.DaysInMonth(report.PeriodYear!.Value, (int)report.PeriodMonth!.Value),
-        //        23, 59, 59,
-        //        DateTimeKind.Utc);
-
-        //    var subs = await reportRepository.GetSubmissionsForCalcAsync(report.ClassId, startDateDt, endDateDt);
-        //    var atts = await reportRepository.GetAttendancesForCalcAsync(report.ClassId, DateOnly.FromDateTime(startDateDt), DateOnly.FromDateTime(endDateDt));
-
-        //    report.Title = request.Title;
-        //    report.Content = request.Content;
-        //    report.Status = request.Status;
-        //    report.Gpa = CalculateGpa(subs.Where(s => s.StudentId == report.StudentId).ToList());
-        //    report.AttendanceRate = CalculateAttendance(atts.Where(a => a.StudentId == report.StudentId).ToList());
-        //    report.UpdatedAt = DateTime.UtcNow;
-
-        //    await reportRepository.UpdateAsync(report);
-        //}
         public async Task UpdateReportAsync(Guid id, UpdateProgressReportDto request)
         {
             var report = await reportRepository.GetByIdAsync(id);
             if (report == null) throw new NotFoundException("Báo cáo", id);
-
             if (report.TeacherId != currentUserService.UserId) throw new ForbiddenAccessException();
             if (report.Status == "Published") throw new BadRequestException("Báo cáo đã gửi không thể chỉnh sửa.");
 
-            // Kiểm tra nội dung khi giáo viên chuyển từ Draft sang Ready
+            ValidateClassStatusAndPeriod(report.Class, report.ClassId, (int)report.PeriodMonth!, (int)report.PeriodYear!);
+
             if (request.Status == "Ready" && string.IsNullOrWhiteSpace(request.Content))
                 throw new BadRequestException("Nội dung nhận xét không được để trống khi đặt trạng thái Sẵn sàng.");
 
@@ -320,51 +201,18 @@ namespace EMS.Application.Features.ProgressReports.Services
 
             await reportRepository.UpdateAsync(report);
         }
-        //public async Task SendReportAsync(Guid id)
-        //{
-        //    var report = await reportRepository.GetByIdAsync(id);
-        //    if (report == null) throw new Exception("Không tìm thấy báo cáo.");
-        //    if (report.TeacherId != currentUserService.UserId) throw new Exception("Bạn không có quyền.");
-        //    if (report.Status == "Published") return;
 
-        //    report.Status = "Published";
-        //    report.UpdatedAt = DateTime.UtcNow;
-        //    await reportRepository.UpdateAsync(report);
-
-        //    //Notification
-        //    try
-        //    {
-        //        if (report.Student != null)
-        //        {
-        //            string monthYear = $"{report.PeriodMonth}/{report.PeriodYear}";
-
-        //            await _notificationService.SendNotificationAsync(
-        //                targetAccountId: report.Student.AccountId,
-        //                studentId: report.StudentId,
-        //                title: "Báo cáo học tập mới",
-        //                content: $"Báo cáo kết quả học tập tháng {monthYear} của lớp {report.Class.ClassName} đã có. Phụ huynh và học sinh vui lòng vào xem chi tiết.",
-        //                actionUrl: $"/student/reports/{report.ReportId}",
-        //                type: "Report"
-        //            );
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError($"Lỗi gửi thông báo Progress Report: {ex.Message}");
-        //    }
-        //}
         public async Task SendReportAsync(Guid id)
         {
             var report = await reportRepository.GetByIdAsync(id);
             if (report == null) throw new NotFoundException("Báo cáo", id);
-            if (report.TeacherId != currentUserService.UserId) throw new ForbiddenAccessException();
+            if (report.TeacherId != currentUserService.UserId) throw new ForbiddenAccessException("Bạn không có quyền chỉnh sửa báo cáo này.");
             if (report.Status == "Published") return;
 
             report.Status = "Published";
             report.UpdatedAt = DateTime.UtcNow;
             await reportRepository.UpdateAsync(report);
 
-            // Gửi Notification
             try
             {
                 if (report.Student != null)
@@ -388,51 +236,17 @@ namespace EMS.Application.Features.ProgressReports.Services
         {
             var report = await reportRepository.GetByIdAsync(id);
             if (report == null) throw new NotFoundException("Báo cáo", id);
-            if (report.TeacherId != currentUserService.UserId) throw new ForbiddenAccessException();
-
-            // Chỉ cho xóa nháp, đã gửi rồi không được xóa để tránh mất dấu vết
+            if (report.TeacherId != currentUserService.UserId) throw new ForbiddenAccessException("Bạn không có quyền chỉnh sửa báo cáo này.");
             if (report.Status == "Published")
                 throw new BadRequestException("Không thể xóa báo cáo đã gửi cho phụ huynh.");
 
             await reportRepository.DeleteAsync(report);
         }
-        //public async Task DeleteReportAsync(Guid id)
-        //{
-        //    var report = await reportRepository.GetByIdAsync(id);
-        //    if (report == null) throw new Exception("Không tìm thấy.");
-        //    if (report.TeacherId != currentUserService.UserId) throw new Exception("Bạn không có quyền xóa.");
-        //    if (report.Status == "Published") throw new Exception("Không thể xóa báo cáo đã gửi.");
 
-        //    await reportRepository.DeleteAsync(report);
-        //}
-
-        //public async Task<ProgressReportResponseDto> GetReportDetailAsync(Guid id)
-        //{
-        //    var report = await reportRepository.GetByIdAsync(id);
-        //    if (report == null) throw new Exception("Không tìm thấy báo cáo.");
-
-        //    return new ProgressReportResponseDto
-        //    {
-        //        ReportId = report.ReportId,
-        //        StudentId = report.StudentId,
-        //        StudentName = report.Student?.FullName ?? "Unknown",
-        //        ClassId = report.ClassId,
-        //        TeacherId = report.TeacherId,
-        //        PeriodMonth = report.PeriodMonth,
-        //        PeriodYear = report.PeriodYear,
-        //        Title = report.Title,
-        //        Content = report.Content,
-        //        Status = report.Status ?? "Draft",
-        //        Gpa = report.Gpa ?? 0m,
-        //        AttendanceRate = report.AttendanceRate ?? 0m,
-        //        CreatedAt = report.CreatedAt,
-        //        UpdatedAt = report.UpdatedAt
-        //    };
-        //}
         public async Task<ProgressReportResponseDto> GetReportDetailAsync(Guid id)
         {
             var report = await reportRepository.GetByIdAsync(id);
-            if (report == null) throw new NotFoundException("Báo cáo", id);
+            if (report == null) throw new NotFoundException("Báo cáo không tồn tại.");
 
             var startDate = new DateOnly(report.PeriodYear!.Value, (int)report.PeriodMonth!.Value, 1);
             var endDate = new DateOnly(report.PeriodYear!.Value, (int)report.PeriodMonth!.Value, DateTime.DaysInMonth(report.PeriodYear!.Value, (int)report.PeriodMonth!.Value));
@@ -455,7 +269,6 @@ namespace EMS.Application.Features.ProgressReports.Services
                 Title = report.Title,
                 Content = report.Content,
                 Status = report.Status ?? "Draft",
-                // Nếu đã Published thì lấy số đã chốt, nếu chưa thì lấy Live số mới nhất
                 Gpa = (report.Status == "Published") ? (report.Gpa ?? 0m) : CalculateGpa(studentSubs),
                 AttendanceRate = (report.Status == "Published") ? (report.AttendanceRate ?? 0m) : CalculateAttendance(studentAtts, totalSessions),
 

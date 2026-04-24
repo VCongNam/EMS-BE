@@ -20,11 +20,9 @@ namespace EMS.Domain.Interfaces
         public decimal? UnitPrice { get; set; }
         public int SessionCount { get; set; }
 
-        public decimal OriginalAmount { get; set; } // 1. Học phí gốc (Trước khi trừ ví)
-        public decimal CreditBalance { get; set; }  // 2. Ví học phí (Số tiền đã cấn trừ)
-        public decimal TotalAmount { get; set; }    // 3. Cần đóng (Số tiền cuối cùng trên hóa đơn)
+        public decimal TotalAmount { get; set; }    
 
-        public decimal PaidAmount { get; set; }  // Tổng tiền từ các giao dịch thành công
+        public decimal PaidAmount { get; set; }  
         public DateTime DueDate { get; set; }
         public string Status { get; set; } = string.Empty;
 

@@ -15,7 +15,6 @@ namespace EMS.Application.Features.TuitionFees.Validators
             RuleFor(x => x.IsApproved)
                 .NotNull().WithMessage("Trạng thái duyệt không được để trống.");
 
-            // LOGIC NGHIỆP VỤ: Nếu TỪ CHỐI thì BẮT BUỘC phải có Ghi chú
             RuleFor(x => x.Note)
                 .NotEmpty()
                 .When(x => x.IsApproved == false)

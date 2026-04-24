@@ -127,7 +127,6 @@ builder.Services.AddScoped<ITeacherReportService, TeacherReportService>();
 builder.Services.AddFluentValidationAutoValidation(); // Tự động chặn Request nếu dữ liệu sai và trả về lỗi 400
 builder.Services.AddFluentValidationClientsideAdapters();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateProgressReportValidator>();
-builder.Services.AddValidatorsFromAssemblyContaining<UpdateTuitionFeeValidator>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateClassDtoValidator>();
 
 // Đăng ký Worker tự động hóa

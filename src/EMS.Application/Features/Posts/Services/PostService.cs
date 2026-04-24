@@ -1,4 +1,5 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using EMS.Application.Common.Exceptions;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Assignments.DTOs;
 using EMS.Application.Features.Classes.Services;
 using EMS.Application.Features.Notifications.Services;
@@ -87,7 +88,6 @@ namespace EMS.Application.Features.Posts.Services
                 }
             }
 
-            //Notification
             await SendPostNotificationAsync(request.ClassId, "Bài đăng mới",
                 $"Giáo viên đã đăng một bài viết mới: {request.Title}", postId);
 
@@ -97,10 +97,10 @@ namespace EMS.Application.Features.Posts.Services
         public async Task UpdatePostAsync(Guid id, UpdatePostDto request)
         {
             var post = await postRepository.GetByIdAsync(id);
-            if (post == null) throw new Exception($"Post with ID {id} not found.");
+            if (post == null) throw new NotFoundException("Bài đăng không tồn tại.");
 
             if (post.AuthorId != currentUserService.UserId)
-                throw new Exception("Bạn không có quyền chỉnh sửa bài đăng này.");
+                throw new ForbiddenAccessException("Bạn không có quyền chỉnh sửa bài đăng này.");
 
             post.Title = request.Title;
             post.Content = request.Content;
@@ -142,7 +142,6 @@ namespace EMS.Application.Features.Posts.Services
                 }
             }
 
-            //Notification
             await SendPostNotificationAsync(post.ClassId, "Bài đăng cập nhật",
                 $"Bài viết '{post.Title}' vừa được giáo viên cập nhật nội dung.", id);
         }
@@ -173,10 +172,10 @@ namespace EMS.Application.Features.Posts.Services
         public async Task DeletePostAsync(Guid id)
         {
             var post = await postRepository.GetByIdAsync(id);
-            if (post == null) throw new Exception("Post not found.");
+            if (post == null) throw new NotFoundException("Bài đăng không tồn tại.");
 
             if (post.AuthorId != currentUserService.UserId)
-                throw new Exception("Bạn không có quyền xóa bài đăng này.");
+                throw new ForbiddenAccessException("Bạn không có quyền xóa bài đăng này.");
 
             post.IsDeleted = true;
             post.UpdatedAt = DateTime.UtcNow;
@@ -186,7 +185,7 @@ namespace EMS.Application.Features.Posts.Services
         public async Task<PostResponseDto> GetPostDetailAsync(Guid postId)
         {
             var post = await postRepository.GetByIdWithDetailsAsync(postId);
-            if (post == null) throw new Exception("Post not found or has been deleted.");
+            if (post == null) throw new NotFoundException("Bài đăng không tồn tại.");
 
             return new PostResponseDto
             {
@@ -257,13 +256,13 @@ namespace EMS.Application.Features.Posts.Services
         public async Task<Guid> CreateCommentAsync(Guid postId, CreateCommentDto request)
         {
             if (string.IsNullOrWhiteSpace(request.Content))
-                throw new Exception("Nội dung bình luận không được để trống.");
+                throw new ArgumentException("Nội dung bình luận không được để trống.");
 
             var post = await postRepository.GetByIdAsync(postId);
-            if (post == null) throw new Exception("Không tìm thấy bài viết.");
+            if (post == null) throw new NotFoundException("Không tìm thấy bài viết.");
 
             Guid authorId = currentUserService.Role == "Student"
-                ? (currentUserService.StudentId ?? throw new Exception("Không tìm thấy ID học sinh đang được chọn."))
+                ? (currentUserService.StudentId ?? throw new NotFoundException("Không tìm thấy học sinh đang được chọn."))
                 : currentUserService.UserId;
 
             var comment = new Comment
@@ -283,15 +282,14 @@ namespace EMS.Application.Features.Posts.Services
         public async Task DeleteCommentAsync(Guid commentId)
         {
             var comment = await postRepository.GetCommentByIdAsync(commentId);
-            if (comment == null) throw new Exception("Không tìm thấy bình luận.");
+            if (comment == null) throw new NotFoundException("Không tìm thấy bình luận.");
 
-            // Xác định ID đang thao tác hiện tại
             Guid currentActingId = currentUserService.Role == "Student"
                 ? (currentUserService.StudentId ?? currentUserService.UserId)
                 : currentUserService.UserId;
 
             if (comment.AuthorId != currentActingId)
-                throw new Exception("Bạn không có quyền xóa bình luận này.");
+                throw new ForbiddenAccessException("Bạn không có quyền xóa bình luận này.");
 
             comment.IsDeleted = true;
             comment.UpdatedAt = DateTime.UtcNow;
@@ -302,12 +300,12 @@ namespace EMS.Application.Features.Posts.Services
         private void ValidateFile(string fileName, long fileSize, string contentType)
         {
             if (fileSize > MaxFileSize)
-                throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
+                throw new ArgumentException($"File '{fileName}' exceeds maximum size of 10MB.");
 
             if (contentType.StartsWith("image/")) return;
 
             if (!AllowedMimeTypes.Contains(contentType))
-                throw new Exception($"File type '{contentType}' is not allowed.");
+                throw new ArgumentException($"File type '{contentType}' is not allowed.");
         }
 
         public async Task<PagedResult<StudentPostDto>> GetClassPostsAsync(Guid classId, PostFilter filter)
