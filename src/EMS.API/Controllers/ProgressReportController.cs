@@ -27,21 +27,16 @@ namespace EMS.API.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetReportDetail(Guid id)
         {
-            try { return Ok(await reportService.GetReportDetailAsync(id)); }
-            catch (Exception ex) { return NotFound(new { Message = ex.Message }); }
+            return Ok(await reportService.GetReportDetailAsync(id)); 
         }
 
         [Authorize(Roles ="Teacher")]
         [HttpPost]
         public async Task<IActionResult> CreateReport([FromBody] CreateProgressReportDto request)
         {
-            try
-            {
                 var reportId = await reportService.CreateReportAsync(request);
                 string message = request.Status == "Published" ? "Đã chốt và gửi báo cáo!" : "Đã lưu nháp cùng dữ liệu mới nhất.";
                 return Ok(new { Message = message, ReportId = reportId });
-            }
-            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
 
@@ -49,25 +44,19 @@ namespace EMS.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateReport(Guid id, [FromBody] UpdateProgressReportDto request)
         {
-            try
-            {
                 await reportService.UpdateReportAsync(id, request);
                 string message = request.Status == "Published" ? "Đã chốt và gửi báo cáo!" : "Cập nhật bản nháp thành công.";
                 return Ok(new { Message = message });
-            }
-            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
+
         }
 
         [Authorize(Roles = "Teacher")]
         [HttpPut("{id}/send")]
         public async Task<IActionResult> SendReport(Guid id)
         {
-            try
-            {
                 await reportService.SendReportAsync(id);
                 return Ok(new { Message = "Báo cáo đã được chốt và gửi thành công." });
-            }
-            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
+
         }
 
 
@@ -75,12 +64,8 @@ namespace EMS.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteReport(Guid id)
         {
-            try
-            {
                 await reportService.DeleteReportAsync(id);
                 return Ok(new { Message = "Xóa báo cáo nháp thành công." });
-            }
-            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
         
         [Authorize(Roles = "Teacher")]
@@ -90,15 +75,9 @@ namespace EMS.API.Controllers
      [FromQuery] int year,
      [FromQuery] string? search)
         {
-            try
-            {
                 var result = await reportService.GetClassesSummaryAsync(month, year, search);
                 return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+ 
         }
     }
 }

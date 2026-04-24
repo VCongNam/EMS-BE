@@ -10,8 +10,8 @@ namespace EMS.Application.Features.TuitionFees.Dtos
     {
         public Guid ClassId { get; set; }
         public string ClassName { get; set; } = string.Empty;
-        public string BillingMethod { get; set; } = "Postpaid"; // Prepaid hoặc Postpaid
-        public decimal TuitionFee { get; set; } // Đơn giá 1 buổi
-        public int PaymentDeadlineDays { get; set; } // Hạn nộp (VD: 5 ngày)
+        public string BillingMethod { get; set; } = "Postpaid"; 
+        public decimal TuitionFee { get; set; } 
+        public int PaymentDeadlineDays { get; set; } 
     }
 }

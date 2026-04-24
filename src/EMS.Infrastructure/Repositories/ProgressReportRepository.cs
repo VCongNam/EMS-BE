@@ -79,7 +79,6 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        // --- Lấy dữ liệu điểm danh ---
         public async Task<List<Attendance>> GetAttendancesForCalcAsync(Guid classId, DateOnly startDate, DateOnly endDate)
         {
             return await context.Attendances
@@ -127,15 +126,13 @@ namespace EMS.Infrastructure.Repositories
         public async Task<Class?> GetClassByIdAsync(Guid classId)
         {
             return await context.Classes
-                .AsNoTracking() // Dùng AsNoTracking để tối ưu hiệu năng vì ta chỉ đọc để kiểm tra Status
+                .AsNoTracking() 
                 .FirstOrDefaultAsync(c => c.ClassId == classId);
         }
 
 
         public async Task<int> GetTotalSessionsInPeriodAsync(Guid classId, DateOnly start, DateOnly end)
         {
-            // Logic: Đếm tất cả các buổi học của lớp này nằm trong khoảng thời gian báo cáo
-            // Quan trọng: Chỉ đếm những buổi không bị xóa (IsDeleted = false)
             return await context.Sessions
                 .Where(s => s.ClassId == classId
                          && s.Date >= start

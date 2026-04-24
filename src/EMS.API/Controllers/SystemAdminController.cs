@@ -21,7 +21,6 @@ namespace EMS.API.Controllers
             _feedbackService = feedbackService;
         }
 
-        // --- QUẢN LÝ HỆ THỐNG & DASHBOARD ---
 
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetSystemDashboard([FromQuery] DashboardFilterDto filter)
@@ -40,29 +39,16 @@ namespace EMS.API.Controllers
         [HttpGet("teachers")]
         public async Task<IActionResult> GetTeachersList([FromQuery] string? searchTerm, [FromQuery] string? statusFilter)
         {
-            try
-            {
                 var result = await _adminService.GetTeachersGridAsync(searchTerm, statusFilter);
                 return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+      
         }
 
         [HttpGet("teachers/{id}")]
         public async Task<IActionResult> GetTeacherDetail(Guid id)
         {
-            try
-            {
                 var result = await _adminService.GetTeacherDetailAsync(id);
                 return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return NotFound(new { Error = ex.Message });
-            }
         }
 
         // --- QUẢN LÝ FEEDBACK ---
@@ -70,29 +56,15 @@ namespace EMS.API.Controllers
         [HttpGet("feedbacks")]
         public async Task<IActionResult> GetFeedbackList([FromQuery] string? type, [FromQuery] string? status)
         {
-            try
-            {
                 var result = await _feedbackService.GetAdminListAsync(type, status);
                 return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
         }
 
         [HttpPut("feedbacks/{id}/process")]
         public async Task<IActionResult> ProcessFeedback(Guid id, [FromBody] ProcessFeedbackDto dto)
         {
-            try
-            {
                 await _feedbackService.ProcessFeedbackAsync(id, dto);
                 return Ok(new { Message = "Đã cập nhật trạng thái và gửi thông báo cho người dùng." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
         }
     }
 }

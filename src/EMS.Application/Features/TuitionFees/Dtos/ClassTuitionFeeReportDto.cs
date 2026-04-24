@@ -14,7 +14,6 @@ namespace EMS.Application.Features.TuitionFees.Dtos
         public decimal TuitionFee { get; set; } 
         public int StudentCount { get; set; }   
         public double CollectionRate { get; set; }
-
         public string ConditionCode { get; set; } 
         public string StatusMessage { get; set; }
         public bool IsIssuable { get; set; }

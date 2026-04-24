@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml.VariantTypes;
+using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.TuitionFees.Dtos;
@@ -40,7 +41,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new InvalidOperationException($"Kỳ {month}/{year} đã phát hành hóa đơn rồi.");
 
             var classObj = await tuitionFeeRepository.GetClassByIdAsync(classId);
-            if (classObj == null) throw new KeyNotFoundException("Lớp học không tồn tại.");
+            if (classObj == null) throw new NotFoundException("Lớp học không tồn tại.");
 
             var periodStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
             var periodEnd = new DateTime(year, month, DateTime.DaysInMonth(year, month), 23, 59, 59, DateTimeKind.Utc);
@@ -183,7 +184,7 @@ namespace EMS.Application.Features.TuitionFees.Services
         public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId)
         {
             var invoice = await tuitionFeeRepository.GetInvoiceByIdAsync(invoiceId);
-            if (invoice == null) throw new Exception("Không tìm thấy hóa đơn.");
+            if (invoice == null) throw new NotFoundException("Không tìm thấy hóa đơn.");
             if (invoice.Class.TeacherId != teacherId) throw new UnauthorizedAccessException("Không có quyền gia hạn.");
 
             invoice.DueDate = invoice.DueDate.AddDays(additionalDays);
@@ -197,7 +198,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new UnauthorizedAccessException("Không có quyền thao tác trên lớp này.");
 
             var invoices = await tuitionFeeRepository.GetInvoicesByClassAndPeriodAsync(classId, request.PeriodMonth, request.PeriodYear);
-            if (invoices == null || !invoices.Any()) throw new Exception("Không tìm thấy hóa đơn nào.");
+            if (invoices == null || !invoices.Any()) throw new NotFoundException("Không tìm thấy hóa đơn nào.");
 
             foreach (var invoice in invoices)
             {
@@ -310,16 +311,13 @@ namespace EMS.Application.Features.TuitionFees.Services
                     InvoiceId = i.InvoiceId,
                     ClassId = i.ClassId,
                     ClassName = i.Class?.ClassName ?? "N/A",
-                    BillingMethod = "Postpaid",
+                    BillingMethod = i.Class?.BillingMethod ?? "N/A",
                     UnitPrice = i.UnitPrice,
                     Description = i.Description,
                     StudentId = i.StudentId,
                     StudentName = i.Student?.FullName ?? "N/A",
                     AvatarUrl = i.Student?.Account?.AvatarUrl,
                     SessionCount = (int)i.SessionCount,
-
-                    OriginalAmount = amount,
-                    CreditBalance = 0,
                     TotalAmount = i.Amount,
 
                     PaidAmount = i.Transactions?.Sum(t => t.AmountPaid) ?? 0m,
@@ -353,12 +351,6 @@ namespace EMS.Application.Features.TuitionFees.Services
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền sửa cấu hình lớp này.");
 
-            if (dto.TuitionFee < 0) throw new InvalidOperationException("Học phí không được âm.");
-            if (dto.PaymentDeadlineDays <= 0) throw new InvalidOperationException("Hạn nộp phải lớn hơn 0.");
-
-            if (dto.BillingMethod != "Postpaid")
-                throw new InvalidOperationException("Hệ thống hiện tại chỉ hỗ trợ hình thức Thu sau (Postpaid).");
-
             await tuitionFeeRepository.UpdateClassFeeConfigAsync(classId, "Postpaid", dto.TuitionFee, dto.PaymentDeadlineDays);
         }
 
@@ -367,7 +359,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             var teacherId = currentUserService.UserId;
             var c = await tuitionFeeRepository.GetClassConfigByIdAsync(classId, teacherId);
 
-            if (c == null) throw new KeyNotFoundException("Không tìm thấy lớp học hoặc bạn không có quyền truy cập.");
+            if (c == null) throw new NotFoundException("Không tìm thấy lớp học hoặc bạn không có quyền truy cập.");
 
             return new ClassFeeConfigDto
             {

@@ -26,17 +26,11 @@ namespace EMS.API.Controllers
         [HttpGet("history")]
         public async Task<IActionResult> GetMyFeedbackHistory()
         {
-            try
-            {
                 var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier).Value);
 
                 var result = await feedbackService.GetTeacherHistoryAsync(userId);
                 return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+       
         }
 
     }
