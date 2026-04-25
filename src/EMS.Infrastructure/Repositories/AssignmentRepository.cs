@@ -58,6 +58,7 @@ namespace EMS.Infrastructure.Repositories
                 .Include(a => a.Author)
                 .Include(a => a.GradeCategory)
                 .Include(a => a.AssignmentAttachments)
+                .Include(a => a.Submissions)
                 .Where(a => a.ClassId == classId && a.IsDeleted != true)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
