@@ -150,6 +150,24 @@ namespace EMS.API.Controllers
             }
         }
 
+        [HttpGet("{assignmentId}/download-all-submissions")]
+        public async Task<IActionResult> DownloadAllSubmissions(Guid assignmentId)
+        {
+            try
+            {
+                var (fileBytes, fileName) = await _assignmentService.DownloadAllSubmissionsAsync(assignmentId);
+                return File(fileBytes, "application/zip", fileName);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { Error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
         [HttpGet("{assignmentId}/submissions/{studentId}")]
         public async Task<IActionResult> GetStudentSubmissionDetail(Guid assignmentId, Guid studentId)
         {
