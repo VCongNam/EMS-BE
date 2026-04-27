@@ -15,24 +15,20 @@ namespace EMS.API.Controllers
     public class TuitionFeeController : ControllerBase
     {
         private readonly ITuitionFeeService tuitionFeeService;
-        private readonly ICurrentUserService currentUserService;
         private readonly IStudentTuitionService _tuitionService;
 
-        public TuitionFeeController(ITuitionFeeService tuitionFeeService, ICurrentUserService currentUserService, IStudentTuitionService tuitionService)
+        public TuitionFeeController(ITuitionFeeService tuitionFeeService, IStudentTuitionService tuitionService)
         {
             this.tuitionFeeService = tuitionFeeService;
-            this.currentUserService = currentUserService;
             this._tuitionService = tuitionService;
         }
-
 
         [HttpGet("class/{classId}/preview-invoices")]
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> PreviewInvoices(Guid classId, [FromQuery] int month, [FromQuery] int year)
         {
-                var teacherId = currentUserService.UserId;
-                var result = await tuitionFeeService.GetInvoicesPreviewAsync(classId, month, year, teacherId);
-                return Ok(result);
+            var result = await tuitionFeeService.GetInvoicesPreviewAsync(classId, month, year);
+            return Ok(result);
         }
 
         [HttpPost("class/{classId}/confirm-invoices")]
@@ -42,8 +38,7 @@ namespace EMS.API.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             try
             {
-                var teacherId = currentUserService.UserId;
-                await tuitionFeeService.ConfirmAndGenerateInvoicesAsync(classId, dto, teacherId);
+                await tuitionFeeService.ConfirmAndGenerateInvoicesAsync(classId, dto);
                 return Ok(new { Message = "Đã chốt và phát hành hóa đơn thành công." });
             }
             catch (InvalidOperationException ex) { return BadRequest(new { Message = ex.Message }); }
@@ -54,8 +49,8 @@ namespace EMS.API.Controllers
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> PreviewFinalInvoice(Guid classId, Guid studentId, [FromQuery] int month, [FromQuery] int year)
         {
-                var result = await tuitionFeeService.GetStudentFinalInvoicePreviewAsync(classId, studentId, month, year, currentUserService.UserId);
-                return Ok(result);
+            var result = await tuitionFeeService.GetStudentFinalInvoicePreviewAsync(classId, studentId, month, year);
+            return Ok(result);
         }
 
         [HttpPost("class/{classId}/student/{studentId}/confirm-final-invoice")]
@@ -65,18 +60,15 @@ namespace EMS.API.Controllers
             return Ok(new { Message = "Đã phát hành hóa đơn tất toán cho học sinh thành công." });
         }
 
-
         // --- ENDPOINT QUẢN LÝ GIAO DỊCH ---
 
         [HttpGet("transactions/pending")]
         [Authorize(Roles = "Teacher")]
         public async Task<IActionResult> GetPending()
         {
-                var teacherId = currentUserService.UserId;
-                var result = await tuitionFeeService.GetPendingTransactionsAsync(teacherId);
-                return Ok(result);
+            var result = await tuitionFeeService.GetPendingTransactionsAsync();
+            return Ok(result);
         }
-        
 
         [HttpPost("transaction/{id}/review")]
         [Authorize(Roles = "Teacher")]
@@ -85,7 +77,7 @@ namespace EMS.API.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             try
             {
-                await tuitionFeeService.ReviewTransactionAsync(id, dto.IsApproved, currentUserService.UserId, dto.Note);
+                await tuitionFeeService.ReviewTransactionAsync(id, dto.IsApproved, dto.Note);
                 return Ok(new { Message = "Đã xử lý giao dịch thành công." });
             }
             catch (UnauthorizedAccessException) { return Forbid(); }
@@ -95,24 +87,22 @@ namespace EMS.API.Controllers
         [HttpGet("transactions/history")]
         public async Task<IActionResult> GetHistory([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
-                var result = await tuitionFeeService.GetTransactionHistoryAsync(currentUserService.UserId, fromDate, toDate);
-                return Ok(result);
-
+            var result = await tuitionFeeService.GetTransactionHistoryAsync(fromDate, toDate);
+            return Ok(result);
         }
 
         [HttpGet("invoices/report")]
         public async Task<IActionResult> GetInvoicesReport([FromQuery] Guid? classId, [FromQuery] int month, [FromQuery] int year)
         {
-                var result = await tuitionFeeService.GetInvoicesListAsync(classId, month, year);
-                return Ok(result);
+            var result = await tuitionFeeService.GetInvoicesListAsync(classId, month, year);
+            return Ok(result);
         }
-
 
         [HttpGet("configs")]
         public async Task<IActionResult> GetFeeConfigs()
         {
-                var result = await tuitionFeeService.GetClassFeeConfigsAsync();
-                return Ok(result);
+            var result = await tuitionFeeService.GetClassFeeConfigsAsync();
+            return Ok(result);
         }
 
         [HttpPut("class/{classId}/config")]
@@ -132,8 +122,8 @@ namespace EMS.API.Controllers
         [HttpGet("class/{classId}/config")]
         public async Task<IActionResult> GetClassConfig(Guid classId)
         {
-                var result = await tuitionFeeService.GetClassFeeConfigAsync(classId);
-                return Ok(result);
+            var result = await tuitionFeeService.GetClassFeeConfigAsync(classId);
+            return Ok(result);
         }
 
         [HttpPut("invoice/{invoiceId}/extend-due-date")]
@@ -165,36 +155,34 @@ namespace EMS.API.Controllers
             catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống." }); }
         }
 
-
         [HttpGet("invoices/summary")]
         public async Task<IActionResult> GetSummary([FromQuery] Guid? classId, [FromQuery] int month, [FromQuery] int year)
         {
-                var result = await tuitionFeeService.GetTuitionSummaryAsync(classId, month, year);
-                return Ok(result);
-
+            var result = await tuitionFeeService.GetTuitionSummaryAsync(classId, month, year);
+            return Ok(result);
         }
 
         [HttpGet("reports/classes-overview")]
         public async Task<IActionResult> GetClassesOverview([FromQuery] int month, [FromQuery] int year)
         {
-                var result = await tuitionFeeService.GetClassesOverviewAsync(month, year);
-                return Ok(result);
+            var result = await tuitionFeeService.GetClassesOverviewAsync(month, year);
+            return Ok(result);
         }
 
         [HttpGet("reminders")]
         public async Task<IActionResult> GetReminders([FromQuery] int month, [FromQuery] int year)
         {
-                int targetMonth = month > 0 ? month : DateTime.Now.Month;
-                int targetYear = year > 0 ? year : DateTime.Now.Year;
-                var result = await tuitionFeeService.GetPendingInvoiceRemindersAsync(targetMonth, targetYear);
-                return Ok(result);
+            int targetMonth = month > 0 ? month : DateTime.Now.Month;
+            int targetYear = year > 0 ? year : DateTime.Now.Year;
+            var result = await tuitionFeeService.GetPendingInvoiceRemindersAsync(targetMonth, targetYear);
+            return Ok(result);
         }
 
         [HttpGet("transactions/full-history")]
         public async Task<IActionResult> GetFullHistory()
         {
-                var result = await tuitionFeeService.GetHistoryFullAsync();
-                return Ok(result);
+            var result = await tuitionFeeService.GetHistoryFullAsync();
+            return Ok(result);
         }
 
         [HttpGet("dashboard/overview")]
@@ -209,9 +197,8 @@ namespace EMS.API.Controllers
         [HttpGet("class/{classId}/transactions")]
         public async Task<IActionResult> GetClassTransactions(Guid classId)
         {
-                var result = await tuitionFeeService.GetTransactionsByClassAsync(classId);
-                return Ok(result);
-
+            var result = await tuitionFeeService.GetTransactionsByClassAsync(classId);
+            return Ok(result);
         }
 
         [HttpGet("class/{classId}/transactions-period")]
@@ -219,11 +206,9 @@ namespace EMS.API.Controllers
         {
             int targetMonth = month > 0 ? month : DateTime.Now.Month;
             int targetYear = year > 0 ? year : DateTime.Now.Year;
-                var result = await tuitionFeeService.GetClassTransactionsByPeriodAsync(classId, targetMonth, targetYear);
-                return Ok(result);
-
+            var result = await tuitionFeeService.GetClassTransactionsByPeriodAsync(classId, targetMonth, targetYear);
+            return Ok(result);
         }
-
 
         [HttpGet("student/myTuitions")]
         [Authorize(Roles = "Student")]

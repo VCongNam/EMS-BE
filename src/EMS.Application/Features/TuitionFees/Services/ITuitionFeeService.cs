@@ -3,25 +3,23 @@ using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EMS.Application.Features.TuitionFees.Services
 {
     public interface ITuitionFeeService
     {
-        Task<List<InvoicePreviewDto>> GetInvoicesPreviewAsync(Guid classId, int month, int year, Guid teacherId);
-        Task ConfirmAndGenerateInvoicesAsync(Guid classId, ConfirmInvoicesDto dto, Guid teacherId);
-        Task<InvoicePreviewDto> GetStudentFinalInvoicePreviewAsync(Guid classId, Guid studentId, int month, int year, Guid teacherId);
-        Task ConfirmStudentFinalInvoiceAsync(Guid classId, Guid studentId, ConfirmSingleInvoiceDto dto, Guid teacherId);
-        Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId);
-        Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId);
+        Task<List<InvoicePreviewDto>> GetInvoicesPreviewAsync(Guid classId, int month, int year);
+        Task ConfirmAndGenerateInvoicesAsync(Guid classId, ConfirmInvoicesDto dto);
+        Task<InvoicePreviewDto> GetStudentFinalInvoicePreviewAsync(Guid classId, Guid studentId, int month, int year);
+        Task ConfirmStudentFinalInvoiceAsync(Guid classId, Guid studentId, ConfirmSingleInvoiceDto dto);
+        Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays);
+        Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request);
 
-        Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync(Guid teacherId);
-        Task ReviewTransactionAsync(Guid transactionId, bool isApproved, Guid approverId, string? note);
-        Task<IEnumerable<TransactionHistoryDto>> GetTransactionHistoryAsync(Guid teacherId, DateTime? from, DateTime? to);
-        Task UndoTransactionAsync(Guid transactionId, Guid teacherId);
+        Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync();
+        Task ReviewTransactionAsync(Guid transactionId, bool isApproved, string? note);
+        Task<IEnumerable<TransactionHistoryDto>> GetTransactionHistoryAsync(DateTime? from, DateTime? to);
+        Task UndoTransactionAsync(Guid transactionId);
 
         Task<IEnumerable<GlobalInvoiceRecordDto>> GetInvoicesListAsync(Guid? classId, int month, int year);
         Task<IEnumerable<ClassFeeConfigDto>> GetClassFeeConfigsAsync();

@@ -32,8 +32,10 @@ namespace EMS.Application.Features.TuitionFees.Services
             this.currentUserService = currentUserService;
         }
 
-        public async Task<List<InvoicePreviewDto>> GetInvoicesPreviewAsync(Guid classId, int month, int year, Guid teacherId)
+        public async Task<List<InvoicePreviewDto>> GetInvoicesPreviewAsync(Guid classId, int month, int year)
         {
+            var teacherId = currentUserService.UserId;
+
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
@@ -109,8 +111,10 @@ namespace EMS.Application.Features.TuitionFees.Services
             return previews.OrderBy(p => p.StudentStatus == "Active" ? 0 : 1).ThenBy(p => p.StudentName).ToList();
         }
 
-        public async Task ConfirmAndGenerateInvoicesAsync(Guid classId, ConfirmInvoicesDto dto, Guid teacherId)
+        public async Task ConfirmAndGenerateInvoicesAsync(Guid classId, ConfirmInvoicesDto dto)
         {
+            var teacherId = currentUserService.UserId;
+
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
@@ -167,8 +171,10 @@ namespace EMS.Application.Features.TuitionFees.Services
         }
 
 
-        public async Task<InvoicePreviewDto> GetStudentFinalInvoicePreviewAsync(Guid classId, Guid studentId, int month, int year, Guid teacherId)
+        public async Task<InvoicePreviewDto> GetStudentFinalInvoicePreviewAsync(Guid classId, Guid studentId, int month, int year)
         {
+            var teacherId = currentUserService.UserId;
+
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
@@ -209,8 +215,11 @@ namespace EMS.Application.Features.TuitionFees.Services
                 Amount = stats.Attended * classObj.TuitionFee
             };
         }
-        public async Task ConfirmStudentFinalInvoiceAsync(Guid classId, Guid studentId, ConfirmSingleInvoiceDto dto, Guid teacherId)
+
+        public async Task ConfirmStudentFinalInvoiceAsync(Guid classId, Guid studentId, ConfirmSingleInvoiceDto dto)
         {
+            var teacherId = currentUserService.UserId;
+
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
@@ -238,11 +247,11 @@ namespace EMS.Application.Features.TuitionFees.Services
                 Amount = amount,
                 Description = description,
                 DueDate = dto.DueDate.ToUniversalTime(),
-                Status = amount == 0 ? "Paid" : "Pending", 
+                Status = amount == 0 ? "Paid" : "Pending",
                 CreatedAt = DateTime.UtcNow
             };
 
-          
+
             await tuitionFeeRepository.AddInvoicesAsync(new List<Invoice> { invoice });
 
             try
@@ -258,6 +267,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             }
             catch (Exception ex) { _logger.LogError($"Lỗi gửi thông báo tất toán: {ex.Message}"); }
         }
+
         public async Task<IEnumerable<ClassTuitionReportDto>> GetClassesOverviewAsync(int month, int year)
         {
             var teacherId = currentUserService.UserId;
@@ -301,8 +311,9 @@ namespace EMS.Application.Features.TuitionFees.Services
             return report;
         }
 
-        public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays, Guid teacherId)
+        public async Task ExtendInvoiceDueDateAsync(Guid invoiceId, int additionalDays)
         {
+            var teacherId = currentUserService.UserId;
             var invoice = await tuitionFeeRepository.GetInvoiceByIdAsync(invoiceId);
             if (invoice == null) throw new NotFoundException("Không tìm thấy hóa đơn.");
             if (invoice.Class.TeacherId != teacherId) throw new UnauthorizedAccessException("Không có quyền gia hạn.");
@@ -312,8 +323,9 @@ namespace EMS.Application.Features.TuitionFees.Services
             await tuitionFeeRepository.UpdateInvoiceAsync(invoice);
         }
 
-        public async Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request, Guid teacherId)
+        public async Task ExtendClassInvoicesDueDateAsync(Guid classId, ExtendClassInvoicesDto request)
         {
+            var teacherId = currentUserService.UserId;
             if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
                 throw new UnauthorizedAccessException("Không có quyền thao tác trên lớp này.");
 
@@ -331,8 +343,9 @@ namespace EMS.Application.Features.TuitionFees.Services
             await tuitionFeeRepository.UpdateInvoicesAsync(invoices);
         }
 
-        public async Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync(Guid teacherId)
+        public async Task<IEnumerable<PendingTransactionDto>> GetPendingTransactionsAsync()
         {
+            var teacherId = currentUserService.UserId;
             var ts = await tuitionFeeRepository.GetPendingTransactionsByTeacherAsync(teacherId);
             return ts.Select(t => new PendingTransactionDto
             {
@@ -345,8 +358,9 @@ namespace EMS.Application.Features.TuitionFees.Services
             });
         }
 
-        public async Task ReviewTransactionAsync(Guid transId, bool isApproved, Guid approverId, string? note)
+        public async Task ReviewTransactionAsync(Guid transId, bool isApproved, string? note)
         {
+            var approverId = currentUserService.UserId;
             var t = await tuitionFeeRepository.GetTransactionWithInvoiceAsync(transId);
             if (t == null) throw new KeyNotFoundException("Không tìm thấy giao dịch này.");
             if (t.Status != "Pending") throw new InvalidOperationException("Giao dịch này đã được xử lý trước đó.");
@@ -385,8 +399,9 @@ namespace EMS.Application.Features.TuitionFees.Services
             catch (Exception ex) { _logger.LogError($"Lỗi gửi thông báo duyệt: {ex.Message}"); }
         }
 
-        public async Task UndoTransactionAsync(Guid transactionId, Guid teacherId)
+        public async Task UndoTransactionAsync(Guid transactionId)
         {
+            var teacherId = currentUserService.UserId;
             var trans = await tuitionFeeRepository.GetTransactionWithInvoiceAsync(transactionId);
             if (trans == null) throw new KeyNotFoundException("Giao dịch không tồn tại.");
 
@@ -399,8 +414,9 @@ namespace EMS.Application.Features.TuitionFees.Services
             await tuitionFeeRepository.UpdateTransactionStatusAsync(trans, inv);
         }
 
-        public async Task<IEnumerable<TransactionHistoryDto>> GetTransactionHistoryAsync(Guid teacherId, DateTime? from, DateTime? to)
+        public async Task<IEnumerable<TransactionHistoryDto>> GetTransactionHistoryAsync(DateTime? from, DateTime? to)
         {
+            var teacherId = currentUserService.UserId;
             var ts = await tuitionFeeRepository.GetTransactionHistoryByTeacherAsync(teacherId, from, to);
             return ts.Select(t => new TransactionHistoryDto
             {
