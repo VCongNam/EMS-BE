@@ -401,6 +401,10 @@ namespace EMS.Application.Features.Gradebook.Services
         public async Task<StudentGradeBookDto> GetStudentGradeReportAsync(Guid classId)
         {
             Guid studentId = _currentUserService.StudentId ?? throw new UnauthorizedAccessException("Student ID is missing.");
+            var classEntity = await _classRepository.GetByIdAsync(classId);
+            if (classEntity == null) throw new Exception("Không tìm thấy lớp học.");
+            bool isEnrolled = await _classRepository.IsStudentAlreadyEnrolledAsync(classId, studentId);
+            if(isEnrolled == false) throw new Exception("Bạn chưa tham gia vào lớp học này.");
             var categories = await _gradeCategoryRepository.GetStudentGradeDetailsAsync(classId, studentId);
             var reportDto = new StudentGradeBookDto
             {
