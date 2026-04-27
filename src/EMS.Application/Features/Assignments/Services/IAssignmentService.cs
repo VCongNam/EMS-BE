@@ -20,6 +20,7 @@ namespace EMS.Application.Features.Assignments.Services
         Task GiveFeedbackAsync( Guid submissionId, FeedbackSubmissionDto request);
         Task<Guid> OfflineGradeAsync( Guid assignmentId, OfflineGradeDto request);
         Task<AssignmentSubmissionsListDto> GetSubmissionsForAssignmentAsync(Guid assignmentId);
+        Task<(byte[] FileBytes, string FileName)> DownloadAllSubmissionsAsync(Guid assignmentId);
 
         Task<StudentSubmissionDetailDto> GetStudentSubmissionDetailAsync(Guid assignmentId, Guid studentId);
 

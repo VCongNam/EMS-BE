@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -244,6 +245,8 @@ namespace EMS.Application.Features.Assignments.Services
         public async Task<IEnumerable<AssignmentSummaryDto>> GetAssignmentsByClassIdAsync(Guid classId)
         {
             var assignments = await _assignmentRepository.GetByClassIdAsync(classId);
+            var students = await _classRepository.GetStudentsByClassIdAsync(classId);
+            var totalStudents = students.Count();
 
             return assignments.Select(a => new AssignmentSummaryDto
             {
@@ -251,7 +254,11 @@ namespace EMS.Application.Features.Assignments.Services
                 Title = a.Title,
                 DueDate = a.DueDate,
                 Status = a.Status,
-                Isgraded = a.Isgraded
+                Isgraded = a.Isgraded,
+                IsOffline = a.Isoffline,
+                TotalStudents = totalStudents,
+                TotalSubmissions = a.Submissions.Count(s => s.SubmittedAt.HasValue || s.Status == "Submitted" || s.Status == "Graded" || s.Status == "Late"),
+                GradeCategoryName = a.GradeCategory?.Name
             });
         }
 
@@ -577,6 +584,63 @@ namespace EMS.Application.Features.Assignments.Services
             response.Students = response.Students.OrderBy(s => s.FullName).ToList();
 
             return response;
+        }
+
+        public async Task<(byte[] FileBytes, string FileName)> DownloadAllSubmissionsAsync(Guid assignmentId)
+        {
+            await RequireTeacherAccessByAssignmentAsync(assignmentId);
+
+            var assignment = await _assignmentRepository.GetByIdAsync(assignmentId);
+            if (assignment == null) throw new Exception("Assignment not found.");
+
+            var submissions = await _submissionRepository.GetSubmissionsByAssignmentIdAsync(assignmentId);
+
+            using var memoryStream = new MemoryStream();
+            using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+            {
+                using var httpClient = new System.Net.Http.HttpClient();
+
+                foreach (var submission in submissions)
+                {
+                    var studentName = submission.Student?.FullName ?? "UnknownStudent";
+                    var studentCode = submission.Student?.Dob;
+                    
+                    var folderName = $"{studentCode}_{studentName}";
+                    // Clean folder name to remove invalid characters
+                    folderName = string.Join("_", folderName.Split(Path.GetInvalidFileNameChars()));
+
+                    var attachments = submission.SubmissionAttachments
+                        .Where(a => string.Equals(a.FileRole, SubmissionFileRole, StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(a.FileRole, OfflineSubmissionFileRole, StringComparison.OrdinalIgnoreCase));
+
+                    foreach (var attachment in attachments)
+                    {
+                        if (string.IsNullOrEmpty(attachment.FileUrl)) continue;
+
+                        try
+                        {
+                            var fileBytes = await httpClient.GetByteArrayAsync(attachment.FileUrl);
+                            var safeFileName = attachment.FileName ?? "unnamed_file";
+                            
+                            var entryName = $"{folderName}/{safeFileName}";
+                            var zipEntry = archive.CreateEntry(entryName);
+
+                            using var entryStream = zipEntry.Open();
+                            await entryStream.WriteAsync(fileBytes, 0, fileBytes.Length);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, $"Failed to download file {attachment.FileUrl} for student {folderName}");
+                            var errorEntry = archive.CreateEntry($"{folderName}/error_downloading_{attachment.FileName}.txt");
+                            using var entryStream = errorEntry.Open();
+                            using var writer = new StreamWriter(entryStream);
+                            await writer.WriteAsync($"Failed to download file: {attachment.FileUrl}\nError: {ex.Message}");
+                        }
+                    }
+                }
+            }
+
+            return (memoryStream.ToArray(), $"Submissions_{assignment.Title}_{DateTime.UtcNow:yyyyMMddHHmmss}.zip");
         }
 
         private static SubmissionFileDto MapSubmissionFile(SubmissionAttachment attachment)

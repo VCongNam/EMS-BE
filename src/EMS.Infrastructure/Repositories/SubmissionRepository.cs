@@ -24,6 +24,7 @@ namespace EMS.Infrastructure.Repositories
             return await _context.Set<Submission>()
                 .AsNoTracking()
                 .Include(s => s.SubmissionAttachments)
+                .Include(s => s.Student)
                 .Where(s => s.AssignmentId == assignmentId)
                 .OrderByDescending(s => s.SubmittedAt)
                 .ToListAsync();
