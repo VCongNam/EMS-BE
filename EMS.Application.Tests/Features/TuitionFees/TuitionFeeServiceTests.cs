@@ -72,7 +72,12 @@ namespace EMS.Application.Tests.Features.TuitionFees
 
             _mockTuitionFeeRepo.Setup(r => r.IsTeacherOwnsClassAsync(It.IsAny<Guid>(), It.IsAny<Guid>())).ReturnsAsync(true);
             _mockTuitionFeeRepo.Setup(r => r.HasInvoicesForPeriodAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(false);
-            _mockTuitionFeeRepo.Setup(r => r.GetClassByIdAsync(classId)).ReturnsAsync(new Class { StartDate = DateOnly.FromDateTime(now.AddYears(-1)) });
+
+            _mockTuitionFeeRepo.Setup(r => r.GetClassByIdAsync(classId)).ReturnsAsync(new Class
+            {
+                StartDate = DateOnly.FromDateTime(now.AddYears(-1)),
+                EndDate = DateOnly.FromDateTime(now.AddYears(1))
+            });
 
             var ex = Assert.ThrowsAsync<BadRequestException>(async () =>
                 await _service.GetInvoicesPreviewAsync(classId, now.Month, now.Year, Guid.NewGuid()));
@@ -92,22 +97,28 @@ namespace EMS.Application.Tests.Features.TuitionFees
 
             _mockTuitionFeeRepo.Setup(r => r.IsTeacherOwnsClassAsync(classId, teacherId)).ReturnsAsync(true);
             _mockTuitionFeeRepo.Setup(r => r.HasInvoicesForPeriodAsync(classId, month, year)).ReturnsAsync(false);
-            _mockTuitionFeeRepo.Setup(r => r.GetClassByIdAsync(classId)).ReturnsAsync(new Class { TuitionFee = 100000, StartDate = DateOnly.FromDateTime(targetDate.AddYears(-1)) });
+
+            _mockTuitionFeeRepo.Setup(r => r.GetClassByIdAsync(classId)).ReturnsAsync(new Class
+            {
+                TuitionFee = 100000,
+                StartDate = DateOnly.FromDateTime(targetDate.AddYears(-1)),
+                EndDate = DateOnly.FromDateTime(targetDate.AddYears(1))
+            });
 
             var activeStudentId = Guid.NewGuid();
             var droppedStudentId = Guid.NewGuid();
 
             var studentsToBill = new List<ClassEnrollment>
-            {
-                new ClassEnrollment { StudentId = droppedStudentId, Status = "Dropped", Student = new Student { FullName = "Anh Dropped" } },
-                new ClassEnrollment { StudentId = activeStudentId, Status = "Active", Student = new Student { FullName = "Bình Active" } }
-            };
+    {
+        new ClassEnrollment { StudentId = droppedStudentId, Status = "Dropped", Student = new Student { FullName = "Anh Dropped" } },
+        new ClassEnrollment { StudentId = activeStudentId, Status = "Active", Student = new Student { FullName = "Bình Active" } }
+    };
             _mockTuitionFeeRepo.Setup(r => r.GetStudentsForBillingAsync(classId, month, year)).ReturnsAsync(studentsToBill);
 
             var attendanceDict = new Dictionary<Guid, (int Attended, int Excused, int Unexcused)>
-            {
-                { activeStudentId, (Attended: 5, Excused: 0, Unexcused: 0) } // Active đi học 5 buổi
-            };
+    {
+        { activeStudentId, (Attended: 5, Excused: 0, Unexcused: 0) } // Active đi học 5 buổi
+    };
             _mockTuitionFeeRepo.Setup(r => r.GetDetailedAttendanceCountsAsync(classId, It.IsAny<DateTime>(), It.IsAny<DateTime>())).ReturnsAsync(attendanceDict);
             _mockTuitionFeeRepo.Setup(r => r.CountScheduledSessionsAsync(classId, month, year)).ReturnsAsync(5);
 
@@ -119,7 +130,6 @@ namespace EMS.Application.Tests.Features.TuitionFees
             Assert.That(result[1].StudentId, Is.EqualTo(droppedStudentId));
             Assert.That(result[1].Amount, Is.EqualTo(0)); // Không có điểm danh -> 0 buổi
         }
-
         #endregion
 
         #region 2. ConfirmAndGenerateInvoicesAsync Tests
