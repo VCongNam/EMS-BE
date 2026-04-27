@@ -51,7 +51,6 @@ namespace EMS.API.Controllers
                 return Ok(result);
         }
 
-        // --- QUẢN LÝ FEEDBACK ---
 
         [HttpGet("feedbacks")]
         public async Task<IActionResult> GetFeedbackList([FromQuery] string? type, [FromQuery] string? status)

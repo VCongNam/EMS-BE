@@ -1,4 +1,4 @@
-﻿using EMS.Application.Common.Exceptions;
+﻿ using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Auth.DTOs;
 using EMS.Domain.Entities;
@@ -185,7 +185,7 @@ namespace EMS.Application.Features.Auth.Services
 
             if (account.Status == "Unverified")
             {
-                throw new BadRequestException("Tài khoản của bạn chưa được kích hoạt. Vui lòng xác thực mã OTP!");
+                throw new BadRequestException("Tài khoản của bạn chưa được kích hoạt");
             }
 
 

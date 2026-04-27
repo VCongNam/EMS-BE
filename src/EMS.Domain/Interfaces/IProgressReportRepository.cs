@@ -1,4 +1,4 @@
-﻿using EMS.Domain.Entities;
+﻿ using EMS.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +24,6 @@ namespace EMS.Domain.Interfaces
         Task<Dictionary<Guid, int>> GetActiveStudentCountsByClassesAsync(List<Guid> classIds);
         Task<List<ProgressReport>> GetReportsByClassesAndPeriodAsync(List<Guid> classIds, int month, int year);
         Task<Class?> GetClassByIdAsync(Guid classId);
-        // Thêm vào IProgressReportRepository.cs
         Task<int> GetTotalSessionsInPeriodAsync(Guid classId, DateOnly startDate, DateOnly endDate);
     }
 }

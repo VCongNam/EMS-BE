@@ -6,9 +6,6 @@ using System.Threading.Tasks;
 
 namespace EMS.Application.Features.SystemAdmin.Dtos
 {
-    // ==========================================
-    // DTO CHO DASHBOARD
-    // ==========================================
     public class DashboardFilterDto
     {
         public DateTime? StartDate { get; set; }
@@ -36,9 +33,6 @@ namespace EMS.Application.Features.SystemAdmin.Dtos
         public int Value2 { get; set; } // Ví dụ: Student / Assignment
     }
 
-    // ==========================================
-    // DTO CHO QUẢN LÝ GIÁO VIÊN
-    // ==========================================
     public class TeacherGridDto
     {
         public Guid TeacherId { get; set; }
