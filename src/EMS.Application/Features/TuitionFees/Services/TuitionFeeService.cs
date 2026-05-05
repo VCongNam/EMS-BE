@@ -732,10 +732,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             // Lấy toàn bộ lịch sử không phân biệt thời gian
             var transactions = await tuitionFeeRepository.GetTransactionsByStudentIdAsync(studentId, classId);
 
-            // Lọc bảo mật: Chỉ giáo viên dạy học sinh đó ở lớp nào thì mới thấy giao dịch của lớp đó
-            var filteredTransactions = transactions.Where(t => t.Invoice.Class.TeacherId == teacherId);
-
-            return filteredTransactions.Select(t => new FullTransactionHistoryDto
+            return transactions.Select(t => new FullTransactionHistoryDto
             {
                 TransactionId = t.TransactionId,
                 AmountPaid = t.AmountPaid,
