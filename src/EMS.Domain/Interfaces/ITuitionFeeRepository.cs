@@ -61,11 +61,12 @@ namespace EMS.Domain.Interfaces
         Task<IEnumerable<Class>> GetClassesWithDataAsync(Guid teacherId, int month, int year);
         Task<IEnumerable<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, Guid? classId, int month, int year);
         Task<List<Class>> GetClassesActiveInPeriodAsync(Guid teacherId, int month, int year);
-        Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId);
+        Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId,int month, int year);
         Task<List<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, int month, int year);
         Task<List<Transaction>> GetSuccessfulTransactionsByPeriodAsync(Guid teacherId, int month, int year);
-        Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId);
+        Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId, int month, int year);
         Task<IEnumerable<Transaction>> GetTransactionsByClassAndPeriodAsync(Guid classId, Guid teacherId, int month, int year);
         Task<bool> CheckAllSessionsAttendedAsync(Guid classId, int month, int year);
+
     }
 }

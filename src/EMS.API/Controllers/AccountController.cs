@@ -133,18 +133,22 @@ namespace EMS.API.Controllers
         }
 
 
-        // 3. API UPDATE STUDENT
-        [HttpPut("student/profile")]
-        [Authorize(Roles = "Student")]
-        public async Task<IActionResult> UpdateStudentProfile(UpdateStudentProfileRequest request)
+        [HttpPut("student/{studentId}/profile")]
+        [Authorize(Roles = "Student")] 
+        public async Task<IActionResult> UpdateStudentProfile(Guid studentId, [FromBody] UpdateStudentProfileRequest request)
         {
             try
             {
-                var accountId = currentUserService.UserId;
-                var updatedProfile = await accountService.UpdateStudentProfileAsync(accountId, request);
+                var accountId = currentUserService.UserId; // Lấy AccountId từ Token
+
+                // Truyền cả accountId (để xác thực) và studentId (để định vị hồ sơ)
+                var updatedProfile = await accountService.UpdateStudentProfileAsync(accountId, studentId, request);
                 return Ok(updatedProfile);
             }
-            catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         //Reset student password
@@ -160,5 +164,26 @@ namespace EMS.API.Controllers
             catch (Exception ex) { return BadRequest(new { Message = ex.Message }); }
         }
 
+        [HttpPut("avatar")]
+        public async Task<IActionResult> UpdateAvatar([FromForm] UploadAvatarDto request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var newAvatarUrl = await accountService.UpdateAvatarAsync(request);
+
+                return Ok(new
+                {
+                    Message = "Cập nhật ảnh đại diện thành công!",
+                    AvatarUrl = newAvatarUrl
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
     }
 }

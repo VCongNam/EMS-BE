@@ -179,10 +179,18 @@ namespace EMS.API.Controllers
         }
 
         [HttpGet("transactions/full-history")]
-        public async Task<IActionResult> GetFullHistory()
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetFullHistory([FromQuery] int month, [FromQuery] int year)
         {
-            var result = await tuitionFeeService.GetHistoryFullAsync();
-            return Ok(result);
+            try
+            {
+                var result = await tuitionFeeService.GetHistoryFullAsync(month, year);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Lỗi khi lấy lịch sử giao dịch.", Details = ex.Message });
+            }
         }
 
         [HttpGet("dashboard/overview")]
@@ -194,12 +202,6 @@ namespace EMS.API.Controllers
             return Ok(result);
         }
 
-        [HttpGet("class/{classId}/transactions")]
-        public async Task<IActionResult> GetClassTransactions(Guid classId)
-        {
-            var result = await tuitionFeeService.GetTransactionsByClassAsync(classId);
-            return Ok(result);
-        }
 
         [HttpGet("class/{classId}/transactions-period")]
         public async Task<IActionResult> GetClassTransactions(Guid classId, [FromQuery] int month, [FromQuery] int year)
@@ -208,6 +210,21 @@ namespace EMS.API.Controllers
             int targetYear = year > 0 ? year : DateTime.Now.Year;
             var result = await tuitionFeeService.GetClassTransactionsByPeriodAsync(classId, targetMonth, targetYear);
             return Ok(result);
+        }
+
+        [HttpGet("student/{studentId}/transactions-history")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetStudentTransactionsForTeacher(Guid studentId, [FromQuery] Guid? classId)
+        {
+            try
+            {
+                var result = await tuitionFeeService.GetStudentTransactionsAsync(studentId, classId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Lỗi khi lấy lịch sử giao dịch học sinh.", Details = ex.Message });
+            }
         }
 
         [HttpGet("student/myTuitions")]

@@ -12,9 +12,7 @@ namespace EMS.Application.Features.Accounts.Validators
     {
         public UpdateStudentProfileRequestValidator()
         {
-            RuleFor(x => x.FullName)
-                .NotEmpty().WithMessage("Họ tên không được để trống")
-                .MaximumLength(100).WithMessage("Họ tên không được quá 100 ký tự");
+            
 
             RuleFor(x => x.Dob)
                 .NotEmpty().WithMessage("Ngày sinh không được để trống")

@@ -595,10 +595,10 @@ namespace EMS.Application.Features.TuitionFees.Services
             return reminders;
         }
 
-        public async Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync()
+        public async Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync(int month, int year)
         {
             var teacherId = currentUserService.UserId;
-            var transactions = await tuitionFeeRepository.GetFullTransactionHistoryAsync(teacherId);
+            var transactions = await tuitionFeeRepository.GetFullTransactionHistoryAsync(teacherId,month,year);
 
             return transactions.Select(t => new FullTransactionHistoryDto
             {
@@ -609,7 +609,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                 Status = t.Status ?? "Pending",
                 ProofImageUrl = t.ProofImageUrl,
                 CreatedAt = t.CreatedAt ?? DateTime.Now,
-
                 InvoiceId = t.InvoiceId,
                 InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
                 PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
@@ -617,10 +616,8 @@ namespace EMS.Application.Features.TuitionFees.Services
                 InvoiceDescription = t.Invoice?.Description,
                 InvoiceUnitPrice = t.Invoice?.UnitPrice ?? 0,
                 InvoiceSessionCount = t.Invoice?.SessionCount ?? 0,
-
                 StudentId = t.Invoice?.StudentId ?? Guid.Empty,
                 StudentName = t.Invoice?.Student?.FullName ?? "N/A",
-
                 ClassId = t.Invoice?.ClassId ?? Guid.Empty,
                 ClassName = t.Invoice?.Class?.ClassName ?? "N/A"
             }).ToList();
@@ -665,10 +662,14 @@ namespace EMS.Application.Features.TuitionFees.Services
             };
         }
 
-        public async Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId)
+        public async Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId, int month, int year)
         {
             var teacherId = currentUserService.UserId;
-            var transactions = await tuitionFeeRepository.GetTransactionsByClassAsync(classId, teacherId);
+
+            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
+                throw new UnauthorizedAccessException("Bạn không có quyền xem dữ liệu của lớp học này.");
+
+            var transactions = await tuitionFeeRepository.GetTransactionsByClassAsync(classId, teacherId, month, year);
 
             return transactions.Select(t => new FullTransactionHistoryDto
             {
@@ -679,7 +680,6 @@ namespace EMS.Application.Features.TuitionFees.Services
                 Status = t.Status ?? "Pending",
                 ProofImageUrl = t.ProofImageUrl,
                 CreatedAt = t.CreatedAt ?? DateTime.Now,
-
                 InvoiceId = t.InvoiceId,
                 InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
                 PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
@@ -687,10 +687,8 @@ namespace EMS.Application.Features.TuitionFees.Services
                 InvoiceDescription = t.Invoice?.Description,
                 InvoiceUnitPrice = t.Invoice?.UnitPrice ?? 0,
                 InvoiceSessionCount = t.Invoice?.SessionCount ?? 0,
-
                 StudentId = t.Invoice?.StudentId ?? Guid.Empty,
                 StudentName = t.Invoice?.Student?.FullName ?? "N/A",
-
                 ClassId = t.Invoice?.ClassId ?? Guid.Empty,
                 ClassName = t.Invoice?.Class?.ClassName ?? "N/A"
             }).ToList();
@@ -726,5 +724,41 @@ namespace EMS.Application.Features.TuitionFees.Services
                 ClassName = t.Invoice?.Class?.ClassName ?? "N/A"
             }).ToList();
         }
+
+        public async Task<IEnumerable<FullTransactionHistoryDto>> GetStudentTransactionsAsync(Guid studentId, Guid? classId = null)
+        {
+            var teacherId = currentUserService.UserId;
+
+            // Lấy toàn bộ lịch sử không phân biệt thời gian
+            var transactions = await tuitionFeeRepository.GetTransactionsByStudentIdAsync(studentId, classId);
+
+            // Lọc bảo mật: Chỉ giáo viên dạy học sinh đó ở lớp nào thì mới thấy giao dịch của lớp đó
+            var filteredTransactions = transactions.Where(t => t.Invoice.Class.TeacherId == teacherId);
+
+            return filteredTransactions.Select(t => new FullTransactionHistoryDto
+            {
+                TransactionId = t.TransactionId,
+                AmountPaid = t.AmountPaid,
+                PaidDate = t.PaidDate,
+                PaymentMethod = t.PaymentMethod ?? "Chuyển khoản",
+                Status = t.Status ?? "Pending",
+                ProofImageUrl = t.ProofImageUrl,
+                CreatedAt = t.CreatedAt ?? DateTime.Now,
+                InvoiceId = t.InvoiceId,
+                InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
+                PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
+                PeriodYear = t.Invoice?.PeriodYear ?? 0,
+                InvoiceDescription = t.Invoice?.Description,
+                InvoiceUnitPrice = t.Invoice?.UnitPrice ?? 0,
+                InvoiceSessionCount = t.Invoice?.SessionCount ?? 0,
+                StudentId = studentId,
+                StudentName = t.Invoice?.Student?.FullName ?? "N/A",
+                ClassId = t.Invoice?.ClassId ?? Guid.Empty,
+                ClassName = t.Invoice?.Class?.ClassName ?? "N/A"
+            }).ToList();
+        }
+
     }
+
+
 }

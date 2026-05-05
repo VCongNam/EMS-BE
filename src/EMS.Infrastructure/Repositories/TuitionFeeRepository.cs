@@ -439,12 +439,12 @@ namespace EMS.Infrastructure.Repositories
             return await context.Invoices.AnyAsync(i => i.ClassId == classId && i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true);
         }
 
-        public async Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId)
+        public async Task<IEnumerable<Transaction>> GetFullTransactionHistoryAsync(Guid teacherId, int month, int year)
         {
             return await context.Transactions
                 .Include(t => t.Invoice).ThenInclude(i => i.Student)
                 .Include(t => t.Invoice).ThenInclude(i => i.Class)
-                .Where(t => t.Invoice.Class.TeacherId == teacherId && t.Invoice.IsDeleted != true)
+                .Where(t => t.Invoice.Class.TeacherId == teacherId && t.Invoice.PeriodMonth == month && t.Invoice.PeriodYear == year && t.Invoice.IsDeleted != true)
                 .OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 
@@ -462,12 +462,12 @@ namespace EMS.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId)
+        public async Task<IEnumerable<Transaction>> GetTransactionsByClassAsync(Guid classId, Guid teacherId, int month, int year)
         {
             return await context.Transactions
                 .Include(t => t.Invoice).ThenInclude(i => i.Student)
                 .Include(t => t.Invoice).ThenInclude(i => i.Class)
-                .Where(t => t.Invoice.ClassId == classId && t.Invoice.Class.TeacherId == teacherId && t.Invoice.IsDeleted != true)
+                .Where(t => t.Invoice.ClassId == classId && t.Invoice.Class.TeacherId == teacherId && t.Invoice.PeriodMonth == month && t.Invoice.PeriodYear == year && t.Invoice.IsDeleted != true)
                 .OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 

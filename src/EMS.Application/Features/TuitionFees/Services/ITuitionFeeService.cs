@@ -32,9 +32,10 @@ namespace EMS.Application.Features.TuitionFees.Services
         Task<IEnumerable<Class>> GetClassesOverviewEntitiesAsync(Guid teacherId, int month, int year);
         Task<TuitionSummaryDto> GetTuitionSummaryAsync(Guid? classId, int month, int year);
         Task<List<ClassInvoiceReminderDto>> GetPendingInvoiceRemindersAsync(int month, int year);
-        Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync();
+        Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync(int month, int year);
         Task<TuitionDashboardDto> GetDashboardDataAsync(int month, int year);
-        Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId);
+        Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId, int month, int year);
         Task<IEnumerable<FullTransactionHistoryDto>> GetClassTransactionsByPeriodAsync(Guid classId, int month, int year);
+        Task<IEnumerable<FullTransactionHistoryDto>> GetStudentTransactionsAsync(Guid studentId, Guid? classId = null);
     }
 }

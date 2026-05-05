@@ -8,9 +8,11 @@ namespace EMS.Application.Features.Accounts.DTOs
 {
     public class UpdateStudentProfileRequest
     {
-        public string FullName { get; set; } = null!;
-        public string? PhoneNumber { get; set; }
+        public string StudentFullName { get; set; } = null!;
         public string? Address { get; set; }
         public DateOnly Dob { get; set; }
+
+        public string ParentFullName { get; set; } = null!;
+        public string? PhoneNumber { get; set; }
     }
 }

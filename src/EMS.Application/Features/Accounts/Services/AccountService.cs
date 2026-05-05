@@ -3,6 +3,7 @@ using EMS.Application.Features.Accounts.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -14,14 +15,16 @@ namespace EMS.Application.Features.Accounts.Services
         private readonly IAccountRepository accountRepository;
         private readonly ICurrentUserService currentUserService;
         private readonly ISupabaseStorageService storageService;
+        private readonly ILogger<AccountService> logger;
 
         private const long MaxImageSize = 5 * 1024 * 1024;
         private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
-        public AccountService(IAccountRepository accountRepository, ICurrentUserService currentUserService, ISupabaseStorageService storageService)
+        public AccountService(IAccountRepository accountRepository, ICurrentUserService currentUserService, ISupabaseStorageService storageService, ILogger<AccountService> logger )
         {
             this.accountRepository = accountRepository;
             this.currentUserService = currentUserService;
             this.storageService = storageService;
+            this.logger = logger;
         }
 
         public async Task<UserProfileResponse> GetProfileAsync(Guid accountId)
@@ -127,30 +130,37 @@ namespace EMS.Application.Features.Accounts.Services
             return await GetProfileAsync(accountId);
         }
 
-        // 3. UPDATE CHO HỌC SINH (STUDENT)
-        public async Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, UpdateStudentProfileRequest request)
+        public async Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, Guid studentId, UpdateStudentProfileRequest request)
         {
             var account = await accountRepository.GetByIdAsync(accountId);
-            var currentStudentId = currentUserService.StudentId;
+            if (account == null) throw new Exception("Tài khoản không tồn tại!");
 
-            // SỬA: Tìm đúng đứa con cần update
-            var studentProfile = account.Students.FirstOrDefault(s => s.StudentId == currentStudentId);
-            if (studentProfile != null)
+            var studentProfile = account.Students.FirstOrDefault(s => s.StudentId == studentId);
+
+            if (studentProfile == null)
+                throw new Exception("Hồ sơ học sinh không tồn tại hoặc bạn không có quyền chỉnh sửa hồ sơ này!");
+
+            if (string.IsNullOrWhiteSpace(request.StudentFullName))
+                throw new Exception("Tên học sinh không được để trống");
+
+            studentProfile.FullName = request.StudentFullName.Trim();
+            studentProfile.Address = request.Address;
+            studentProfile.Dob = request.Dob;
+
+            if (!string.IsNullOrWhiteSpace(request.ParentFullName))
             {
-                if (string.IsNullOrWhiteSpace(request.FullName))
-                    throw new Exception("Tên học sinh không được để trống");
-                var studentName = request.FullName.Trim();
-
-                studentProfile.Address = request.Address;
-                studentProfile.Dob = request.Dob;
-                studentProfile.FullName = request.FullName;
-
-                // Đồng bộ ngược lại tên Account nếu cần (tùy logic của bạn)
-                account.FullName = request.FullName;
+                account.FullName = request.ParentFullName.Trim();
             }
 
+            if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+            {
+                account.PhoneNumber = request.PhoneNumber.Trim();
+            }
+
+            account.UpdatedAt = DateTime.UtcNow;
+
             await accountRepository.UpdateAsync(account);
-            return await GetProfileAsync(accountId);
+            return await GetProfileAsync(accountId); // Có thể bạn cũng cần update lại GetProfileAsync để trả về đúng profile vừa sửa
         }
 
         public async Task<bool> ChangePasswordAsync(Guid accountId, ChangePasswordRequest request)
@@ -166,60 +176,44 @@ namespace EMS.Application.Features.Accounts.Services
             return true;
         }
 
-
-        public async Task<(string NewUrl, string? OldUrl)> UpdateAvatarUrlAsync(Guid accountId, string avatarUrl)
+        public async Task<string> UpdateAvatarAsync(UploadAvatarDto request)
         {
-            var account = await accountRepository.GetByIdAsync(accountId);
-            if (account == null) throw new Exception("Tài khoản không tồn tại!");
+            var userId = currentUserService.UserId;
+            var account = await accountRepository.GetByIdAsync(userId);
 
-            // 1. Giữ lại link cũ để tí nữa còn xóa trên Cloud
-            string? oldUrl = account.AvatarUrl;
+            if (account == null)
+                throw new Exception("Không tìm thấy tài khoản người dùng.");
 
-            // 2. Cập nhật link mới
+            if (!string.IsNullOrEmpty(account.AvatarUrl))
+            {
+                try
+                {
+                    await storageService.DeleteFileByUrlAsync(account.AvatarUrl);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning($"Không thể xóa avatar cũ của user {userId}: {ex.Message}");
+                }
+            }
+            ValidateImage(request.AvatarFile.FileName, request.AvatarFile.Length, request.AvatarFile.ContentType);
+
+            var avatarUrl = await storageService.UploadFileAsync(request.AvatarFile, $"avatars/{userId}");
+
             account.AvatarUrl = avatarUrl;
             account.UpdatedAt = DateTime.UtcNow;
 
             await accountRepository.UpdateAsync(account);
 
-            return (avatarUrl, oldUrl);
+            return avatarUrl;
         }
 
-        public async Task<string> UpdateAvatarAsync(IFormFile file)
+        private void ValidateImage(string fileName, long fileSize, string contentType)
         {
-            var accountId = currentUserService.UserId;
-            var account = await accountRepository.GetByIdAsync(accountId);
-            if (account == null) throw new Exception("Tài khoản không tồn tại.");
+            if (fileSize > MaxImageSize)
+                throw new Exception($"Ảnh '{fileName}' vượt quá dung lượng cho phép (5MB).");
 
-            // 1. Validate định dạng và dung lượng ảnh
-            ValidateImage(file);
-
-            // 2. Xóa ảnh cũ trên Supabase để tiết kiệm dung lượng
-            if (!string.IsNullOrEmpty(account.AvatarUrl))
-            {
-                // Try-catch để nếu file cũ không tồn tại trên kho thì vẫn cho upload cái mới
-                try { await storageService.DeleteFileByUrlAsync(account.AvatarUrl); } catch { }
-            }
-
-            // 3. Upload ảnh mới (Đặt vào folder avatars/{accountId})
-            var newImageUrl = await storageService.UploadFileAsync(file, $"avatars/{accountId}");
-
-            // 4. Lưu link vào Database
-            account.AvatarUrl = newImageUrl;
-            account.UpdatedAt = DateTime.UtcNow;
-            await accountRepository.UpdateAsync(account);
-
-            return newImageUrl;
+            if (!AllowedImageExtensions.Contains(contentType.ToLower()))
+                throw new Exception($"Định dạng file '{contentType}' không được hỗ trợ. Chỉ nhận PNG, JPEG, JPG, WEBP.");
         }
-
-        private void ValidateImage(IFormFile file)
-        {
-            if (file.Length > 5 * 1024 * 1024) throw new Exception("Ảnh không được quá 5MB.");
-
-            var ext = Path.GetExtension(file.FileName).ToLower();
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            if (!allowedExtensions.Contains(ext)) throw new Exception("Định dạng ảnh không hợp lệ.");
-        }
-
-
     }
 }

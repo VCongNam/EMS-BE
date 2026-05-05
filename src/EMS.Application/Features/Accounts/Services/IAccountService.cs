@@ -13,12 +13,11 @@ namespace EMS.Application.Features.Accounts.Services
     {
 
         Task<UserProfileResponse> GetProfileAsync(Guid accountId);
-        //Task<UserProfileResponse> UpdateProfileAsync(Guid accountId, UpdateProfileRequest reguest);
         Task<bool> ChangePasswordAsync(Guid accountId, ChangePasswordRequest request);
         Task<UserProfileResponse> UpdateTeacherProfileAsync(Guid accountId, UpdateTeacherProfileRequest request);
         Task<UserProfileResponse> UpdateTAProfileAsync(Guid accountId, UpdateTAProfileRequest request);
-        Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, UpdateStudentProfileRequest request);
-        Task<(string NewUrl, string? OldUrl)> UpdateAvatarUrlAsync(Guid accountId, string avatarUrl);
-        Task<string> UpdateAvatarAsync(IFormFile file);
+        Task<UserProfileResponse> UpdateStudentProfileAsync(Guid accountId, Guid studentId, UpdateStudentProfileRequest request);
+
+        Task<string> UpdateAvatarAsync(UploadAvatarDto request);
     }
 }
