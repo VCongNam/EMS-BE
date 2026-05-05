@@ -37,5 +37,6 @@ namespace EMS.Application.Features.TuitionFees.Services
         Task<IEnumerable<FullTransactionHistoryDto>> GetTransactionsByClassAsync(Guid classId, int month, int year);
         Task<IEnumerable<FullTransactionHistoryDto>> GetClassTransactionsByPeriodAsync(Guid classId, int month, int year);
         Task<IEnumerable<FullTransactionHistoryDto>> GetStudentTransactionsAsync(Guid studentId, Guid? classId = null);
+        Task<PaymentQrDto> GetPaymentQrCodeForTeacherAsync(Guid invoiceId, Guid studentId);
     }
 }

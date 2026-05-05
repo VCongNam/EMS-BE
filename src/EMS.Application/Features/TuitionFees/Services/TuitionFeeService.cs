@@ -6,6 +6,7 @@ using EMS.Application.Features.TuitionFees.Dtos;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using EMS.Application.Common.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,16 +21,20 @@ namespace EMS.Application.Features.TuitionFees.Services
         private readonly INotificationService _notificationService;
         private readonly ILogger<TuitionFeeService> _logger;
         private readonly ICurrentUserService currentUserService;
+        private readonly IVietQRService vietQRService;
+        private readonly IClassRepository classRepository;
 
         public TuitionFeeService(
             ITuitionFeeRepository tuitionFeeRepository,
             INotificationService notificationService,
-            ILogger<TuitionFeeService> logger, ICurrentUserService currentUserService)
+            ILogger<TuitionFeeService> logger, ICurrentUserService currentUserService, IVietQRService vietQRService, IClassRepository classRepository)
         {
             this.tuitionFeeRepository = tuitionFeeRepository;
             _notificationService = notificationService;
             _logger = logger;
             this.currentUserService = currentUserService;
+            this.vietQRService = vietQRService;
+            this.classRepository = classRepository;
         }
 
         public async Task<List<InvoicePreviewDto>> GetInvoicesPreviewAsync(Guid classId, int month, int year)
@@ -598,7 +603,7 @@ namespace EMS.Application.Features.TuitionFees.Services
         public async Task<IEnumerable<FullTransactionHistoryDto>> GetHistoryFullAsync(int month, int year)
         {
             var teacherId = currentUserService.UserId;
-            var transactions = await tuitionFeeRepository.GetFullTransactionHistoryAsync(teacherId,month,year);
+            var transactions = await tuitionFeeRepository.GetFullTransactionHistoryAsync(teacherId, month, year);
 
             return transactions.Select(t => new FullTransactionHistoryDto
             {
@@ -755,7 +760,50 @@ namespace EMS.Application.Features.TuitionFees.Services
             }).ToList();
         }
 
-    }
+        public async Task<PaymentQrDto> GetPaymentQrCodeForTeacherAsync(Guid invoiceId, Guid studentId)
+        {
+            var invoice = await tuitionFeeRepository.GetInvoiceWithTeacherBankInfoAsync(invoiceId, studentId);
+            if (invoice == null) throw new KeyNotFoundException("Không tìm thấy hóa đơn!");
+            var isEnrolled = await classRepository.IsStudentAlreadyEnrolledAsync(invoice.ClassId, studentId);
+            if (!isEnrolled) throw new Exception("Bạn không thuộc lớp có hóa đơn này");
 
+            if (invoice.Status == "Paid") throw new InvalidOperationException("Hóa đơn này đã được thanh toán!");
+
+            var teacher = invoice.Class?.Teacher;
+            if (teacher == null || string.IsNullOrEmpty(teacher.BankAccount) && string.IsNullOrEmpty(teacher.BankName))
+            {
+                throw new Exception("Giáo viên chưa cập nhật thông tin tài khoản ngân hàng. Vui lòng liên hệ giáo viên.");
+            }
+            string shortInvoiceId = invoice.InvoiceId.ToString().Substring(0, 6).ToUpper();
+            string transferContent = $"HOC PHI LOP {invoice.Class?.ClassName} THANG {invoice.PeriodMonth}/{invoice.PeriodYear}";
+
+            var qrRequest = new VietQRRequest
+            {
+                BankId = teacher.BankName,
+                AccountNo = teacher.BankAccount,
+                AccountName = teacher.BankAccountName ?? "GIAO VIEN",
+                Amount = invoice.Amount,
+                Content = transferContent
+            };
+
+            string qrBase64 = await vietQRService.GenerateQRCodeAsync(qrRequest);
+            if (qrBase64 != null)
+            {
+                return new PaymentQrDto
+                {
+                    QrCodeBase64 = qrBase64,
+                    BankName = teacher.BankName,
+                    AccountNo = teacher.BankAccount,
+                    AccountName = teacher.BankAccountName,
+                    Amount = invoice.Amount,
+                    TransferContent = transferContent
+                };
+            }
+            else
+            {
+                throw new Exception("Tạo Qr thất bại. Vui lòng thử lại sau");
+            }
+        }
+    }
 
 }

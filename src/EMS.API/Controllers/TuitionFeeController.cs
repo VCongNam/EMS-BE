@@ -227,6 +227,19 @@ namespace EMS.API.Controllers
             }
         }
 
+        [HttpGet("{invoiceId}/paymentQr/teacher")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetPaymentQrForTeacher(Guid invoiceId, Guid studentId)
+        {
+            try
+            {
+                var result = await tuitionFeeService.GetPaymentQrCodeForTeacherAsync(invoiceId, studentId);
+                return Ok(new { Message = "Tạo mã QR thanh toán thành công", Data = result });
+            }
+            catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
+
+
         [HttpGet("student/myTuitions")]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetStudentTuitions([FromQuery] TuitionFilter filter)
@@ -263,6 +276,8 @@ namespace EMS.API.Controllers
             }
             catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
         }
+
+        
 
         [HttpPost("{invoiceId}/proof")]
         [Authorize(Roles = "Student")]
