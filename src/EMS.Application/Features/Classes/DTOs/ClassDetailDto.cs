@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +12,7 @@ namespace EMS.Application.Features.Classes.DTOs
         public Guid TeacherId { get; set; }
         public string ClassName { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
+        public short GradeLevel { get; set; }
         public string? Room { get; set; }
         public short? MaxStudents { get; set; }
         public int CurrentStudents { get; set; }

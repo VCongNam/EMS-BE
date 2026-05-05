@@ -1,4 +1,4 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Spreadsheet;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Assignments.DTOs;
 using EMS.Application.Features.Classes.DTOs;
@@ -83,6 +83,7 @@ namespace EMS.Application.Features.Classes.Services
             {
                 ClassID = enrollmentEntity.ClassId,
                 ClassName = enrollmentEntity.Class.ClassName,
+                GradeLevel = enrollmentEntity.Class.Subject?.GradeLevel ?? 0,
                 TeacherName = enrollmentEntity.Class.Teacher.TeacherNavigation.FullName,
                 PendingAssignmentsCount = pendingAssignmentCount
             };

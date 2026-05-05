@@ -43,8 +43,7 @@ namespace EMS.Infrastructure.Services.Supabase
         {
             if (string.IsNullOrEmpty(fileUrl)) return;
 
-            // Xoay sở lấy path từ publicUrl dựa trên Url bucket
-            // URL có dạng: https://<project>.supabase.co/storage/v1/object/public/<bucketName>/<path>
+
             var publicPrefix = $"{_settings.Url}/storage/v1/object/public/{_settings.BucketName}/";
             if (fileUrl.StartsWith(publicPrefix))
             {
