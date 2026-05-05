@@ -385,6 +385,7 @@ namespace EMS.Application.Features.Classes.Services
                 TeacherId = classroom.TeacherId,
                 ClassName = classroom.ClassName,
                 SubjectName = classroom.Subject?.SubjectName ?? string.Empty,
+                GradeLevel = classroom.Subject?.GradeLevel ?? 0,
                 Room = classroom.Room,
                 MaxStudents = classroom.MaxStudents,
                 CurrentStudents = classroom.ClassEnrollments.Count(ce => ce.Status == "Active"),
