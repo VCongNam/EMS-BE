@@ -18,7 +18,7 @@ namespace EMS.Application.Features.Accounts.Services
         private readonly ILogger<AccountService> logger;
 
         private const long MaxImageSize = 5 * 1024 * 1024;
-        private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        private static readonly string[] AllowedImageExtensions = { "image/png", "image/jpeg", "image/jpg", "image/webp" };
         public AccountService(IAccountRepository accountRepository, ICurrentUserService currentUserService, ISupabaseStorageService storageService, ILogger<AccountService> logger )
         {
             this.accountRepository = accountRepository;
