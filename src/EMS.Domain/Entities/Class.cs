@@ -39,6 +39,8 @@ public partial class Class
 
     public int? PaymentDeadlineDays { get; set; }
 
+    public int? Gradelevel { get; set; }
+
     public virtual ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
     public virtual ICollection<ClassEnrollment> ClassEnrollments { get; set; } = new List<ClassEnrollment>();

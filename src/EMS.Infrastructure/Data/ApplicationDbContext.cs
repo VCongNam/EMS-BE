@@ -90,7 +90,6 @@ public partial class ApplicationDbContext : DbContext
             .HasPostgresExtension("extensions", "pg_stat_statements")
             .HasPostgresExtension("extensions", "pgcrypto")
             .HasPostgresExtension("extensions", "uuid-ossp")
-            .HasPostgresExtension("graphql", "pg_graphql")
             .HasPostgresExtension("vault", "supabase_vault");
 
         modelBuilder.Entity<Account>(entity =>
@@ -247,6 +246,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("now()")
                 .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.Gradelevel).HasColumnName("gradelevel");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.PaymentDeadlineDays).HasDefaultValue(5);
             entity.Property(e => e.Room).HasMaxLength(50);
