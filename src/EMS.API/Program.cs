@@ -132,6 +132,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateClassDtoValidator>();
 // Đăng ký Worker tự động hóa
 builder.Services.AddHostedService<SessionReminderWorker>();
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<ICaptchaService, CaptchaService>();
 
 builder.Services.AddCors(options =>
 {

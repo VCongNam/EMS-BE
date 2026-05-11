@@ -3,6 +3,7 @@ using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Auth.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,20 +20,28 @@ namespace EMS.Application.Features.Auth.Services
         private readonly IOtpService otpService;
         private readonly IEmailService emailService;
         private readonly ICurrentUserService currentUserService;
+        private readonly ICaptchaService captchaService;
+        private readonly IMemoryCache memoryCache;
 
-        public AuthService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailService emailService, ICurrentUserService currentUserService)
+        public AuthService(IAccountRepository accountRepository, IJwtTokenGenerator jwtTokenGenerator, IOtpService otpService, IEmailService emailService, 
+            ICurrentUserService currentUserService, ICaptchaService captchaService, IMemoryCache memoryCache)
         {
             this.accountRepository = accountRepository;
             this.jwtTokenGenerator = jwtTokenGenerator;
             this.otpService = otpService;
             this.emailService = emailService;
             this.currentUserService = currentUserService;
+            this.captchaService = captchaService;
+            this.memoryCache = memoryCache;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
-            var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
-            if (existingAccount != null) throw new ConflictException("Email đã được sử dụng!");
+            bool isCaptchaValid = await captchaService.VerifyCaptchaAsync(request.CaptchaToken);
+            if (!isCaptchaValid)
+            {
+                throw new BadRequestException("Captcha không hợp lệ. Vui lòng thử lại.");
+            }
 
             var allowedRoles = new List<string> { "Teacher", "TA" };
             string requestedRole = request.RoleName;
@@ -47,9 +56,81 @@ namespace EMS.Application.Features.Auth.Services
             {
                 throw new NotFoundException($"Lỗi hệ thống: Role '{requestedRole}' chưa được cấu hình trong DB.");
             }
-            
 
             string plainOtp = otpService.GenerateOtp();
+            string hashedOtp = otpService.HashOtp(plainOtp);
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+            var existingAccount = await accountRepository.GetByEmailAsync(request.Email);
+            if (existingAccount != null)
+            {
+                if (existingAccount.Status == "Active")
+                {
+                    throw new ConflictException("Email này đã được sử dụng và xác thực!");
+                }
+
+                if (existingAccount.Status == "Unverified")
+                {
+                    existingAccount.PasswordHash = hashedPassword;
+                    existingAccount.FullName = request.FullName;
+                    existingAccount.VerificationToken = hashedOtp;
+                    existingAccount.VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+                    existingAccount.RoleId = roleEntity.RoleId; 
+
+                    await accountRepository.UpdateAsync(existingAccount);
+
+                    await emailService.SendEmailAsync(new EmailMessage
+                    {
+                        To = request.Email,
+                        Subject = "EMS - Xác thực tài khoản (Gửi lại)",
+                        Body = $"Chào {request.FullName}, mã OTP đăng ký mới của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
+                    });
+
+                    return new AuthResponse
+                    {
+                        AccountId = existingAccount.AccountId,
+                        FullName = existingAccount.FullName,
+                        RoleName = existingAccount.Role.RoleName
+                    };
+                }
+            }
+
+            var newAccount = new Account
+            {
+                AccountId = Guid.NewGuid(),
+                Email = request.Email,
+                PasswordHash = hashedPassword,
+                FullName = request.FullName,
+                RoleId = roleEntity.RoleId,
+                Status = "Unverified",
+                VerificationToken = hashedOtp,
+                VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            if (requestedRole == "Teacher")
+            {
+                newAccount.Teacher = new Teacher 
+                { 
+                    Bio = null, 
+                    BankAccount = null, 
+                    BankAccountName = null, 
+                    BankName = null, 
+                    Specialization = null 
+                };
+            }
+            else if (requestedRole == "TA")
+            {
+                newAccount.TeachingAssistant = new TeachingAssistant 
+                { 
+                    Bio = null, 
+                    BankAccount = null, 
+                    BankAccountName = null, 
+                    BankName = null 
+                };
+            }
+
+            var saveAccount = await accountRepository.AddAsync(newAccount);
 
             await emailService.SendEmailAsync(new EmailMessage
             {
@@ -57,60 +138,6 @@ namespace EMS.Application.Features.Auth.Services
                 Subject = "EMS - Xác thực tài khoản",
                 Body = $"Chào {request.FullName}, mã OTP đăng ký của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
             });
-
-            string hashedOtp = otpService.HashOtp(plainOtp);
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
-            var newAccount = new Account();
-
-            if (requestedRole == "Teacher")
-            {
-                newAccount = new Account
-                {
-                    AccountId = Guid.NewGuid(),
-                    Email = request.Email,
-                    PasswordHash = hashedPassword,
-                    FullName = request.FullName,
-                    RoleId = roleEntity.RoleId,
-                    Status = "Unverified",
-                    VerificationToken = hashedOtp,
-                    VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
-                    CreatedAt = DateTime.UtcNow,
-                 
-                    Teacher = new Teacher
-                    {
-                        Bio = null,
-                        BankAccount = null,
-                        BankAccountName = null,
-                        BankName = null,
-                        Specialization = null
-                    }
-                };
-            }
-            else if (requestedRole == "TA")
-            {
-                newAccount = new Account
-                {
-                    AccountId = Guid.NewGuid(),
-                    Email = request.Email,
-                    PasswordHash = hashedPassword,
-                    FullName = request.FullName,
-                    RoleId = roleEntity.RoleId,
-                    Status = "Unverified",
-                    VerificationToken = hashedOtp,
-                    VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15),
-                    CreatedAt = DateTime.UtcNow,
-                    TeachingAssistant = new TeachingAssistant
-                    {
-                        Bio = null,
-                        BankAccount = null,
-                        BankAccountName = null,
-                        BankName = null
-                    }
-                };
-            }
-
-            var saveAccount = await accountRepository.AddAsync(newAccount);
 
             return new AuthResponse
             {
@@ -284,7 +311,32 @@ namespace EMS.Application.Features.Auth.Services
             if (account.Status == "Active")
                 throw new BadRequestException("Tài khoản đã được xác thực!");
 
+            // 4. RATE LIMITING VỚI MEMORY CACHE
+            string cacheKey = $"ResendOTP_{request.Email}";
+
+            if (memoryCache.TryGetValue(cacheKey, out int resendCount))
+            {
+                if (resendCount >= 3)
+                {
+                    throw new BadRequestException("Bạn đã vượt quá giới hạn 3 lần gửi lại mã OTP trong hôm nay. Vui lòng thử lại vào ngày mai hoặc liên hệ Admin!");
+                }
+                // Tăng biến đếm lên 1, giữ nguyên thời gian sống
+                memoryCache.Set(cacheKey, resendCount + 1, TimeSpan.FromHours(24));
+            }
+            else
+            {
+                // Lần đầu bấm gửi lại -> Set count = 1, tồn tại trong 24h
+                memoryCache.Set(cacheKey, 1, TimeSpan.FromHours(24));
+            }
+
+            // Tiến hành tạo OTP mới và gửi mail
             string plainOtp = otpService.GenerateOtp();
+            string hashedOtp = otpService.HashOtp(plainOtp);
+
+            account.VerificationToken = hashedOtp;
+            account.VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+
+            await accountRepository.UpdateAsync(account);
 
             await emailService.SendEmailAsync(new EmailMessage
             {
@@ -292,13 +344,6 @@ namespace EMS.Application.Features.Auth.Services
                 Subject = "EMS - Gửi lại mã xác thực OTP",
                 Body = $"Chào {account.FullName}, mã OTP mới của bạn là: <b>{plainOtp}</b>. Hiệu lực 15 phút."
             });
-
-            string hashedOtp = otpService.HashOtp(plainOtp);
-
-            account.VerificationToken = hashedOtp;
-            account.VerificationTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
-
-            await accountRepository.UpdateAsync(account);
 
             return true;
         }

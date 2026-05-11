@@ -12,5 +12,7 @@ namespace EMS.Application.Features.Auth.DTOs
         public string Password { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string RoleName { get; set; } = string.Empty;
+
+        public string CaptchaToken { get; set; } = string.Empty;
     }
 }
