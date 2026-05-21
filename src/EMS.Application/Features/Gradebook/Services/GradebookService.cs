@@ -1,3 +1,4 @@
+using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Gradebook.DTOs;
 using EMS.Domain.Entities;
@@ -38,7 +39,7 @@ namespace EMS.Application.Features.Gradebook.Services
         private async Task RequireTeacherAccessAsync(Guid classId)
         {
             var classroom = await _classRepository.GetByIdAsync(classId);
-            if (classroom == null) throw new Exception("Class not found.");
+            if (classroom == null) throw new NotFoundException("Không tìm thấy lớp học.");
             var tas = await _classRepository.GetTAsByClassIdAsync(classId);
             bool isAssigned = false;
             if (_currentUserService.Role == "TA")
@@ -46,13 +47,14 @@ namespace EMS.Application.Features.Gradebook.Services
                 isAssigned = tas.Any(ta => ta.Taid == _currentUserService.UserId);
             }
 
-            if (classroom.TeacherId != _currentUserService.UserId && !isAssigned) throw new Exception("You do not have access to this class's gradebook.");
+            if (classroom.TeacherId != _currentUserService.UserId && !isAssigned)
+                throw new ForbiddenAccessException("Bạn không có quyền truy cập bảng điểm của lớp này.");
         }
 
         public async Task<IEnumerable<GradeCategoryDto>> GetGradeCategoriesByClassAsync(Guid classId)
         {
             var classroom = await _classRepository.GetByIdAsync(classId);
-            if (classroom == null) throw new Exception("Class not found.");
+            if (classroom == null) throw new NotFoundException("Không tìm thấy lớp học.");
 
             var categories = await _gradeCategoryRepository.GetByClassIdAsync(classId);
 
@@ -73,7 +75,7 @@ namespace EMS.Application.Features.Gradebook.Services
             var currentTotal = existingCategories.Sum(c => c.Weight);
             if (currentTotal + request.Weight > 100)
             {
-                throw new Exception($"Cannot add category. Total weight would exceed 100%. Current total: {currentTotal}%");
+                throw new BadRequestException($"Không thể thêm đầu điểm vì tổng trọng số sẽ vượt quá 100%. Tổng hiện tại: {currentTotal}%.");
             }
 
             var newCategory = new GradeCategory
@@ -93,14 +95,14 @@ namespace EMS.Application.Features.Gradebook.Services
             await RequireTeacherAccessAsync(classId);
 
             var category = await _gradeCategoryRepository.GetByIdAsync(request.GradeCategoryId);
-            if (category == null || category.ClassId != classId) throw new Exception("Grade Category not found in this class.");
+            if (category == null || category.ClassId != classId) throw new NotFoundException("Không tìm thấy đầu điểm trong lớp học này.");
 
             var existingCategories = await _gradeCategoryRepository.GetByClassIdAsync(classId);
             var otherTotal = existingCategories.Where(c => c.GradeCategoryId != request.GradeCategoryId).Sum(c => c.Weight);
             
             if (otherTotal + request.Weight > 100)
             {
-                throw new Exception($"Cannot update category. Total weight would exceed 100%. Other categories total: {otherTotal}%");
+                throw new BadRequestException($"Không thể cập nhật đầu điểm vì tổng trọng số sẽ vượt quá 100%. Tổng các đầu điểm còn lại: {otherTotal}%.");
             }
 
             category.Name = request.Name;
@@ -116,7 +118,7 @@ namespace EMS.Application.Features.Gradebook.Services
             var totalWeight = request.Categories.Sum(c => c.Weight);
             if (totalWeight > 100)
             {
-                throw new Exception("Total weight of grade categories cannot exceed 100.");
+                throw new BadRequestException("Tổng trọng số các đầu điểm không được vượt quá 100%.");
             }
 
             var existingCategories = await _gradeCategoryRepository.GetByClassIdAsync(classId);
@@ -139,7 +141,7 @@ namespace EMS.Application.Features.Gradebook.Services
             await RequireTeacherAccessAsync(classId);
 
             var category = await _gradeCategoryRepository.GetByIdAsync(categoryId);
-            if (category == null || category.ClassId != classId) throw new Exception("Grade Category not found.");
+            if (category == null || category.ClassId != classId) throw new NotFoundException("Không tìm thấy đầu điểm.");
 
             await _gradeCategoryRepository.DeleteAsync(category);
         }

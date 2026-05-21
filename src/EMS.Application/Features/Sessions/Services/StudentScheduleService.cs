@@ -1,12 +1,8 @@
-﻿using EMS.Application.Common.Interfaces;
+using EMS.Application.Common.Exceptions;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.Classes.DTOs;
 using EMS.Application.Features.Sessions.DTOs;
 using EMS.Domain.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Sessions.Services
 {
@@ -27,7 +23,7 @@ namespace EMS.Application.Features.Sessions.Services
 
             if (filter.FromDate > filter.ToDate)
             {
-                throw new ArgumentException("Ngày bắt đầu phải trước ngày kết thúc!");
+                throw new BadRequestException("Ngày bắt đầu phải trước ngày kết thúc.");
             }
 
             var now = DateTime.UtcNow.AddHours(7);
@@ -36,6 +32,7 @@ namespace EMS.Application.Features.Sessions.Services
 
             var tuples = await _sessionRepository.GetStudentSchedulesAsync(
                 studentId, filter.FromDate, filter.ToDate, filter.ClassID);
+
             var result = tuples.Select(t =>
             {
                 var session = t.Session;
@@ -50,7 +47,7 @@ namespace EMS.Application.Features.Sessions.Services
                 {
                     status = "Đã kết thúc";
                 }
-                else 
+                else
                 {
                     if (nowTime < session.StartTime)
                     {
@@ -58,7 +55,7 @@ namespace EMS.Application.Features.Sessions.Services
                     }
                     else if (nowTime >= session.StartTime && nowTime <= session.EndTime)
                     {
-                        status = "Đang diễn ra"; 
+                        status = "Đang diễn ra";
                     }
                     else
                     {
@@ -72,17 +69,18 @@ namespace EMS.Application.Features.Sessions.Services
                     attendanceStatus = attendance.Status switch
                     {
                         "Present" => "Có mặt",
+                        "Absent" when attendance.IsExcused == true => "Vắng có phép",
                         "Absent" => "Vắng mặt",
-                        "Excused" => "Vắng có phép",
                         _ => "Chưa điểm danh"
                     };
                 }
                 else
                 {
                     attendanceStatus = (status == "Đang diễn ra" || status == "Sắp diễn ra")
-                                       ? "N/A"
-                                       : "Chưa điểm danh";
+                        ? "N/A"
+                        : "Chưa điểm danh";
                 }
+
                 return new StudentScheduleDto
                 {
                     SessionID = session.SessionId,

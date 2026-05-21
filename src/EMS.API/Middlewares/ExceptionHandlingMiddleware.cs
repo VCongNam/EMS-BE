@@ -9,7 +9,9 @@ namespace EMS.API.Middlewares
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
-        public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+        public ExceptionHandlingMiddleware(
+            RequestDelegate next,
+            ILogger<ExceptionHandlingMiddleware> logger)
         {
             _next = next;
             _logger = logger;
@@ -23,63 +25,73 @@ namespace EMS.API.Middlewares
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Đã xảy ra lỗi hệ thống: {Message}", ex.Message);
+                _logger.LogError(ex,
+                    "Đã xảy ra lỗi hệ thống: {Message}",
+                    ex.Message);
+
                 await HandleExceptionAsync(context, ex);
             }
         }
 
-        private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+        private static Task HandleExceptionAsync(
+            HttpContext context,
+            Exception exception)
         {
             context.Response.ContentType = "application/json";
 
-            int statusCode = (int)HttpStatusCode.InternalServerError; // Mặc định 500
+            int statusCode = (int)HttpStatusCode.InternalServerError;
+
             string message = "Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.";
-            object? errors = null;
 
             switch (exception)
             {
                 case NotFoundException notFoundEx:
-                    statusCode = (int)HttpStatusCode.NotFound; // 404
+                    statusCode = (int)HttpStatusCode.NotFound;
                     message = notFoundEx.Message;
                     break;
 
                 case BadRequestException badRequestEx:
-                    statusCode = (int)HttpStatusCode.BadRequest; // 400
+                    statusCode = (int)HttpStatusCode.BadRequest;
                     message = badRequestEx.Message;
                     break;
 
                 case UnauthorizedAccessException unAuthEx:
-                    statusCode = (int)HttpStatusCode.Forbidden; // 403 (Hoặc 401 tùy logic)
+                    statusCode = (int)HttpStatusCode.Forbidden;
                     message = unAuthEx.Message;
                     break;
 
-                case FluentValidation.ValidationException validationEx:
-                    statusCode = (int)HttpStatusCode.BadRequest; // 400
-                    message = "Dữ liệu đầu vào không hợp lệ.";
-                    errors = validationEx.Errors.Select(e => new { e.PropertyName, e.ErrorMessage });
-                    break;
                 case ForbiddenAccessException forbiddenEx:
-                    statusCode = (int)HttpStatusCode.Forbidden; // 403
+                    statusCode = (int)HttpStatusCode.Forbidden;
                     message = forbiddenEx.Message;
                     break;
+
                 case ConflictException conflictEx:
-                    statusCode = (int)HttpStatusCode.Conflict; // 409
+                    statusCode = (int)HttpStatusCode.Conflict;
                     message = conflictEx.Message;
                     break;
+
+                case FluentValidation.ValidationException validationEx:
+                    statusCode = (int)HttpStatusCode.BadRequest;
+
+                    message = validationEx.Errors
+                        .FirstOrDefault()?.ErrorMessage
+                        ?? "Dữ liệu đầu vào không hợp lệ.";
+
+                    break;
+
                 default:
-                  
                     message = exception.Message;
                     break;
             }
 
             var result = JsonSerializer.Serialize(new
             {
-                StatusCode = statusCode,
-                Message = message,
-                Errors = errors
+                statusCode,
+                message
             });
 
             context.Response.StatusCode = statusCode;
+
             return context.Response.WriteAsync(result);
         }
     }

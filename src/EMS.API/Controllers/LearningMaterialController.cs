@@ -1,7 +1,6 @@
 using EMS.Application.Features.LearningMaterials.DTOs;
 using EMS.Application.Features.LearningMaterials.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EMS.API.Controllers
@@ -22,61 +21,31 @@ namespace EMS.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateLearningMaterial([FromForm] CreateLearningMaterialDto request)
         {
-            try
-            {
-                var id = await _materialService.CreateLearningMaterialAsync(request);
-                return Ok(new { MaterialId = id, Message = "Learning material created successfully!" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            var id = await _materialService.CreateLearningMaterialAsync(request);
+            return Ok(new { MaterialId = id, Message = "Learning material created successfully!" });
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateLearningMaterial(Guid id, [FromForm] UpdateLearningMaterialDto request)
         {
-            try
-            {
-                await _materialService.UpdateLearningMaterialAsync(id, request);
-                return Ok(new { Message = "Learning material updated successfully!" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            await _materialService.UpdateLearningMaterialAsync(id, request);
+            return Ok(new { Message = "Learning material updated successfully!" });
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteLearningMaterial(Guid id)
         {
-            try
-            {
-                await _materialService.DeleteLearningMaterialAsync(id);
-                return Ok(new { Message = "Learning material deleted successfully!" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+            await _materialService.DeleteLearningMaterialAsync(id);
+            return Ok(new { Message = "Learning material deleted successfully!" });
         }
 
-        // Xem chi tiết learning material (kèm attachments)
         [HttpGet("{id}")]
         public async Task<IActionResult> GetLearningMaterialDetail(Guid id)
         {
-            try
-            {
-                var result = await _materialService.GetLearningMaterialDetailAsync(id);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return NotFound(new { Error = ex.Message });
-            }
+            var result = await _materialService.GetLearningMaterialDetailAsync(id);
+            return Ok(result);
         }
 
-        // Xem toàn bộ learning materials của 1 lớp
         [HttpGet("class/{classId}")]
         public async Task<IActionResult> GetLearningMaterialsByClass(Guid classId)
         {
@@ -88,19 +57,12 @@ namespace EMS.API.Controllers
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetStudentClassMaterials(Guid classId)
         {
-            try
+            var result = await _studentMaterialService.GetClassMaterialsAsync(classId);
+            return Ok(new
             {
-                var result = await _studentMaterialService.GetClassMaterialsAsync(classId);
-                return Ok(new
-                {
-                    Message = "Lấy danh sách tài liệu thành công",
-                    Data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Error = ex.Message });
-            }
+                Message = "Lấy danh sách tài liệu thành công",
+                Data = result
+            });
         }
     }
 }

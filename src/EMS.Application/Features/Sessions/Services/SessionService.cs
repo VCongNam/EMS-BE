@@ -1,14 +1,10 @@
+using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
-using EMS.Application.Features.Assignments.Services;
 using EMS.Application.Features.Notifications.Services;
 using EMS.Application.Features.Sessions.DTOs;
 using EMS.Domain.Entities;
 using EMS.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace EMS.Application.Features.Sessions.Services
 {
@@ -18,14 +14,14 @@ namespace EMS.Application.Features.Sessions.Services
         private readonly IClassRepository _classRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
-        private readonly ILogger<AssignmentService> _logger;
+        private readonly ILogger<SessionService> _logger;
 
         public SessionService(
-            ISessionRepository sessionRepository, 
-            IClassRepository classRepository, 
+            ISessionRepository sessionRepository,
+            IClassRepository classRepository,
             ICurrentUserService currentUserService,
             INotificationService notificationService,
-            ILogger<AssignmentService> logger)
+            ILogger<SessionService> logger)
         {
             _sessionRepository = sessionRepository;
             _classRepository = classRepository;
@@ -37,23 +33,31 @@ namespace EMS.Application.Features.Sessions.Services
         private async Task CheckSessionConflictAsync(Guid teacherId, DateOnly date, TimeOnly? startTime, TimeOnly? endTime, Guid? excludeSessionId = null)
         {
             if (!startTime.HasValue || !endTime.HasValue)
+            {
                 return;
+            }
 
             var existingSessions = await _sessionRepository.GetSessionsByTeacherAndDateAsync(teacherId, date, excludeSessionId);
 
-            bool isOverlap = existingSessions.Any(s => 
+            bool isOverlap = existingSessions.Any(s =>
                 s.StartTime.HasValue && s.EndTime.HasValue &&
                 (
                     (startTime.Value >= s.StartTime.Value && startTime.Value < s.EndTime.Value) ||
                     (endTime.Value > s.StartTime.Value && endTime.Value <= s.EndTime.Value) ||
                     (startTime.Value <= s.StartTime.Value && endTime.Value >= s.EndTime.Value)
-                )
-            );
+                ));
 
             if (isOverlap)
             {
-                throw new Exception("Lịch học bị trùng với một buổi học khác của bạn trong cùng thời gian.");
+                throw new ConflictException("Lịch học bị trùng với một buổi học khác của bạn trong cùng thời gian.");
             }
+        }
+
+        private static string GetAttendanceStatusLabel(string status, bool? isExcused)
+        {
+            return status == "Present"
+                ? "Có mặt"
+                : (isExcused == true ? "Vắng có phép" : "Vắng không phép");
         }
 
         public async Task<IEnumerable<SessionDto>> GetSessionsByClassIdAsync(Guid classId)
@@ -78,13 +82,13 @@ namespace EMS.Application.Features.Sessions.Services
             var session = await _sessionRepository.GetSessionByIdAsync(sessionId);
             if (session == null)
             {
-                throw new Exception($"Session with ID {sessionId} not found.");
+                throw new NotFoundException("Không tìm thấy buổi học.");
             }
 
             var classObj = await _classRepository.GetByIdAsync(session.ClassId);
             if (classObj == null)
             {
-                throw new Exception($"Class with ID {session.ClassId} not found.");
+                throw new NotFoundException("Không tìm thấy lớp học.");
             }
 
             return new SessionDetailDto
@@ -108,6 +112,11 @@ namespace EMS.Application.Features.Sessions.Services
 
         public async Task<IEnumerable<TeacherScheduleDto>> GetTeacherScheduleAsync(DateTime startDate, DateTime endDate)
         {
+            if (startDate > endDate)
+            {
+                throw new BadRequestException("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
+            }
+
             var teacherId = _currentUserService.UserId;
             var start = DateOnly.FromDateTime(startDate);
             var end = DateOnly.FromDateTime(endDate);
@@ -134,12 +143,12 @@ namespace EMS.Application.Features.Sessions.Services
             var classObj = await _classRepository.GetByIdAsync(request.ClassId);
             if (classObj == null)
             {
-                throw new Exception($"Class with ID {request.ClassId} not found.");
+                throw new NotFoundException("Không tìm thấy lớp học.");
             }
 
             if (request.StartTime.HasValue && request.EndTime.HasValue && request.StartTime >= request.EndTime)
             {
-                throw new Exception("Thời gian bắt đầu phải trước thời gian kết thúc.");
+                throw new BadRequestException("Thời gian bắt đầu phải trước thời gian kết thúc.");
             }
 
             await CheckSessionConflictAsync(classObj.TeacherId, request.Date, request.StartTime, request.EndTime);
@@ -163,25 +172,23 @@ namespace EMS.Application.Features.Sessions.Services
 
             await _sessionRepository.AddSessionAsync(session);
 
-            //Notification
             try
             {
                 var targets = await _notificationService.GetAllClassTargetsAsync(session.ClassId);
                 if (targets.Any())
                 {
-                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"HH\:mm") : "chưa định rõ";
+                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"HH\:mm") : "chưa xác định";
                     await _notificationService.SendBulkNotificationWithStudentAsync(
                         targets: targets,
                         title: "Lịch học mới",
                         content: $"Buổi học '{session.Title}' đã được lên lịch vào ngày {session.Date:dd/MM/yyyy} lúc {timeStr}.",
-                        actionUrl: $"/schedule",
-                        type: "Schedule"
-                    );
+                        actionUrl: "/schedule",
+                        type: "Schedule");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Lỗi gửi thông báo tạo Session: {ex.Message}");
+                _logger.LogError(ex, "Lỗi gửi thông báo tạo session.");
             }
 
             return new SessionDto
@@ -203,18 +210,21 @@ namespace EMS.Application.Features.Sessions.Services
             var session = await _sessionRepository.GetSessionByIdAsync(sessionId);
             if (session == null)
             {
-                throw new Exception($"Session with ID {sessionId} not found.");
+                throw new NotFoundException("Không tìm thấy buổi học.");
             }
 
             var classObj = await _classRepository.GetByIdAsync(session.ClassId);
-            var teacherId = classObj?.TeacherId ?? Guid.Empty;
+            if (classObj == null)
+            {
+                throw new NotFoundException("Không tìm thấy lớp học.");
+            }
 
             if (request.StartTime.HasValue && request.EndTime.HasValue && request.StartTime >= request.EndTime)
             {
-                throw new Exception("Thời gian bắt đầu phải trước thời gian kết thúc.");
+                throw new BadRequestException("Thời gian bắt đầu phải trước thời gian kết thúc.");
             }
 
-            await CheckSessionConflictAsync(teacherId, request.Date, request.StartTime, request.EndTime, sessionId);
+            await CheckSessionConflictAsync(classObj.TeacherId, request.Date, request.StartTime, request.EndTime, sessionId);
 
             session.Title = request.Title;
             session.Date = request.Date;
@@ -227,27 +237,26 @@ namespace EMS.Application.Features.Sessions.Services
 
             await _sessionRepository.UpdateSessionAsync(session);
 
-            //Notification
             try
             {
                 var targets = await _notificationService.GetAllClassTargetsAsync(session.ClassId);
                 if (targets.Any())
                 {
-                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"HH\:mm") : "chưa định rõ";
+                    string timeStr = session.StartTime.HasValue ? session.StartTime.Value.ToString(@"HH\:mm") : "chưa xác định";
                     string dateStr = request.Date.ToString("dd/MM/yyyy");
-                    string titleStr = request.Title ?? session.Title;
+                    string titleStr = request.Title ?? session.Title ?? "Buổi học";
+
                     await _notificationService.SendBulkNotificationWithStudentAsync(
                         targets: targets,
                         title: "Thay đổi lịch học",
                         content: $"Buổi học '{titleStr}' đã cập nhật lại thời gian: {timeStr} ngày {dateStr}.",
-                        actionUrl: $"/schedule",
-                        type: "Schedule"
-                    );
+                        actionUrl: "/schedule",
+                        type: "Schedule");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Lỗi gửi thông báo cập nhật Session: {ex.Message}");
+                _logger.LogError(ex, "Lỗi gửi thông báo cập nhật session.");
             }
 
             return new SessionDto
@@ -269,13 +278,10 @@ namespace EMS.Application.Features.Sessions.Services
             var session = await _sessionRepository.GetSessionByIdAsync(sessionId);
             if (session == null)
             {
-                throw new Exception($"Session with ID {sessionId} not found.");
+                throw new NotFoundException("Không tìm thấy buổi học.");
             }
 
             await _sessionRepository.DeleteSessionAsync(session);
-
-            //Notification: Báo nghỉ học cho student
-
         }
 
         public async Task<IEnumerable<AttendanceResponseDto>> GetAttendanceListAsync(Guid sessionId)
@@ -283,7 +289,7 @@ namespace EMS.Application.Features.Sessions.Services
             var session = await _sessionRepository.GetSessionByIdAsync(sessionId);
             if (session == null)
             {
-                throw new Exception($"Session with ID {sessionId} not found.");
+                throw new NotFoundException("Không tìm thấy buổi học.");
             }
 
             var attendances = await _sessionRepository.GetAttendancesBySessionIdAsync(sessionId);
@@ -294,14 +300,14 @@ namespace EMS.Application.Features.Sessions.Services
             foreach (var student in students)
             {
                 var existingAttendance = attendances.FirstOrDefault(a => a.StudentId == student.StudentId);
-                
+
                 if (existingAttendance != null)
                 {
                     result.Add(new AttendanceResponseDto
                     {
                         AttendanceId = existingAttendance.AttendanceId,
                         StudentId = student.StudentId,
-                        FullName = student.Student.FullName, 
+                        FullName = student.Student.FullName,
                         Status = existingAttendance.Status,
                         IsExcused = existingAttendance.IsExcused,
                         Note = existingAttendance.Note
@@ -326,10 +332,15 @@ namespace EMS.Application.Features.Sessions.Services
 
         public async Task TakeAttendanceBulkAsync(Guid sessionId, IEnumerable<TakeAttendanceDto> requests)
         {
+            if (requests == null || !requests.Any())
+            {
+                throw new BadRequestException("Danh sách điểm danh không được để trống.");
+            }
+
             var session = await _sessionRepository.GetSessionByIdAsync(sessionId);
             if (session == null)
             {
-                throw new Exception($"Session with ID {sessionId} not found.");
+                throw new NotFoundException("Không tìm thấy buổi học.");
             }
 
             var existingAttendances = await _sessionRepository.GetAttendancesBySessionIdAsync(sessionId);
@@ -366,12 +377,15 @@ namespace EMS.Application.Features.Sessions.Services
             }
 
             if (toUpdate.Any())
+            {
                 await _sessionRepository.UpdateRangeAsync(toUpdate);
+            }
 
             if (newAttendances.Any())
+            {
                 await _sessionRepository.AddAttendancesAsync(newAttendances);
+            }
 
-            //Notification
             try
             {
                 var studentsInClass = await _sessionRepository.GetStudentsForSessionAsync(sessionId);
@@ -381,22 +395,21 @@ namespace EMS.Application.Features.Sessions.Services
                     var studentInfo = studentsInClass.FirstOrDefault(s => s.StudentId == req.StudentId);
                     if (studentInfo != null)
                     {
-                        string statusVietnamese = req.Status == "Present" ? "Có mặt" : ((bool)req.IsExcused ? "Vắng có phép" : "Vắng không phép");
+                        string statusVietnamese = GetAttendanceStatusLabel(req.Status, req.IsExcused);
 
                         await _notificationService.SendNotificationAsync(
                             targetAccountId: studentInfo.Student.AccountId,
                             studentId: req.StudentId,
                             title: "Thông báo điểm danh",
                             content: $"Bạn đã được điểm danh: {statusVietnamese} trong buổi học '{session.Title}' ngày {session.Date:dd/MM/yyyy}.",
-                            actionUrl: $"/schedule",
-                            type: "Attendance"
-                        );
+                            actionUrl: "/schedule",
+                            type: "Attendance");
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Lỗi gửi thông báo điểm danh bulk: {ex.Message}");
+                _logger.LogError(ex, "Lỗi gửi thông báo điểm danh hàng loạt.");
             }
         }
 
@@ -405,7 +418,7 @@ namespace EMS.Application.Features.Sessions.Services
             var attendance = await _sessionRepository.GetAttendanceByIdAsync(attendanceId);
             if (attendance == null)
             {
-                throw new Exception($"Attendance record with ID {attendanceId} not found.");
+                throw new NotFoundException("Không tìm thấy bản ghi điểm danh.");
             }
 
             attendance.Status = request.Status;
@@ -415,29 +428,28 @@ namespace EMS.Application.Features.Sessions.Services
 
             await _sessionRepository.UpdateAttendanceAsync(attendance);
 
-            //Notification
             try
             {
-                string statusVietnamese = request.Status == "Present" ? "Có mặt" : ((bool)request.IsExcused ? "Vắng có phép" : "Vắng không phép");
+                string statusVietnamese = GetAttendanceStatusLabel(request.Status, request.IsExcused);
 
                 await _notificationService.SendNotificationAsync(
                     targetAccountId: attendance.Student.AccountId,
                     studentId: attendance.StudentId,
                     title: "Cập nhật điểm danh",
                     content: $"Trạng thái điểm danh của buổi học '{attendance.Session.Title}' ngày {attendance.Session.Date:dd/MM/yyyy} đã được cập nhật thành: {statusVietnamese}.",
-                    actionUrl: $"/schedule",
-                    type: "Attendance"
-                );
+                    actionUrl: "/schedule",
+                    type: "Attendance");
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Lỗi gửi thông báo cập nhật điểm danh: {ex.Message}");
+                _logger.LogError(ex, "Lỗi gửi thông báo cập nhật điểm danh.");
             }
         }
+
         public async Task<IEnumerable<ClassAttendanceHistoryDto>> GetClassAttendanceHistoryAsync(Guid classId)
         {
             var sessions = await _sessionRepository.GetSessionsByClassIdAsync(classId);
-            var enrollments = await _classRepository.GetClassMemberAsync(classId); 
+            var enrollments = await _classRepository.GetClassMemberAsync(classId);
 
             var attendancesBySession = new Dictionary<Guid, IEnumerable<Attendance>>();
             foreach (var session in sessions)
