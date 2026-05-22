@@ -554,7 +554,6 @@ namespace EMS.Application.Features.Assignments.Services
                         ? "Graded"
                         : "Not Graded";
 
-                    // Xử lý status thông minh
                    if (sub.SubmittedAt > assignment.DueDate)
                     {
                         studentDto.Status = "Late"; // Nộp muộn
@@ -606,7 +605,6 @@ namespace EMS.Application.Features.Assignments.Services
                     var studentCode = submission.Student?.Dob;
                     
                     var folderName = $"{studentCode}_{studentName}";
-                    // Clean folder name to remove invalid characters
                     folderName = string.Join("_", folderName.Split(Path.GetInvalidFileNameChars()));
 
                     var attachments = submission.SubmissionAttachments
