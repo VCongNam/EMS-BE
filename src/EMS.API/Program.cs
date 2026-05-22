@@ -27,6 +27,7 @@ using EMS.Infrastructure.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -227,7 +228,23 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var firstError = context.ModelState
+            .Values
+            .SelectMany(v => v.Errors)
+            .FirstOrDefault()?.ErrorMessage
+            ?? "Dữ liệu không hợp lệ.";
 
+        return new BadRequestObjectResult(new
+        {
+            statusCode = 400,
+            message = firstError
+        });
+    };
+});
 
 var app = builder.Build();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
