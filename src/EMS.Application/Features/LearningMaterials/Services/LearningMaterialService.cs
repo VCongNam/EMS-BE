@@ -1,3 +1,4 @@
+using EMS.Application.Common.Exceptions;
 using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.LearningMaterials.DTOs;
 using EMS.Application.Features.Notifications.Services;
@@ -101,7 +102,7 @@ namespace EMS.Application.Features.LearningMaterials.Services
         {
             var material = await _materialRepository.GetByIdAsync(id);
             if (material == null)
-                throw new Exception($"Learning material with ID {id} not found.");
+                throw new NotFoundException("Không tìm thấy tài liệu học tập.");
 
             material.Title = request.Title;
             material.Description = request.Description;
@@ -179,7 +180,7 @@ namespace EMS.Application.Features.LearningMaterials.Services
         public async Task DeleteLearningMaterialAsync(Guid id)
         {
             var material = await _materialRepository.GetByIdAsync(id);
-            if (material == null) throw new Exception("Learning material not found.");
+            if (material == null) throw new NotFoundException("Không tìm thấy tài liệu học tập.");
 
             material.IsDeleted = true;
             material.UpdatedAt = DateTime.UtcNow;
@@ -191,7 +192,7 @@ namespace EMS.Application.Features.LearningMaterials.Services
         {
             var material = await _materialRepository.GetByIdWithDetailsAsync(materialId);
             if (material == null)
-                throw new Exception("Learning material not found or has been deleted.");
+                throw new NotFoundException("Không tìm thấy tài liệu học tập hoặc tài liệu đã bị xóa.");
 
             return new LearningMaterialResponseDto
             {
@@ -232,12 +233,12 @@ namespace EMS.Application.Features.LearningMaterials.Services
         private void ValidateFile(string fileName, long fileSize, string contentType)
         {
             if (fileSize > MaxFileSize)
-                throw new Exception($"File '{fileName}' exceeds maximum size of 10MB.");
+                throw new BadRequestException($"File '{fileName}' vượt quá dung lượng tối đa 10MB.");
 
             if (contentType.StartsWith("image/")) return;
 
             if (!AllowedMimeTypes.Contains(contentType))
-                throw new Exception($"File type '{contentType}' is not allowed.");
+                throw new BadRequestException($"Định dạng file '{contentType}' không được hỗ trợ.");
         }
     }
 }

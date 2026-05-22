@@ -2,9 +2,6 @@ using EMS.Application.Features.Sessions.DTOs;
 using EMS.Application.Features.Sessions.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace EMS.API.Controllers
 {
@@ -16,183 +13,93 @@ namespace EMS.API.Controllers
         private readonly ISessionService _sessionService;
         private readonly IStudentScheduleService _scheduleService;
 
-
         public SessionController(ISessionService sessionService, IStudentScheduleService scheduleService)
         {
             _sessionService = sessionService;
             _scheduleService = scheduleService;
         }
 
-      
         [HttpGet("class/{classId}")]
         public async Task<IActionResult> GetSessionsByClassId(Guid classId)
         {
-            try
-            {
-                var sessions = await _sessionService.GetSessionsByClassIdAsync(classId);
-                return Ok(sessions);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var sessions = await _sessionService.GetSessionsByClassIdAsync(classId);
+            return Ok(sessions);
         }
 
         [HttpGet("{sessionId:guid}")]
         public async Task<IActionResult> GetSessionDetail(Guid sessionId)
         {
-            try
-            {
-                var session = await _sessionService.GetSessionDetailAsync(sessionId);
-                return Ok(session);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var session = await _sessionService.GetSessionDetailAsync(sessionId);
+            return Ok(session);
         }
 
-        // [GET] /api/session/teacher-schedule
         [HttpGet("teacher-schedule")]
         public async Task<IActionResult> GetTeacherSchedule([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
         {
-            try
-            {
-                var schedule = await _sessionService.GetTeacherScheduleAsync(startDate, endDate);
-                return Ok(schedule);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var schedule = await _sessionService.GetTeacherScheduleAsync(startDate, endDate);
+            return Ok(schedule);
         }
 
-        // [POST] /api/session
         [HttpPost]
         public async Task<IActionResult> CreateSession([FromBody] CreateSessionDto request)
         {
-            try
-            {
-                var session = await _sessionService.CreateSessionAsync(request);
-                return Ok(session);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var session = await _sessionService.CreateSessionAsync(request);
+            return Ok(session);
         }
 
-        // [PUT] /api/session/{sessionId}
         [HttpPut("{sessionId}")]
         public async Task<IActionResult> UpdateSession(Guid sessionId, [FromBody] UpdateSessionDto request)
         {
-            try
-            {
-                var session = await _sessionService.UpdateSessionAsync(sessionId, request);
-                return Ok(session);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var session = await _sessionService.UpdateSessionAsync(sessionId, request);
+            return Ok(session);
         }
 
-        // [DELETE] /api/session/{sessionId}
         [HttpDelete("{sessionId}")]
         public async Task<IActionResult> DeleteSession(Guid sessionId)
         {
-            try
-            {
-                await _sessionService.DeleteSessionAsync(sessionId);
-                return Ok(new { Message = "Session deleted successfully." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            await _sessionService.DeleteSessionAsync(sessionId);
+            return Ok(new { Message = "Session deleted successfully." });
         }
 
-        // [GET] /api/session/{sessionId}/attendance
         [HttpGet("{sessionId}/attendance")]
         public async Task<IActionResult> GetAttendanceList(Guid sessionId)
         {
-            try
-            {
-                var attendances = await _sessionService.GetAttendanceListAsync(sessionId);
-                return Ok(attendances);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var attendances = await _sessionService.GetAttendanceListAsync(sessionId);
+            return Ok(attendances);
         }
 
-        // [POST] /api/session/{sessionId}/attendance
         [HttpPost("{sessionId}/attendance")]
-        public async Task<IActionResult> TakeAttendance(Guid sessionId, [FromBody] IEnumerable<TakeAttendanceDto> requests)
+        public async Task<IActionResult> TakeAttendance(Guid sessionId, [FromBody] List<TakeAttendanceDto> requests)
         {
-            try
-            {
-                await _sessionService.TakeAttendanceBulkAsync(sessionId, requests);
-                return Ok(new { Message = "Attendance saved successfully." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            await _sessionService.TakeAttendanceBulkAsync(sessionId, requests);
+            return Ok(new { Message = "Attendance saved successfully." });
         }
 
-        // [PUT] /api/session/attendance/{attendanceId}
         [HttpPut("attendance/{attendanceId}")]
         public async Task<IActionResult> UpdateAttendance(Guid attendanceId, [FromBody] UpdateAttendanceDto request)
         {
-            try
-            {
-                await _sessionService.UpdateAttendanceAsync(attendanceId, request);
-                return Ok(new { Message = "Attendance updated successfully." });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            await _sessionService.UpdateAttendanceAsync(attendanceId, request);
+            return Ok(new { Message = "Attendance updated successfully." });
         }
 
-        // API Get Schedule: filter has classId,
-        // if null return all schedule,
-        // if not null return schedule of specific class
         [HttpGet("student/schedule")]
         [Authorize(Roles = "Student")]
         public async Task<IActionResult> GetStudentSchedules([FromQuery] ScheduleFilter filter)
         {
-            try
-            {
-                var result = await _scheduleService.GetStudentSchedulesAsync(filter);
+            var result = await _scheduleService.GetStudentSchedulesAsync(filter);
 
-                return Ok(new
-                {
-                    Message = "Lấy lịch học thành công",
-                    Data = result
-                });
-            }
-            catch (Exception ex)
+            return Ok(new
             {
-                return BadRequest(new { Error = ex.Message });
-            }
+                Message = "Lấy lịch học thành công",
+                Data = result
+            });
         }
 
-        // [GET] /api/session/class/{classId}/attendance-history
         [HttpGet("class/{classId}/attendance-history")]
         public async Task<IActionResult> GetClassAttendanceHistory(Guid classId)
         {
-            try
-            {
-                var history = await _sessionService.GetClassAttendanceHistoryAsync(classId);
-                return Ok(history);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
+            var history = await _sessionService.GetClassAttendanceHistoryAsync(classId);
+            return Ok(history);
         }
     }
 }
