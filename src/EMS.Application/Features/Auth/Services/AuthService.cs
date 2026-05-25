@@ -311,7 +311,6 @@ namespace EMS.Application.Features.Auth.Services
             if (account.Status == "Active")
                 throw new BadRequestException("Tài khoản đã được xác thực!");
 
-            // 4. RATE LIMITING VỚI MEMORY CACHE
             string cacheKey = $"ResendOTP_{request.Email}";
 
             if (memoryCache.TryGetValue(cacheKey, out int resendCount))
@@ -320,7 +319,6 @@ namespace EMS.Application.Features.Auth.Services
                 {
                     throw new BadRequestException("Bạn đã vượt quá giới hạn 3 lần gửi lại mã OTP trong hôm nay. Vui lòng thử lại vào ngày mai hoặc liên hệ Admin!");
                 }
-                // Tăng biến đếm lên 1, giữ nguyên thời gian sống
                 memoryCache.Set(cacheKey, resendCount + 1, TimeSpan.FromHours(24));
             }
             else

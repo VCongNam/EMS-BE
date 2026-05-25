@@ -16,7 +16,7 @@ namespace EMS.Infrastructure.Services
 
         public CaptchaService(IConfiguration configuration, HttpClient httpClient)
         {
-            this.secretKey = configuration["GoogleReCaptcha:SecretKey"] ?? throw new ArgumentNullException("Thiếu cấu hình GoogleReCaptcha:SecretKey");
+            this.secretKey = configuration["Recaptcha:SecretKey"] ?? throw new ArgumentNullException("Thiếu cấu hình Recaptcha:SecretKey");
             this.httpClient = httpClient;
         }
 
