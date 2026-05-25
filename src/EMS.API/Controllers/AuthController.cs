@@ -59,7 +59,7 @@ namespace EMS.API.Controllers
 
         [HttpPost("verify-onboarding")]
         public async Task<IActionResult> VerifyOnboarding([FromBody] OnboardingRequest request)
-        {
+        { 
             await authService.VerifyOnboardingAsync(request);
             return Ok(new { Message = "Kích hoạt tài khoản thành công!" });
         }

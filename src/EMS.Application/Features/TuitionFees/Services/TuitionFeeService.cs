@@ -127,6 +127,37 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new BadRequestException("Kỳ này đã phát hành hóa đơn rồi, không thể phát hành thêm.");
 
             var classObj = await tuitionFeeRepository.GetClassByIdAsync(classId);
+            if (classObj == null) throw new NotFoundException("Lớp học không tồn tại.");
+
+            if (dto.PeriodYear < classObj.StartDate.Year || (dto.PeriodYear == classObj.StartDate.Year && dto.PeriodMonth < classObj.StartDate.Month))
+            {
+                throw new BadRequestException($"Lớp học bắt đầu từ tháng {classObj.StartDate.Month}/{classObj.StartDate.Year}. Không thể chốt kỳ {dto.PeriodMonth}/{dto.PeriodYear}.");
+            }
+            if (classObj.EndDate != null)
+            {
+                var endYear = classObj.EndDate.Year;
+                var endMonth = classObj.EndDate.Month;
+                if (dto.PeriodYear > endYear || (dto.PeriodYear == endYear && dto.PeriodMonth > endMonth))
+                {
+                    throw new BadRequestException($"Lớp học đã kết thúc vào tháng {endMonth}/{endYear}.");
+                }
+            }
+
+            TimeZoneInfo vnZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            DateTime nowVn = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnZone);
+            DateTime firstDayOfNextMonth = new DateTime(dto.PeriodYear, dto.PeriodMonth, 1).AddMonths(1);
+
+            if (nowVn < firstDayOfNextMonth)
+            {
+                throw new BadRequestException($"Chưa thể chốt hóa đơn kỳ {dto.PeriodMonth}/{dto.PeriodYear}. Vui lòng đợi đến ngày 01/{firstDayOfNextMonth.Month}/{firstDayOfNextMonth.Year}.");
+            }
+
+            bool isAttendanceComplete = await tuitionFeeRepository.CheckAllSessionsAttendedAsync(classId, dto.PeriodMonth, dto.PeriodYear);
+            if (!isAttendanceComplete)
+            {
+                throw new BadRequestException($"Chưa thể phát hành! Vui lòng hoàn thành điểm danh cho tất cả các buổi học trong kỳ {dto.PeriodMonth}/{dto.PeriodYear}.");
+            }
+
             var invoices = new List<Invoice>();
             decimal unitPrice = classObj.TuitionFee;
 
