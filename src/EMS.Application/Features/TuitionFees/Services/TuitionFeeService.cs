@@ -102,7 +102,9 @@ namespace EMS.Application.Features.TuitionFees.Services
                     StudentId = enrollment.StudentId,
                     StudentName = enrollment.Student?.FullName ?? "Unknown",
                     StudentStatus = enrollment.Status ?? "Active",
-                    EnrollmentDate = enrollment.CreatedAt,
+                    EnrollmentDate = enrollment.EnrolledDate.HasValue
+                        ? new DateTime(enrollment.EnrolledDate.Value.Year, enrollment.EnrolledDate.Value.Month, enrollment.EnrolledDate.Value.Day)
+                        : DateTime.MinValue,
                     TotalSessionsInMonth = totalSessions,
                     AttendedSessions = stats.Attended,
                     ExcusedAbsences = stats.Excused,
@@ -242,7 +244,9 @@ namespace EMS.Application.Features.TuitionFees.Services
                 StudentId = targetStudent.StudentId,
                 StudentName = targetStudent.Student?.FullName ?? "Unknown",
                 StudentStatus = targetStudent.Status ?? "Active",
-                EnrollmentDate = targetStudent.CreatedAt,
+                EnrollmentDate = targetStudent.EnrolledDate.HasValue
+                    ? new DateTime(targetStudent.EnrolledDate.Value.Year, targetStudent.EnrolledDate.Value.Month, targetStudent.EnrolledDate.Value.Day)
+                    : DateTime.MinValue, // Hoặc một giá trị mặc định nào đó tùy bạn cấu hình trong DTO
                 TotalSessionsInMonth = totalSessions,
                 AttendedSessions = stats.Attended,
                 ExcusedAbsences = stats.Excused,

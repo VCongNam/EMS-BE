@@ -11,7 +11,7 @@ namespace EMS.Application.Features.TuitionFees.Dtos
         public Guid StudentId { get; set; }
         public string StudentName { get; set; }
         public string StudentStatus { get; set; }
-        public DateTime? EnrollmentDate { get; set; }
+        public DateTime EnrollmentDate { get; set; }
 
         public int TotalSessionsInMonth { get; set; }
         public int AttendedSessions { get; set; }
