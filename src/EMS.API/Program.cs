@@ -145,7 +145,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5173",
                 "https://ems-fe-six.vercel.app",
                 "https://ems-be-2-s2nk.onrender.com",
-                "https://localhost:7049"
+                "https://localhost:7049",
+                "https://ecms-web.vercel.app"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
