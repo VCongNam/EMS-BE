@@ -14,5 +14,6 @@ namespace EMS.Application.Features.Accounts.DTOs
 
         public string ParentFullName { get; set; } = null!;
         public string? PhoneNumber { get; set; }
+        public string ParentEmail { get; set; } = null!;
     }
 }

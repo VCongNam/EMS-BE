@@ -76,6 +76,7 @@ namespace EMS.Application.Features.Accounts.Services
                     {
                         StudentId = studentInfo?.StudentId, // Trả về luôn cho FE dễ dùng
                         Address = studentInfo?.Address,
+                        StudentName = studentInfo?.FullName,
                         Dob = studentInfo?.Dob
                     };
                     break;
@@ -155,6 +156,11 @@ namespace EMS.Application.Features.Accounts.Services
             if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
             {
                 account.PhoneNumber = request.PhoneNumber.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.ParentEmail))
+            {
+                account.Email = request.ParentEmail.Trim();
             }
 
             account.UpdatedAt = DateTime.UtcNow;
