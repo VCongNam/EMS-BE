@@ -354,8 +354,7 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<IEnumerable<Class>> GetTeacherClassesConfigAsync(Guid teacherId)
         {
-            return await context.Classes.Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Completed" &&
-            c.ClassEnrollments.Any(ce => ce.Status == "Active")).ToListAsync();
+            return await context.Classes.Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.Status != "Completed").ToListAsync();
         }
 
         public async Task UpdateClassFeeConfigAsync(Guid classId, string billingMethod, decimal fee, int deadlineDays)
@@ -411,33 +410,11 @@ namespace EMS.Infrastructure.Repositories
             var periodStart = new DateOnly(year, month, 1);
             var periodEnd = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
 
-            var classes = await context.Classes
-                .Include(c => c.ClassEnrollments.Where(e =>
-                    e.Status == "Active" ||
-                    context.Attendances.Any(a =>
-                        a.StudentId == e.StudentId &&
-                        a.Session.ClassId == c.ClassId &&
-                        a.Session.Date.Month == month &&
-                        a.Session.Date.Year == year)
-                ))
+            return await context.Classes
+                .Include(c => c.ClassEnrollments.Where(ce => ce.Status == "Active"))
                 .Include(c => c.Invoices.Where(i => i.PeriodMonth == month && i.PeriodYear == year && i.IsDeleted != true))
-                .Where(c =>
-                    c.TeacherId == teacherId &&
-                    c.IsDeleted != true &&
-                    c.StartDate <= periodEnd && (c.EndDate == null || c.EndDate >= periodStart) &&
-
-                    c.ClassEnrollments.Any(e =>
-                        e.Status == "Active" ||
-                        context.Attendances.Any(a =>
-                            a.StudentId == e.StudentId &&
-                            a.Session.ClassId == c.ClassId &&
-                            a.Session.Date.Month == month &&
-                            a.Session.Date.Year == year)
-                    )
-                )
+                .Where(c => c.TeacherId == teacherId && c.IsDeleted != true && c.StartDate <= periodEnd && (c.EndDate == null || c.EndDate >= periodStart))
                 .ToListAsync();
-
-            return classes;
         }
 
         public async Task<IEnumerable<Invoice>> GetInvoicesByPeriodAsync(Guid teacherId, Guid? classId, int month, int year)
