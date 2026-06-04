@@ -79,8 +79,8 @@ namespace EMS.Application.Features.TuitionFees.Services
             }
 
 
-            var periodStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
-            var periodEnd = new DateTime(year, month, DateTime.DaysInMonth(year, month), 23, 59, 59, DateTimeKind.Utc);
+            var periodStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Unspecified);
+            var periodEnd = new DateTime(year, month, DateTime.DaysInMonth(year, month), 23, 59, 59, DateTimeKind.Unspecified);
 
             var studentsToBill = await tuitionFeeRepository.GetStudentsForBillingAsync(classId, month, year);
             var attendanceDetails = await tuitionFeeRepository.GetDetailedAttendanceCountsAsync(classId, periodStart, periodEnd);
@@ -181,9 +181,9 @@ namespace EMS.Application.Features.TuitionFees.Services
                     SessionCount = item.AttendedSessions,
                     Amount = amount,
                     Description = description,
-                    DueDate = dto.DueDate.ToUniversalTime(),
+                    DueDate = dto.DueDate,
                     Status = amount == 0 ? "Paid" : "Pending",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = nowVn
                 });
             }
 
@@ -286,9 +286,9 @@ namespace EMS.Application.Features.TuitionFees.Services
                 SessionCount = dto.AttendedSessions,
                 Amount = amount,
                 Description = description,
-                DueDate = dto.DueDate.ToUniversalTime(),
+                DueDate = dto.DueDate,
                 Status = amount == 0 ? "Paid" : "Pending",
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = GetVietnamTime()
             };
 
 
@@ -359,7 +359,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             if (invoice.Class.TeacherId != teacherId) throw new UnauthorizedAccessException("Không có quyền gia hạn.");
 
             invoice.DueDate = invoice.DueDate.AddDays(additionalDays);
-            invoice.UpdatedAt = DateTime.UtcNow;
+            invoice.UpdatedAt = GetVietnamTime();
             await tuitionFeeRepository.UpdateInvoiceAsync(invoice);
         }
 
@@ -377,7 +377,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 if (invoice.Status != "Paid")
                 {
                     invoice.DueDate = invoice.DueDate.AddDays(request.AdditionalDays);
-                    invoice.UpdatedAt = DateTime.UtcNow;
+                    invoice.UpdatedAt = GetVietnamTime();
                 }
             }
             await tuitionFeeRepository.UpdateInvoicesAsync(invoices);
@@ -394,7 +394,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 StudentName = t.Invoice!.Student!.FullName,
                 ClassName = t.Invoice.Class.ClassName,
                 ProofImageURL = t.ProofImageUrl,
-                PaidDate = t.PaidDate ?? DateTime.UtcNow
+                PaidDate = t.PaidDate ?? GetVietnamTime()
             });
         }
 
@@ -413,17 +413,17 @@ namespace EMS.Application.Features.TuitionFees.Services
 
                 t.Status = "Successful";
                 inv.Status = "Paid";
-                inv.Description += $" | [Duyệt tay {DateTime.Now:dd/MM}]";
+                inv.Description += $" | [Duyệt tay {GetVietnamTime():dd/MM}]";
             }
             else
             {
                 t.Status = "Failed";
                 t.Note = note;
-                inv.Description += $" | [Từ chối {DateTime.Now:dd/MM}]: {note}";
+                inv.Description += $" | [Từ chối {GetVietnamTime():dd/MM}]: {note}";
             }
 
             t.ApprovedBy = approverId;
-            t.UpdatedAt = DateTime.UtcNow;
+            t.UpdatedAt = GetVietnamTime();
             await tuitionFeeRepository.UpdateTransactionStatusAsync(t, inv);
 
             try
@@ -448,7 +448,7 @@ namespace EMS.Application.Features.TuitionFees.Services
             trans.Status = "Pending";
             trans.ApprovedBy = null;
             var inv = trans.Invoice;
-            inv.Status = inv.DueDate < DateTime.UtcNow ? "Overdue" : "Pending";
+            inv.Status = inv.DueDate < GetVietnamTime() ? "Overdue" : "Pending";
             inv.Description += " | [Hoàn tác xử lý]";
 
             await tuitionFeeRepository.UpdateTransactionStatusAsync(trans, inv);
@@ -648,7 +648,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 PaymentMethod = t.PaymentMethod ?? "Chuyển khoản",
                 Status = t.Status ?? "Pending",
                 ProofImageUrl = t.ProofImageUrl,
-                CreatedAt = t.CreatedAt ?? DateTime.Now,
+                CreatedAt = t.CreatedAt ?? GetVietnamTime(),
                 InvoiceId = t.InvoiceId,
                 InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
                 PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
@@ -719,7 +719,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 PaymentMethod = t.PaymentMethod ?? "Chuyển khoản",
                 Status = t.Status ?? "Pending",
                 ProofImageUrl = t.ProofImageUrl,
-                CreatedAt = t.CreatedAt ?? DateTime.Now,
+                CreatedAt = t.CreatedAt ?? GetVietnamTime(),
                 InvoiceId = t.InvoiceId,
                 InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
                 PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
@@ -747,7 +747,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 PaymentMethod = t.PaymentMethod ?? "Chuyển khoản",
                 Status = t.Status ?? "Pending",
                 ProofImageUrl = t.ProofImageUrl,
-                CreatedAt = t.CreatedAt ?? DateTime.Now,
+                CreatedAt = t.CreatedAt ?? GetVietnamTime(),
 
                 InvoiceId = t.InvoiceId,
                 InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
@@ -780,7 +780,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 PaymentMethod = t.PaymentMethod ?? "Chuyển khoản",
                 Status = t.Status ?? "Pending",
                 ProofImageUrl = t.ProofImageUrl,
-                CreatedAt = t.CreatedAt ?? DateTime.Now,
+                CreatedAt = t.CreatedAt ?? GetVietnamTime(),
                 InvoiceId = t.InvoiceId,
                 InvoiceTotalAmount = t.Invoice?.Amount ?? 0,
                 PeriodMonth = t.Invoice?.PeriodMonth ?? 0,
@@ -839,6 +839,10 @@ namespace EMS.Application.Features.TuitionFees.Services
                 throw new Exception("Tạo Qr thất bại. Vui lòng thử lại sau");
             }
         }
+        private DateTime GetVietnamTime()
+        {
+            TimeZoneInfo vnZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnZone);
+        }
     }
-
 }
