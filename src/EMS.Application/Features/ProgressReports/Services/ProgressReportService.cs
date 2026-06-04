@@ -222,7 +222,7 @@ namespace EMS.Application.Features.ProgressReports.Services
                         studentId: report.StudentId,
                         title: "Báo cáo học tập mới",
                         content: $"Báo cáo tháng {report.PeriodMonth}/{report.PeriodYear} lớp {report.Class.ClassName} đã có sẵn.",
-                        actionUrl: $"/student/reports/{report.ReportId}",
+                        actionUrl: $"/student/classes/{report.ClassId}/reports",
                         type: "Report"
                     );
                 }
