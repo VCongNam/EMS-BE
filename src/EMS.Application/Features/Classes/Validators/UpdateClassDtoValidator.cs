@@ -19,7 +19,7 @@ namespace EMS.Application.Features.Classes.Validators
             RuleFor(x => x.SubjectName)
                 .NotEmpty().WithMessage("Tên môn học không được để trống.");
             RuleFor(x => x.GradeLevel)
-                .InclusiveBetween((short)1, (short)12).WithMessage("Khối lớp phải từ 1 đến 12.");
+                .InclusiveBetween((short)1, (short)12).WithMessage("Khối lớp phải từ 1 đến 12.").When(x => x.GradeLevel.HasValue);
             RuleFor(x => x.MaxStudents)
                 .GreaterThan((short)0).WithMessage("Số lượng học sinh tối đa phải lớn hơn 0.")
                 .When(x => x.MaxStudents.HasValue);

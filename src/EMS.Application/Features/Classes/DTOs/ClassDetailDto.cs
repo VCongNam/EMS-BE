@@ -10,9 +10,10 @@ namespace EMS.Application.Features.Classes.DTOs
     {
         public Guid ClassId { get; set; }
         public Guid TeacherId { get; set; }
+        public string TeacherName { get; set; } = string.Empty;
         public string ClassName { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
-        public short GradeLevel { get; set; }
+        public short? GradeLevel { get; set; }
         public string? Room { get; set; }
         public short? MaxStudents { get; set; }
         public int CurrentStudents { get; set; }
