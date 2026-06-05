@@ -875,14 +875,10 @@ namespace EMS.Application.Features.TuitionFees.Services
     // 2. Cập nhật trạng thái hóa đơn
     var totalPaid = await tuitionFeeRepository.GetTotalPaidAmountAsync(invoiceId) + dto.Amount;
     
-    if (totalPaid >= invoice.Amount)
+    if (totalPaid == invoice.Amount)
     {
         invoice.Status = "Paid";
         invoice.Description += $" | [Đã thu tiền mặt {nowVn:dd/MM}]";
-    }
-    else
-    {
-        invoice.Description += $" | [Thu một phần tiền mặt: {dto.Amount:N0}đ ngày {nowVn:dd/MM}]";
     }
 
     await tuitionFeeRepository.UpdateInvoiceAsync(invoice);
@@ -893,7 +889,7 @@ namespace EMS.Application.Features.TuitionFees.Services
         var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(invoice.StudentId);
         if (targetAccountId.HasValue)
         {
-            string content = $"Giáo viên đã xác nhận thu tiền mặt {dto.Amount:N0}đ cho học phí tháng {invoice.PeriodMonth}/{invoice.PeriodYear}.";
+            string content = $"Giáo viên đã xác nhận thu tiền mặt cho học phí tháng {invoice.PeriodMonth}/{invoice.PeriodYear}.";
             await _notificationService.SendNotificationAsync(
                 targetAccountId.Value, 
                 invoice.StudentId, 

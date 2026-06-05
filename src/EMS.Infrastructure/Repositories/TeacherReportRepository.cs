@@ -88,17 +88,29 @@ namespace EMS.Infrastructure.Repositories
 
         public async Task<Dictionary<Guid, (int TotalSlots, int PresentCount)>> GetAttendanceStatsAsync(List<Guid> classIds, DateOnly start, DateOnly end)
         {
-            var data = await context.Attendances
-                .AsNoTracking()
-                .Where(a => classIds.Contains(a.Session.ClassId) && a.Session.Date >= start && a.Session.Date <= end && a.Session.Status == "Completed")
-                .GroupBy(a => a.Session.ClassId)
-                .Select(g => new {
-                    ClassId = g.Key,
-                    Total = g.Count(),
-                    Present = g.Count(x => x.Status == "Present")
-                }).ToListAsync();
+            // Chuyển DateOnly sang DateTime để so sánh với kiểu Timestamp trong DB
+            var startDateTime = start.ToDateTime(TimeOnly.MinValue);
+            var endDateTime = end.ToDateTime(TimeOnly.MaxValue);
 
-            return data.ToDictionary(x => x.ClassId, x => (TotalSlots: x.Total, PresentCount: x.Present));
+            var stats = await context.Attendances
+                .Include(a => a.Session)
+                .Where(a => classIds.Contains(a.Session.ClassId)
+                         && a.Session.IsDeleted != true // ĐÃ SỬA Ở ĐÂY
+                         && a.Session.CreatedAt >= startDateTime
+                         && a.Session.CreatedAt <= endDateTime)
+                .GroupBy(a => a.Session.ClassId)
+                .Select(g => new
+                {
+                    ClassId = g.Key,
+                    TotalSlots = g.Count(),
+                    PresentCount = g.Count(a => a.Status == "Present" || a.Status == "Late")
+                })
+                .ToDictionaryAsync(
+                    x => x.ClassId,
+                    x => (x.TotalSlots, x.PresentCount)
+                );
+
+            return stats;
         }
     }
 }
