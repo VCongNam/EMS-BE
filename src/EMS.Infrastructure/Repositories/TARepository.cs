@@ -1,0 +1,95 @@
+﻿using EMS.Domain.Entities;
+using EMS.Domain.Interfaces;
+using EMS.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Ocsp;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace EMS.Infrastructure.Repositories
+{
+    public class TARepository : ITARepository
+    {
+        private readonly ApplicationDbContext _context;
+        public TARepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+        public async Task<TeachingAssistantTask> CreateTaskAsync(TeachingAssistantTask task)
+        {
+            await _context.TeachingAssistantTasks.AddAsync(task);
+            await _context.SaveChangesAsync();
+            return task;
+        }
+
+        public async Task<IEnumerable<TeachingAssistantTask>> GetTasksByClassTAIdAsync(Guid classTaId)
+        {
+            return await _context.TeachingAssistantTasks
+                .Where(t => t.ClassTaid == classTaId)
+                .OrderBy(t => t.DueDate)
+                .ToListAsync();
+        }
+
+        public async Task<TeachingAssistant> GetTAByEmailAsync(string email)
+        {
+            var ta = await _context.TeachingAssistants
+                .Include(ta => ta.Ta)
+                .ThenInclude(a => a.Role)
+                .Where(ta => ta.Ta.IsDeleted == false)
+                .FirstOrDefaultAsync(ta => ta.Ta.Email == email);
+            return ta;
+        }
+
+        public async Task<IEnumerable<ClassTum>> GetTAsByTeacherIdAsync(Guid teacherId)
+        {
+            var result = await _context.ClassTa
+                .Include(ct => ct.Class)
+                .Include(ct => ct.Ta)
+                    .ThenInclude(ta => ta.Ta)
+                .Where(ct => ct.Class.TeacherId == teacherId)
+                .ToListAsync();
+            return result;
+        }
+        public async Task<IEnumerable<TeachingAssistantTask>> GetTasksByTAIdAsync(Guid taId)
+        {
+            return await _context.TeachingAssistantTasks
+                .Include(t => t.ClassTa)           
+                    .ThenInclude(ct => ct.Class)
+                .Where(t => t.ClassTa.Taid == taId)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<TeachingAssistantTask?> GetTaskByIdAsync(Guid taskId)
+        {
+            return await _context.TeachingAssistantTasks
+                .Include(t => t.ClassTa)
+                .ThenInclude(ct => ct.Class)
+                .FirstOrDefaultAsync(t => t.TataskId == taskId);
+        }
+
+        public async Task UpdateTaskAsync(TeachingAssistantTask task)
+        {
+            _context.TeachingAssistantTasks.Update(task);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<ClassTum> GetClassTAByIdAsync(Guid classTaId)
+        {
+            var result = await _context.ClassTa
+                .Include(ct => ct.Class)
+                .FirstOrDefaultAsync(ct => ct.ClassTaid == classTaId && ct.Status != "Deactive");
+            return result;
+        }
+
+        public async Task<TeachingAssistant> GetByIdAsync(Guid taId)
+        {
+            return await _context.TeachingAssistants
+                .Include(ta => ta.Ta)
+                .FirstOrDefaultAsync(ta => ta.Taid == taId);
+        }
+    }
+}
