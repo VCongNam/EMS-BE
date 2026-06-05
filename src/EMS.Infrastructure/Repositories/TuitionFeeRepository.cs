@@ -491,5 +491,18 @@ namespace EMS.Infrastructure.Repositories
             }
             return true;
         }
+
+
+        public async Task<List<Invoice>> GetOverdueInvoicesByClassAsync(Guid classId, DateTime currentTime)
+        {
+            return await context.Invoices
+                .Include(i => i.Student)
+                .Where(i => i.ClassId == classId &&
+                            i.IsDeleted != true &&
+                            i.Status != "Paid" &&
+                            i.Status != "Cancelled" &&
+                            i.DueDate < currentTime)
+                .ToListAsync();
+        }
     }
 }

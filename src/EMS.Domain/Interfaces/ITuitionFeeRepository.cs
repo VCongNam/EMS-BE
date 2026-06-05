@@ -68,5 +68,7 @@ namespace EMS.Domain.Interfaces
         Task<IEnumerable<Transaction>> GetTransactionsByClassAndPeriodAsync(Guid classId, Guid teacherId, int month, int year);
         Task<bool> CheckAllSessionsAttendedAsync(Guid classId, int month, int year);
 
+        Task<List<Invoice>> GetOverdueInvoicesByClassAsync(Guid classId, DateTime currentTime);
+
     }
 }

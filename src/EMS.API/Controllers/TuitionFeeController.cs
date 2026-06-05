@@ -1,4 +1,5 @@
-﻿using EMS.Application.Common.Interfaces;
+﻿using EMS.Application.Common.Exceptions;
+using EMS.Application.Common.Interfaces;
 using EMS.Application.Features.TuitionFees.Dtos;
 using EMS.Application.Features.TuitionFees.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -316,6 +317,39 @@ namespace EMS.API.Controllers
                 return Ok(result);
             }
             catch (Exception ex) { return BadRequest(new { Error = ex.Message }); }
+        }
+
+
+        [HttpPost("invoice/{invoiceId}/pay-cash")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> ReportCashPayment(Guid invoiceId, [FromBody] PayCashDto dto)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (dto.Amount <= 0) return BadRequest(new { Message = "Số tiền thu phải lớn hơn 0." });
+
+            try
+            {
+                await tuitionFeeService.ReportCashPaymentAsync(invoiceId, dto);
+                return Ok(new { Message = "Đã ghi nhận thu tiền mặt thành công." });
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (KeyNotFoundException ex) { return NotFound(new { Message = ex.Message }); }
+            catch (BadRequestException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống khi ghi nhận thanh toán." }); }
+        }
+
+        [HttpPost("class/{classId}/remind-overdue")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> SendOverdueReminders(Guid classId)
+        {
+            try
+            {
+                await tuitionFeeService.SendOverdueRemindersAsync(classId);
+                return Ok(new { Message = "Đã gửi thông báo nhắc nhở nợ học phí đến các học sinh quá hạn." });
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (BadRequestException ex) { return BadRequest(new { Message = ex.Message }); }
+            catch (Exception) { return StatusCode(500, new { Message = "Lỗi hệ thống khi gửi nhắc nhở." }); }
         }
     }
 }
