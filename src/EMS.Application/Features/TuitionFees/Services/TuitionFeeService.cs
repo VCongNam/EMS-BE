@@ -394,7 +394,7 @@ namespace EMS.Application.Features.TuitionFees.Services
                 StudentName = t.Invoice!.Student!.FullName,
                 ClassName = t.Invoice.Class.ClassName,
                 ProofImageURL = t.ProofImageUrl,
-                PaidDate = t.PaidDate ?? GetVietnamTime()
+                PaidDate = t.PaidDate ?? DateTime.UtcNow
             });
         }
 
@@ -846,106 +846,106 @@ namespace EMS.Application.Features.TuitionFees.Services
         }
 
         public async Task ReportCashPaymentAsync(Guid invoiceId, PayCashDto dto)
+{
+    var teacherId = currentUserService.UserId;
+    var invoice = await tuitionFeeRepository.GetInvoiceByIdAsync(invoiceId);
+
+    if (invoice == null) throw new NotFoundException("Không tìm thấy hóa đơn.");
+    if (invoice.Class.TeacherId != teacherId) throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
+    if (invoice.Status == "Paid") throw new BadRequestException("Hóa đơn này đã được thanh toán hoàn tất.");
+
+    var nowVn = GetVietnamTime();
+
+    // 1. Tạo giao dịch tiền mặt
+    var transaction = new Transaction
+    {
+        TransactionId = Guid.NewGuid(),
+        InvoiceId = invoiceId,
+        AmountPaid = dto.Amount,
+        PaymentMethod = "Tiền mặt",
+        Status = "Successful",
+        Note = string.IsNullOrWhiteSpace(dto.Note) ? "Thu tiền mặt trực tiếp" : dto.Note,
+        PaidDate = DateTime.UtcNow,
+        CreatedAt = nowVn,
+        ApprovedBy = teacherId
+    };
+
+    await tuitionFeeRepository.AddTransactionAsync(transaction);
+
+    // 2. Cập nhật trạng thái hóa đơn
+    var totalPaid = await tuitionFeeRepository.GetTotalPaidAmountAsync(invoiceId) + dto.Amount;
+    
+    if (totalPaid >= invoice.Amount)
+    {
+        invoice.Status = "Paid";
+        invoice.Description += $" | [Đã thu tiền mặt {nowVn:dd/MM}]";
+    }
+    else
+    {
+        invoice.Description += $" | [Thu một phần tiền mặt: {dto.Amount:N0}đ ngày {nowVn:dd/MM}]";
+    }
+
+    await tuitionFeeRepository.UpdateInvoiceAsync(invoice);
+
+    // 3. Gửi thông báo cho phụ huynh/học sinh
+    try
+    {
+        var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(invoice.StudentId);
+        if (targetAccountId.HasValue)
         {
-            var teacherId = currentUserService.UserId;
-            var invoice = await tuitionFeeRepository.GetInvoiceByIdAsync(invoiceId);
+            string content = $"Giáo viên đã xác nhận thu tiền mặt {dto.Amount:N0}đ cho học phí tháng {invoice.PeriodMonth}/{invoice.PeriodYear}.";
+            await _notificationService.SendNotificationAsync(
+                targetAccountId.Value, 
+                invoice.StudentId, 
+                "Thanh toán thành công", 
+                content, 
+                $"/student/classes/{invoice.ClassId}/tuition", 
+                "Invoice");
+        }
+    }
+    catch (Exception ex) { _logger.LogError($"Lỗi gửi thông báo thu tiền mặt: {ex.Message}"); }
+}
 
-            if (invoice == null) throw new NotFoundException("Không tìm thấy hóa đơn.");
-            if (invoice.Class.TeacherId != teacherId) throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
-            if (invoice.Status == "Paid") throw new BadRequestException("Hóa đơn này đã được thanh toán hoàn tất.");
+public async Task SendOverdueRemindersAsync(Guid classId)
+{
+    var teacherId = currentUserService.UserId;
+    if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
+        throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
 
-            var nowVn = GetVietnamTime();
+    var nowVn = GetVietnamTime();
+    
+    // Lấy các hóa đơn chưa đóng và đã qua hạn (DueDate < hiện tại)
+    var overdueInvoices = await tuitionFeeRepository.GetOverdueInvoicesByClassAsync(classId, nowVn);
 
-            // 1. Tạo giao dịch tiền mặt
-            var transaction = new Transaction
-            {
-                TransactionId = Guid.NewGuid(),
-                InvoiceId = invoiceId,
-                AmountPaid = dto.Amount,
-                PaymentMethod = "Tiền mặt",
-                Status = "Successful",
-                Note = string.IsNullOrWhiteSpace(dto.Note) ? "Thu tiền mặt trực tiếp" : dto.Note,
-                PaidDate = nowVn,
-                CreatedAt = nowVn,
-                ApprovedBy = teacherId
-            };
+    if (!overdueInvoices.Any())
+        throw new BadRequestException("Không có học sinh nào đang nợ học phí quá hạn trong lớp này.");
 
-            await tuitionFeeRepository.AddTransactionAsync(transaction);
+    var targetStudents = await _notificationService.GetStudentTargetsAsync(classId);
 
-            // 2. Cập nhật trạng thái hóa đơn
-            var totalPaid = await tuitionFeeRepository.GetTotalPaidAmountAsync(invoiceId) + dto.Amount;
-
-            if (totalPaid >= invoice.Amount)
-            {
-                invoice.Status = "Paid";
-                invoice.Description += $" | [Đã thu tiền mặt {nowVn:dd/MM}]";
-            }
-            else
-            {
-                invoice.Description += $" | [Thu một phần tiền mặt: {dto.Amount:N0}đ ngày {nowVn:dd/MM}]";
-            }
-
-            await tuitionFeeRepository.UpdateInvoiceAsync(invoice);
-
-            // 3. Gửi thông báo cho phụ huynh/học sinh
-            try
-            {
-                var targetAccountId = await _notificationService.GetAccountIdByStudentIdAsync(invoice.StudentId);
-                if (targetAccountId.HasValue)
-                {
-                    string content = $"Giáo viên đã xác nhận thu tiền mặt {dto.Amount:N0}đ cho học phí tháng {invoice.PeriodMonth}/{invoice.PeriodYear}.";
-                    await _notificationService.SendNotificationAsync(
-                        targetAccountId.Value,
-                        invoice.StudentId,
-                        "Thanh toán thành công",
-                        content,
-                        $"/student/classes/{invoice.ClassId}/tuition",
-                        "Invoice");
-                }
-            }
-            catch (Exception ex) { _logger.LogError($"Lỗi gửi thông báo thu tiền mặt: {ex.Message}"); }
+    foreach (var inv in overdueInvoices)
+    {
+        // Đổi trạng thái sang Overdue nếu trước đó vẫn đang Pending
+        if (inv.Status == "Pending")
+        {
+            inv.Status = "Overdue";
+            await tuitionFeeRepository.UpdateInvoiceAsync(inv);
         }
 
-        public async Task SendOverdueRemindersAsync(Guid classId)
+        // Gửi thông báo
+        var target = targetStudents.FirstOrDefault(t => t.StdId == inv.StudentId);
+        if (target != default)
         {
-            var teacherId = currentUserService.UserId;
-            if (!await tuitionFeeRepository.IsTeacherOwnsClassAsync(classId, teacherId))
-                throw new UnauthorizedAccessException("Bạn không có quyền thao tác trên lớp này.");
-
-            var nowVn = GetVietnamTime();
-
-            // Lấy các hóa đơn chưa đóng và đã qua hạn (DueDate < hiện tại)
-            var overdueInvoices = await tuitionFeeRepository.GetOverdueInvoicesByClassAsync(classId, nowVn);
-
-            if (!overdueInvoices.Any())
-                throw new BadRequestException("Không có học sinh nào đang nợ học phí quá hạn trong lớp này.");
-
-            var targetStudents = await _notificationService.GetStudentTargetsAsync(classId);
-
-            foreach (var inv in overdueInvoices)
-            {
-                // Đổi trạng thái sang Overdue nếu trước đó vẫn đang Pending
-                if (inv.Status == "Pending")
-                {
-                    inv.Status = "Overdue";
-                    await tuitionFeeRepository.UpdateInvoiceAsync(inv);
-                }
-
-                // Gửi thông báo
-                var target = targetStudents.FirstOrDefault(t => t.StdId == inv.StudentId);
-                if (target != default)
-                {
-                    string content = $"⚠️ Nhắc nhở: Học phí tháng {inv.PeriodMonth}/{inv.PeriodYear} của bạn đã quá hạn (Hạn chót: {inv.DueDate:dd/MM/yyyy}). Vui lòng thanh toán sớm để không gián đoạn việc học.";
-                    await _notificationService.SendNotificationAsync(
-                        target.AccId,
-                        inv.StudentId,
-                        "Nhắc nhở nợ học phí",
-                        content,
-                        $"/student/classes/{inv.ClassId}/tuition",
-                        "Warning");
-                }
-            }
+            string content = $"⚠️ Nhắc nhở: Học phí tháng {inv.PeriodMonth}/{inv.PeriodYear} của bạn đã quá hạn (Hạn chót: {inv.DueDate:dd/MM/yyyy}). Vui lòng thanh toán sớm để không gián đoạn việc học.";
+            await _notificationService.SendNotificationAsync(
+                target.AccId, 
+                inv.StudentId, 
+                "Nhắc nhở nợ học phí", 
+                content, 
+                $"/student/classes/{inv.ClassId}/tuition", 
+                "Warning");
         }
+    }
+}
 
     }
 }
