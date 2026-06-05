@@ -83,7 +83,7 @@ namespace EMS.Application.Features.Classes.Services
             {
                 ClassID = enrollmentEntity.ClassId,
                 ClassName = enrollmentEntity.Class.ClassName,
-                GradeLevel = enrollmentEntity.Class.Subject?.GradeLevel ?? 0,
+                GradeLevel = (enrollmentEntity.Class.Subject?.GradeLevel == 0) ? null : enrollmentEntity.Class.Subject?.GradeLevel,
                 TeacherName = enrollmentEntity.Class.Teacher.TeacherNavigation.FullName,
                 PendingAssignmentsCount = pendingAssignmentCount
             };

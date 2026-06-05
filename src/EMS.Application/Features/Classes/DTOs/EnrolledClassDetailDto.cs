@@ -10,7 +10,7 @@ namespace EMS.Application.Features.Classes.DTOs
     {
         public Guid ClassID { get; set; }
         public string ClassName { get; set; }
-        public short GradeLevel { get; set; }
+        public short? GradeLevel { get; set; }
         public string TeacherName { get; set; }
         public int PendingAssignmentsCount { get; set; }
         public double AttendanceRate { get; set; }

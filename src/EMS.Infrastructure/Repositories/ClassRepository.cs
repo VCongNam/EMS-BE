@@ -37,6 +37,8 @@ namespace EMS.Infrastructure.Repositories
             return await _context.Classes
                 .AsNoTracking()
                 .Include(c => c.Subject)
+                .Include(c => c.Teacher)
+                    .ThenInclude(t => t.TeacherNavigation)
                 .Include(c => c.ClassSchedules)
                 .Include(c => c.ClassEnrollments)
                 .FirstOrDefaultAsync(c => c.ClassId == classId && (c.IsDeleted == null || c.IsDeleted == false));

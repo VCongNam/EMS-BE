@@ -71,14 +71,15 @@ namespace EMS.Application.Features.Classes.Services
                 }
             }
 
-            var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, request.GradeLevel);
+            short gradeLevel = request.GradeLevel ?? 0;
+            var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, gradeLevel);
             if (subject == null)
             {
                 subject = new Subject
                 {
                     SubjectId = Guid.NewGuid(),
                     SubjectName = request.SubjectName,
-                    GradeLevel = request.GradeLevel,
+                    GradeLevel = gradeLevel,
                     IsDeleted = false
                 };
                 await _classRepository.AddSubjectAsync(subject);
@@ -356,7 +357,7 @@ namespace EMS.Application.Features.Classes.Services
                            : "Ongoing",
                 StartDate = c.StartDate,
                 SubjectName = c.Subject?.SubjectName ?? "N/A",
-                GradeLevel = c.Subject?.GradeLevel ?? 0,
+                GradeLevel = (c.Subject?.GradeLevel == 0) ? null : c.Subject?.GradeLevel,
                 MaxStudents = c.MaxStudents,
                 CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
                 Schedules = c.ClassSchedules.Select(s => new ScheduleDto
@@ -383,9 +384,10 @@ namespace EMS.Application.Features.Classes.Services
             {
                 ClassId = classroom.ClassId,
                 TeacherId = classroom.TeacherId,
+                TeacherName = classroom.Teacher?.TeacherNavigation?.FullName ?? string.Empty,
                 ClassName = classroom.ClassName,
                 SubjectName = classroom.Subject?.SubjectName ?? string.Empty,
-                GradeLevel = classroom.Subject?.GradeLevel ?? 0,
+                GradeLevel = (classroom.Subject?.GradeLevel == 0) ? null : classroom.Subject?.GradeLevel,
                 Room = classroom.Room,
                 MaxStudents = classroom.MaxStudents,
                 CurrentStudents = classroom.ClassEnrollments.Count(ce => ce.Status == "Active"),
@@ -427,14 +429,15 @@ namespace EMS.Application.Features.Classes.Services
             }
 
             // 1. Xử lý Subject (Tìm hoặc Tạo mới)
-            var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, request.GradeLevel);
+            short gradeLevel = request.GradeLevel ?? 0;
+            var subject = await _classRepository.GetSubjectByNameAndGradeAsync(request.SubjectName, gradeLevel);
             if (subject == null)
             {
                 subject = new Subject
                 {
                     SubjectId = Guid.NewGuid(),
                     SubjectName = request.SubjectName,
-                    GradeLevel = request.GradeLevel,
+                    GradeLevel = gradeLevel,
                     IsDeleted = false
                 };
                 await _classRepository.AddSubjectAsync(subject);
@@ -568,7 +571,7 @@ namespace EMS.Application.Features.Classes.Services
                 Status = c.Status ?? string.Empty,
                 StartDate = c.StartDate,
                 SubjectName = c.Subject?.SubjectName ?? "N/A",
-                GradeLevel = c.Subject?.GradeLevel ?? 0,
+                GradeLevel = (c.Subject?.GradeLevel == 0) ? null : c.Subject?.GradeLevel,
                 MaxStudents = c.MaxStudents,
                 CurrentStudents = c.ClassEnrollments.Count(ce => ce.Status == "Active"),
                 Schedules = c.ClassSchedules.Select(s => new ScheduleDto
